@@ -2,6 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Link } from "react-router-dom";
+import { ChevronRight } from "lucide-react";
 
 interface GuitarEmbed {
   id: string;
@@ -37,28 +39,32 @@ const GuitarPro = () => {
         </div>
 
         {isLoading ? (
-          <div className="grid gap-8 max-w-4xl mx-auto">
+          <div className="grid gap-4 max-w-2xl mx-auto">
             {[1, 2, 3].map((i) => (
               <Card key={i} className="p-6">
-                <Skeleton className="h-8 w-3/4 mb-4" />
-                <Skeleton className="h-4 w-full mb-6" />
-                <Skeleton className="h-96 w-full" />
+                <Skeleton className="h-8 w-3/4 mb-2" />
+                <Skeleton className="h-4 w-full" />
               </Card>
             ))}
           </div>
         ) : embeds && embeds.length > 0 ? (
-          <div className="grid gap-8 max-w-4xl mx-auto">
+          <div className="grid gap-4 max-w-2xl mx-auto">
             {embeds.map((embed) => (
-              <Card key={embed.id} className="p-6 bg-card/50 backdrop-blur hover:shadow-xl transition-shadow">
-                <h2 className="text-2xl font-bold mb-2">{embed.title}</h2>
-                {embed.description && (
-                  <p className="text-muted-foreground mb-4">{embed.description}</p>
-                )}
-                <div 
-                  className="w-full min-h-[400px] rounded-lg overflow-hidden border border-border"
-                  dangerouslySetInnerHTML={{ __html: embed.embed_code }}
-                />
-              </Card>
+              <Link key={embed.id} to={`/guitar/${embed.id}`}>
+                <Card className="p-6 bg-card/50 backdrop-blur hover:shadow-xl transition-all hover:-translate-y-1 group">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <h2 className="text-xl font-bold mb-1 group-hover:text-primary transition-colors">
+                        {embed.title}
+                      </h2>
+                      {embed.description && (
+                        <p className="text-sm text-muted-foreground">{embed.description}</p>
+                      )}
+                    </div>
+                    <ChevronRight className="h-6 w-6 text-muted-foreground group-hover:text-primary transition-colors" />
+                  </div>
+                </Card>
+              </Link>
             ))}
           </div>
         ) : (

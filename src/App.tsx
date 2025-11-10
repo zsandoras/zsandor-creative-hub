@@ -8,6 +8,7 @@ import { MusicPlayer } from "./components/MusicPlayer";
 import { AuthProvider } from "./hooks/useAuth";
 import Home from "./pages/Home";
 import GuitarPro from "./pages/GuitarPro";
+import GuitarDetail from "./pages/GuitarDetail";
 import FoodGallery from "./pages/FoodGallery";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/admin/Dashboard";
@@ -30,6 +31,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/guitar" element={<GuitarPro />} />
+            <Route path="/guitar/:id" element={<GuitarDetail />} />
             <Route path="/food" element={<FoodGallery />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/admin" element={<Dashboard />} />
