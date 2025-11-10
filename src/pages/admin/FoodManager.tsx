@@ -9,8 +9,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2, ArrowLeft } from "lucide-react";
+import { Trash2, ArrowLeft, Pencil } from "lucide-react";
 import { Link } from "react-router-dom";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 interface FoodItem {
   id: string;
@@ -25,6 +26,10 @@ const FoodManager = () => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [editingItem, setEditingItem] = useState<FoodItem | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -55,6 +60,42 @@ const FoodManager = () => {
       toast({ title: "Image deleted successfully" });
     },
   });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, title, description }: { id: string; title: string; description: string }) => {
+      const { error } = await supabase
+        .from("food_gallery")
+        .update({
+          title: title || null,
+          description: description || null,
+        })
+        .eq("id", id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["food-gallery"] });
+      toast({ title: "Item updated successfully" });
+      setIsDialogOpen(false);
+      setEditingItem(null);
+    },
+  });
+
+  const handleEdit = (item: FoodItem) => {
+    setEditingItem(item);
+    setEditTitle(item.title || "");
+    setEditDescription(item.description || "");
+    setIsDialogOpen(true);
+  };
+
+  const handleSaveEdit = () => {
+    if (!editingItem) return;
+    updateMutation.mutate({
+      id: editingItem.id,
+      title: editTitle,
+      description: editDescription,
+    });
+  };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -173,7 +214,14 @@ const FoodManager = () => {
                     alt={item.title || "Food"}
                     className="w-full aspect-square object-cover rounded-lg"
                   />
-                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
+                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-2">
+                    <Button
+                      variant="secondary"
+                      size="icon"
+                      onClick={() => handleEdit(item)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
                     <Button
                       variant="destructive"
                       size="icon"
@@ -190,6 +238,42 @@ const FoodManager = () => {
             </div>
           )}
         </Card>
+
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Item</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="edit-title">Title</Label>
+                <Input
+                  id="edit-title"
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  placeholder="Optional title"
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-description">Description</Label>
+                <Textarea
+                  id="edit-description"
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  placeholder="Optional description"
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleSaveEdit} disabled={updateMutation.isPending}>
+                  Save Changes
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </main>
   );
