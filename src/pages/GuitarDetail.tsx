@@ -5,11 +5,13 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft } from "lucide-react";
+import AlphaTabPlayer from "@/components/AlphaTabPlayer";
 
 interface GuitarEmbed {
   id: string;
   title: string;
-  embed_code: string;
+  embed_code: string | null;
+  file_url: string | null;
   description: string | null;
 }
 
@@ -48,16 +50,31 @@ const GuitarDetail = () => {
             <Skeleton className="h-[600px] w-full" />
           </Card>
         ) : embed ? (
-          <Card className="p-6 bg-card/50 backdrop-blur">
-            <h1 className="text-3xl font-bold mb-2">{embed.title}</h1>
-            {embed.description && (
-              <p className="text-muted-foreground mb-6">{embed.description}</p>
+          <div className="space-y-6">
+            <Card className="p-6 bg-card/50 backdrop-blur">
+              <h1 className="text-3xl font-bold mb-2">{embed.title}</h1>
+              {embed.description && (
+                <p className="text-muted-foreground">{embed.description}</p>
+              )}
+            </Card>
+            
+            {embed.file_url ? (
+              <AlphaTabPlayer fileUrl={embed.file_url} title={embed.title} />
+            ) : embed.embed_code ? (
+              <Card className="p-6 bg-card/50 backdrop-blur">
+                <div 
+                  className="w-full min-h-[600px] rounded-lg overflow-hidden border border-border"
+                  dangerouslySetInnerHTML={{ __html: embed.embed_code }}
+                />
+              </Card>
+            ) : (
+              <Card className="p-12 text-center bg-card/50 backdrop-blur">
+                <p className="text-lg text-muted-foreground">
+                  No content available for this guitar tab.
+                </p>
+              </Card>
             )}
-            <div 
-              className="w-full min-h-[600px] rounded-lg overflow-hidden border border-border"
-              dangerouslySetInnerHTML={{ __html: embed.embed_code }}
-            />
-          </Card>
+          </div>
         ) : (
           <Card className="p-12 text-center bg-card/50 backdrop-blur">
             <p className="text-lg text-muted-foreground">

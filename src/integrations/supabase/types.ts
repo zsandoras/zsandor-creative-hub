@@ -50,7 +50,8 @@ export type Database = {
           created_by: string | null
           description: string | null
           display_order: number | null
-          embed_code: string
+          embed_code: string | null
+          file_url: string | null
           id: string
           title: string
         }
@@ -59,7 +60,8 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           display_order?: number | null
-          embed_code: string
+          embed_code?: string | null
+          file_url?: string | null
           id?: string
           title: string
         }
@@ -68,7 +70,8 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           display_order?: number | null
-          embed_code?: string
+          embed_code?: string | null
+          file_url?: string | null
           id?: string
           title?: string
         }

@@ -15,7 +15,8 @@ import { Link } from "react-router-dom";
 interface GuitarEmbed {
   id: string;
   title: string;
-  embed_code: string;
+  embed_code: string | null;
+  file_url: string | null;
   description: string | null;
   display_order: number;
 }
@@ -23,8 +24,8 @@ interface GuitarEmbed {
 const GuitarManager = () => {
   const { isAdmin, loading } = useAuth();
   const [title, setTitle] = useState("");
-  const [embedCode, setEmbedCode] = useState("");
   const [description, setDescription] = useState("");
+  const [file, setFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -60,10 +61,10 @@ const GuitarManager = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!title || !embedCode) {
+    if (!title || !file) {
       toast({
         title: "Error",
-        description: "Title and embed code are required",
+        description: "Title and Guitar Pro file are required",
         variant: "destructive",
       });
       return;
@@ -72,20 +73,37 @@ const GuitarManager = () => {
     setSaving(true);
 
     try {
+      // Upload file to storage
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("guitar-files")
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from("guitar-files")
+        .getPublicUrl(filePath);
+
+      // Insert into database
       const { error } = await supabase
         .from("guitar_embeds")
         .insert({
           title,
-          embed_code: embedCode,
+          file_url: publicUrl,
           description: description || null,
           display_order: embeds.length,
         });
 
       if (error) throw error;
 
-      toast({ title: "Embed added successfully!" });
+      toast({ title: "Guitar Pro file uploaded successfully!" });
       setTitle("");
-      setEmbedCode("");
+      setFile(null);
       setDescription("");
       queryClient.invalidateQueries({ queryKey: ["guitar-embeds"] });
     } catch (error: any) {
@@ -122,7 +140,7 @@ const GuitarManager = () => {
         </h1>
 
         <Card className="p-6 mb-8 bg-card/50 backdrop-blur">
-          <h2 className="text-2xl font-bold mb-4">Add New Embed</h2>
+          <h2 className="text-2xl font-bold mb-4">Add New Guitar Pro File</h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <Label htmlFor="title">Title *</Label>
@@ -143,28 +161,32 @@ const GuitarManager = () => {
               />
             </div>
             <div>
-              <Label htmlFor="embedCode">Embed Code *</Label>
-              <Textarea
-                id="embedCode"
-                value={embedCode}
-                onChange={(e) => setEmbedCode(e.target.value)}
-                placeholder='Paste your Guitar Pro embed code (e.g., <iframe src="..."></iframe>)'
-                rows={6}
+              <Label htmlFor="file">Guitar Pro File *</Label>
+              <Input
+                id="file"
+                type="file"
+                accept=".gp3,.gp4,.gp5,.gpx,.gp"
+                onChange={(e) => setFile(e.target.files?.[0] || null)}
               />
               <p className="text-xs text-muted-foreground mt-1">
-                Paste the full iframe embed code from Guitar Pro or similar services
+                Upload Guitar Pro files (.gp3, .gp4, .gp5, .gpx, .gp)
               </p>
+              {file && (
+                <p className="text-xs text-primary mt-1">
+                  Selected: {file.name} ({(file.size / 1024).toFixed(2)} KB)
+                </p>
+              )}
             </div>
             <Button type="submit" disabled={saving}>
-              {saving ? "Adding..." : "Add Embed"}
+              {saving ? "Uploading..." : "Upload File"}
             </Button>
           </form>
         </Card>
 
         <Card className="p-6 bg-card/50 backdrop-blur">
-          <h2 className="text-2xl font-bold mb-4">Existing Embeds</h2>
+          <h2 className="text-2xl font-bold mb-4">Existing Files</h2>
           {embeds.length === 0 ? (
-            <p className="text-muted-foreground">No embeds added yet</p>
+            <p className="text-muted-foreground">No files uploaded yet</p>
           ) : (
             <div className="space-y-3">
               {embeds.map((embed) => (
@@ -176,6 +198,9 @@ const GuitarManager = () => {
                     <p className="font-semibold">{embed.title}</p>
                     {embed.description && (
                       <p className="text-sm text-muted-foreground">{embed.description}</p>
+                    )}
+                    {embed.file_url && (
+                      <p className="text-xs text-muted-foreground mt-1">Guitar Pro file</p>
                     )}
                   </div>
                   <Button
