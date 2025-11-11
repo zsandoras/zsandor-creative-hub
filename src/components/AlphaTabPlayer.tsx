@@ -132,9 +132,11 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       // Use Settings object for proper initialization
       const settings = new alphaTab.Settings();
       settings.core.fontDirectory = "/font/";
-      settings.core.useWorkers = false;
+      // Use default worker setting (true) to avoid synchronous recursion during MIDI init
+      settings.core.useWorkers = true;
       settings.display.layoutMode = alphaTab.LayoutMode.Page;
-      settings.player.playerMode = alphaTab.PlayerMode.EnabledSynthesizer;
+      // Avoid forcing synthesizer during score load to prevent MIDI recursion; enable on user playback
+      settings.player.playerMode = alphaTab.PlayerMode.EnabledAutomatic;
       settings.player.enableCursor = true;
       settings.player.enableAnimatedBeatCursor = true;
       settings.player.soundFont = window.location.origin + "/soundfont/sonivox.sf2";
@@ -291,7 +293,8 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
 
       // Start loading score after all listeners are attached
       log(`Init order OK. SoundFont=${settings.player.soundFont}. Loading: ${fileUrl}`);
-      api.load(fileUrl);
+      // Defer load until next frame to ensure container is visible and DOM settled
+      requestAnimationFrame(() => api.load(fileUrl));
     } catch (e: any) {
       const message = e?.message || e?.toString?.() || 'Unknown init error';
       log(`Init failed: ${message}`);
