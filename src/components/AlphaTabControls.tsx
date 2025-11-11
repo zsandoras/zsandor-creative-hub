@@ -20,6 +20,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Slider } from "@/components/ui/slider";
+import { supabase } from "@/integrations/supabase/client";
 
 interface AlphaTabControlsProps {
   api: any;
@@ -85,6 +86,29 @@ const AlphaTabControls = ({
   const [selectedInstrument, setSelectedInstrument] = useState(0);
   const [currentInstrument, setCurrentInstrument] = useState(INSTRUMENTS[0]);
   const [volume, setVolume] = useState(80);
+
+  useEffect(() => {
+    loadDefaultInstrument();
+  }, []);
+
+  const loadDefaultInstrument = async () => {
+    try {
+      const { data } = await supabase
+        .from("app_settings")
+        .select("value")
+        .eq("key", "default_instrument")
+        .single();
+
+      if (data?.value && typeof data.value === 'object' && 'program' in data.value) {
+        const defaultInst = INSTRUMENTS.find((i) => i.program === (data.value as any).program);
+        if (defaultInst) {
+          setCurrentInstrument(defaultInst);
+        }
+      }
+    } catch (error) {
+      console.error("Error loading default instrument:", error);
+    }
+  };
 
   useEffect(() => {
     if (!api) return;
@@ -173,6 +197,7 @@ const AlphaTabControls = ({
     setCurrentInstrument(instrument);
     if (api) {
       const program = instrument.program;
+      const wasPlaying = isPlaying;
 
       // Prepare handler to rewrite all Program Change events except drums (channel 9)
       const midiLoadHandler = (file: any) => {
@@ -185,7 +210,7 @@ const AlphaTabControls = ({
               : ev.command === 0xC0;
             if (isProgramChange && ev.channel !== 9) {
               if (typeof ev.program === "number") ev.program = program;
-              if (typeof ev.data1 === "number") ev.data1 = program; // safety for raw midi fields
+              if (typeof ev.data1 === "number") ev.data1 = program;
             }
           }
         } catch (err) {
@@ -200,9 +225,15 @@ const AlphaTabControls = ({
       (api as any)._midiLoadHandler = midiLoadHandler;
       api.midiLoad.on(midiLoadHandler);
 
-      // Regenerate and reload the MIDI so the change takes effect
+      // Regenerate and reload the MIDI
       if (typeof api.loadMidiForScore === "function") {
         api.loadMidiForScore();
+        // Resume playback if it was playing before
+        if (wasPlaying) {
+          setTimeout(() => {
+            api.play();
+          }, 100);
+        }
       }
     }
   };

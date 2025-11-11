@@ -15,6 +15,7 @@ import Dashboard from "./pages/admin/Dashboard";
 import MusicManager from "./pages/admin/MusicManager";
 import FoodManager from "./pages/admin/FoodManager";
 import GuitarManager from "./pages/admin/GuitarManager";
+import Settings from "./pages/admin/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -38,6 +39,7 @@ const App = () => (
             <Route path="/admin/music" element={<MusicManager />} />
             <Route path="/admin/food" element={<FoodManager />} />
             <Route path="/admin/guitar" element={<GuitarManager />} />
+            <Route path="/admin/settings" element={<Settings />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

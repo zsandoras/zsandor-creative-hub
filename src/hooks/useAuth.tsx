@@ -8,6 +8,8 @@ interface AuthContextType {
   session: Session | null;
   isAdmin: boolean;
   loading: boolean;
+  isEditMode: boolean;
+  setIsEditMode: (value: boolean) => void;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signUp: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
@@ -20,6 +22,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isEditMode, setIsEditMode] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -116,6 +119,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         session,
         isAdmin,
         loading,
+        isEditMode,
+        setIsEditMode,
         signIn,
         signUp,
         signOut,

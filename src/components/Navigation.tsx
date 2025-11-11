@@ -1,10 +1,13 @@
 import { Link, useLocation } from "react-router-dom";
-import { Music2, Guitar, UtensilsCrossed, Shield } from "lucide-react";
+import { Music2, Guitar, UtensilsCrossed, Shield, Edit3 } from "lucide-react";
 import { Button } from "./ui/button";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
+import { Switch } from "./ui/switch";
 
 export const Navigation = () => {
   const location = useLocation();
+  const { isAdmin, isEditMode, setIsEditMode } = useAuth();
   
   const navItems = [
     { path: "/", label: "Home", icon: null },
@@ -40,12 +43,22 @@ export const Navigation = () => {
               </Link>
             ))}
             
-            <Link to="/admin">
-              <Button variant="outline" size="sm" className="gap-2">
-                <Shield className="h-4 w-4" />
-                Admin
-              </Button>
-            </Link>
+            {isAdmin && (
+              <>
+                <div className="flex items-center gap-2 border-l pl-6 border-border">
+                  <Edit3 className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">Edit Mode</span>
+                  <Switch checked={isEditMode} onCheckedChange={setIsEditMode} />
+                </div>
+                
+                <Link to="/admin">
+                  <Button variant="outline" size="sm" className="gap-2">
+                    <Shield className="h-4 w-4" />
+                    Admin
+                  </Button>
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </div>

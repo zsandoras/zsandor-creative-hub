@@ -2,7 +2,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Navigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Music, Image, FileText, LogOut } from "lucide-react";
+import { Music, Image, FileText, LogOut, Settings } from "lucide-react";
 
 const Dashboard = () => {
   const { isAdmin, loading, signOut } = useAuth();
@@ -57,6 +57,14 @@ const Dashboard = () => {
               <FileText className="h-12 w-12 text-primary mb-4" />
               <h2 className="text-2xl font-bold mb-2">Guitar Embeds</h2>
               <p className="text-muted-foreground">Manage Guitar Pro file embeds</p>
+            </Card>
+          </Link>
+
+          <Link to="/admin/settings">
+            <Card className="p-6 hover:shadow-xl transition-all hover:-translate-y-1 bg-card/50 backdrop-blur cursor-pointer">
+              <Settings className="h-12 w-12 text-primary mb-4" />
+              <h2 className="text-2xl font-bold mb-2">App Settings</h2>
+              <p className="text-muted-foreground">Configure default instrument and other settings</p>
             </Card>
           </Link>
         </div>
