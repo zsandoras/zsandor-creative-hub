@@ -18,17 +18,9 @@ interface PlayerState {
   volume: number;
 }
 
-interface DebugEvent {
-  timestamp: string;
-  event: string;
-  details?: string;
-}
-
 const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const apiRef = useRef<alphaTab.AlphaTabApi | null>(null);
-  const watchdogTimerRef = useRef<number | null>(null);
-  const sampleTimerRef = useRef<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [loadProgress, setLoadProgress] = useState(0);
@@ -38,211 +30,125 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
     duration: 0,
     volume: 80,
   });
-  const [debugEvents, setDebugEvents] = useState<DebugEvent[]>([]);
   const [isPlayerReady, setIsPlayerReady] = useState(false);
-  const [isScoreLoaded, setIsScoreLoaded] = useState(false);
-  const renderFinishedRef = useRef(false);
-
-  const addDebugEvent = (event: string, details?: string) => {
-    const timestamp = new Date().toLocaleTimeString();
-    setDebugEvents((prev) => [...prev, { timestamp, event, details }]);
-  };
+  const [trackCount, setTrackCount] = useState(0);
 
   useEffect(() => {
     if (!containerRef.current) return;
 
     // Cleanup previous instance
     if (apiRef.current) {
-      apiRef.current.destroy();
+      try {
+        apiRef.current.destroy();
+      } catch (e) {
+        console.warn("Error destroying previous alphaTab instance:", e);
+      }
       apiRef.current = null;
-    }
-
-    // Clear any existing watchdog
-    if (watchdogTimerRef.current) {
-      clearTimeout(watchdogTimerRef.current);
-      watchdogTimerRef.current = null;
     }
 
     setIsLoading(true);
     setError(null);
-    setDebugEvents([]);
     setIsPlayerReady(false);
-    setIsScoreLoaded(false);
-    renderFinishedRef.current = false;
-    addDebugEvent("Initializing AlphaTab", `File: ${fileUrl}`);
+    setTrackCount(0);
+    setLoadProgress(0);
 
-    // Safety check: ensure container has valid dimensions
-    const containerWidth = containerRef.current.clientWidth;
-    const containerHeight = containerRef.current.clientHeight;
-    if (containerWidth === 0 || containerHeight === 0) {
-      addDebugEvent("Warning", `Container size is ${containerWidth}x${containerHeight}`);
-    } else {
-      addDebugEvent("Container size", `${containerWidth}x${containerHeight}`);
-    }
+    console.log("[AlphaTab] Initializing with file:", fileUrl);
 
     try {
-      // Configure AlphaTab settings
+      // Configure AlphaTab settings following official pattern
       const settings = new alphaTab.Settings();
       settings.core.fontDirectory = "/font/";
-      settings.core.useWorkers = false; // Disable workers to avoid loading issues
+      settings.core.useWorkers = false;
       settings.display.layoutMode = alphaTab.LayoutMode.Page;
-      settings.display.scale = 1.1; // Improve readability
-      settings.core.engine = "svg";
-
-      // Enable player with synthesizer mode
+      settings.display.scale = 1.0;
+      
+      // Player configuration
       settings.player.enablePlayer = true;
       settings.player.enableCursor = true;
       settings.player.enableAnimatedBeatCursor = true;
       settings.player.soundFont = "https://cdn.jsdelivr.net/npm/@coderline/alphatab@1.6.3/dist/soundfont/sonivox.sf2";
-      settings.player.playerMode = alphaTab.PlayerMode?.EnabledSynthesizer ?? 2;
-
-      addDebugEvent("Settings configured", `SoundFont: ${settings.player.soundFont}`);
+      
+      console.log("[AlphaTab] Settings configured");
 
       // Create AlphaTab API
       const api = new alphaTab.AlphaTabApi(containerRef.current, settings);
       apiRef.current = api;
-      const actualMode = (api as any).settings?.player?.playerMode ?? 'unknown';
-      addDebugEvent("AlphaTab API created", `Player mode: ${actualMode}`);
 
-      // Helper to attach all event handlers consistently
-      const attachHandlers = (instance: alphaTab.AlphaTabApi) => {
-        instance.renderStarted.on(() => {
-          addDebugEvent("Render started");
-        });
+      console.log("[AlphaTab] API created successfully");
 
-        instance.scoreLoaded.on(() => {
-          addDebugEvent("Score loaded", `Tracks: ${instance.score?.tracks.length || 0}`);
-          setIsScoreLoaded(true);
-          addDebugEvent("Triggering render");
-          instance.render();
-        });
+      // Event: Score Loaded
+      api.scoreLoaded.on((score) => {
+        console.log("[AlphaTab] Score loaded:", score?.tracks?.length || 0, "tracks");
+        setTrackCount(score?.tracks?.length || 0);
+      });
 
-        instance.renderFinished.on(() => {
-          addDebugEvent("Render finished");
-          setIsLoading(false);
-          renderFinishedRef.current = true;
-          if (watchdogTimerRef.current) {
-            clearTimeout(watchdogTimerRef.current);
-            watchdogTimerRef.current = null;
-          }
-        });
+      // Event: Render Finished
+      api.renderFinished.on((result) => {
+        console.log("[AlphaTab] Render finished");
+        setIsLoading(false);
+      });
 
-        instance.soundFontLoad.on((e: any) => {
-          const percentage = Math.floor((e.loaded / e.total) * 100);
-          setLoadProgress(percentage);
-          addDebugEvent("SoundFont loading", `${percentage}%`);
-        });
+      // Event: SoundFont Loading Progress
+      api.soundFontLoad.on((e: any) => {
+        const percentage = Math.floor((e.loaded / e.total) * 100);
+        setLoadProgress(percentage);
+        console.log("[AlphaTab] SoundFont loading:", percentage + "%");
+      });
 
-        instance.soundFontLoaded.on(() => {
-          addDebugEvent("SoundFont loaded");
-          setLoadProgress(100);
-        });
+      // Event: SoundFont Loaded
+      api.soundFontLoaded.on(() => {
+        console.log("[AlphaTab] SoundFont loaded");
+        setLoadProgress(100);
+      });
 
-        instance.playerReady.on(() => {
-          addDebugEvent("Player ready", "Ready for playback");
-          setIsPlayerReady(true);
-        });
+      // Event: Player Ready
+      api.playerReady.on(() => {
+        console.log("[AlphaTab] Player ready for playback");
+        setIsPlayerReady(true);
+      });
 
-        instance.playerStateChanged.on((e: any) => {
-          const isPlaying = e.state === 1; // 1 = Playing
-          setPlayerState((prev) => ({ ...prev, isPlaying }));
-          addDebugEvent("Player state changed", isPlaying ? "Playing" : "Paused");
-        });
+      // Event: Player State Changed
+      api.playerStateChanged.on((e: any) => {
+        const isPlaying = e.state === 1; // 1 = Playing
+        setPlayerState((prev) => ({ ...prev, isPlaying }));
+        console.log("[AlphaTab] Player state:", isPlaying ? "Playing" : "Paused");
+      });
 
-        instance.playerPositionChanged.on((e: any) => {
-          setPlayerState((prev) => ({
-            ...prev,
-            currentTime: e.currentTime / 1000,
-            duration: e.endTime / 1000,
-          }));
-        });
+      // Event: Player Position Changed
+      api.playerPositionChanged.on((e: any) => {
+        setPlayerState((prev) => ({
+          ...prev,
+          currentTime: e.currentTime / 1000,
+          duration: e.endTime / 1000,
+        }));
+      });
 
-        instance.error.on((e: any) => {
-          const message = e?.message || e?.toString?.() || "Unknown error";
-          addDebugEvent("Error", message);
-          setError(`AlphaTab error: ${message}`);
-          setIsLoading(false);
-          if (watchdogTimerRef.current) {
-            clearTimeout(watchdogTimerRef.current);
-            watchdogTimerRef.current = null;
-          }
-        });
-      };
+      // Event: Error handling
+      api.error.on((e: any) => {
+        const message = e?.message || e?.toString?.() || "Unknown error";
+        console.error("[AlphaTab] Error:", message);
+        setError(`Failed to load tablature: ${message}`);
+        setIsLoading(false);
+      });
 
-      // Helper to fetch as ArrayBuffer and load
-      const loadFromUrl = async (instance: alphaTab.AlphaTabApi, url: string) => {
-        addDebugEvent("Fetching file", url);
-        try {
-          const res = await fetch(url, { mode: "cors", cache: "no-store" });
-          addDebugEvent("Fetch status", `${res.status} ${res.statusText}`);
-          const contentType = res.headers.get("content-type") || "unknown";
-          addDebugEvent("Content-Type", contentType);
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          const buf = await res.arrayBuffer();
-          addDebugEvent("File fetched", `${buf.byteLength} bytes`);
-          instance.load(buf);
-        } catch (err: any) {
-          addDebugEvent("Fetch error", err?.message || String(err));
-          throw err;
-        }
-      };
+      // Load the file
+      console.log("[AlphaTab] Loading file...");
+      api.load(fileUrl);
 
-      // Attach handlers
-      attachHandlers(api);
-
-      // Watchdog: fallback to canvas if no render finished fires in time
-      watchdogTimerRef.current = window.setTimeout(async () => {
-        if (!renderFinishedRef.current && containerRef.current) {
-          addDebugEvent("Render watchdog timeout", "Falling back to canvas engine");
-          try {
-            apiRef.current?.destroy();
-          } catch (e) {
-            // ignore
-          }
-
-          const fallbackSettings = new alphaTab.Settings();
-          fallbackSettings.core.fontDirectory = "/font/";
-          fallbackSettings.core.useWorkers = false;
-          fallbackSettings.display.layoutMode = alphaTab.LayoutMode.Page;
-          fallbackSettings.display.scale = 1.1;
-          fallbackSettings.core.engine = "canvas"; // Switch to canvas
-
-          fallbackSettings.player.enablePlayer = true;
-          fallbackSettings.player.enableCursor = true;
-          fallbackSettings.player.enableAnimatedBeatCursor = true;
-          fallbackSettings.player.soundFont = "https://cdn.jsdelivr.net/npm/@coderline/alphatab@1.6.3/dist/soundfont/sonivox.sf2";
-          fallbackSettings.player.playerMode = alphaTab.PlayerMode?.EnabledSynthesizer ?? 2;
-
-          addDebugEvent("Recreating with canvas engine");
-          const fallbackApi = new alphaTab.AlphaTabApi(containerRef.current, fallbackSettings);
-          apiRef.current = fallbackApi;
-          attachHandlers(fallbackApi);
-
-          try {
-            await loadFromUrl(fallbackApi, fileUrl);
-          } catch (e: any) {
-            addDebugEvent("Fallback load error", e?.message || String(e));
-          }
-        }
-      }, 5000);
-
-      // Initial load
-      loadFromUrl(api, fileUrl);
     } catch (e: any) {
       const message = e?.message || e?.toString?.() || "Unknown error";
-      addDebugEvent("Initialization error", message);
+      console.error("[AlphaTab] Initialization error:", message);
       setError(`Failed to initialize: ${message}`);
       setIsLoading(false);
     }
 
     return () => {
-      // Clear watchdog on cleanup
-      if (watchdogTimerRef.current) {
-        clearTimeout(watchdogTimerRef.current);
-        watchdogTimerRef.current = null;
-      }
       if (apiRef.current) {
-        apiRef.current.destroy();
+        try {
+          apiRef.current.destroy();
+        } catch (e) {
+          console.warn("Error during cleanup:", e);
+        }
         apiRef.current = null;
       }
     };
@@ -256,17 +162,15 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
         const audioContext = api?.player?.audioContext || api?.player?.context;
         if (audioContext && audioContext.state === "suspended") {
           await audioContext.resume();
-          addDebugEvent("Audio unlocked", "AudioContext resumed");
+          console.log("[AlphaTab] Audio context resumed");
         }
       } catch (e) {
-        // Ignore
+        console.warn("Audio unlock error:", e);
       }
     };
 
     const handler = () => {
       unlockAudio();
-      window.removeEventListener("click", handler);
-      window.removeEventListener("keydown", handler);
     };
 
     window.addEventListener("click", handler, { once: true });
@@ -290,16 +194,14 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       }
 
       apiRef.current.playPause();
-      addDebugEvent("Play/Pause toggled");
     } catch (e: any) {
-      addDebugEvent("Play/Pause error", e?.message);
+      console.error("Play/Pause error:", e?.message);
     }
   };
 
   const stop = () => {
     if (!apiRef.current) return;
     apiRef.current.stop();
-    addDebugEvent("Stopped");
   };
 
   const handleVolumeChange = (values: number[]) => {
@@ -308,7 +210,6 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
     
     if (apiRef.current) {
       apiRef.current.masterVolume = volume / 100;
-      addDebugEvent("Volume changed", `${volume}%`);
     }
   };
 
@@ -322,19 +223,7 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
     return (
       <Card className="p-8 bg-card/50 backdrop-blur">
         <h2 className="text-xl font-semibold text-destructive mb-4">Error Loading Tablature</h2>
-        <p className="text-muted-foreground mb-4">{error}</p>
-        <details className="text-sm">
-          <summary className="cursor-pointer text-muted-foreground mb-2">Debug Log</summary>
-          <div className="bg-muted/40 p-3 rounded-md max-h-48 overflow-auto">
-            {debugEvents.map((evt, i) => (
-              <div key={i} className="text-xs mb-1">
-                <span className="text-muted-foreground">[{evt.timestamp}]</span>{" "}
-                <span className="font-medium">{evt.event}</span>
-                {evt.details && <span className="text-muted-foreground"> - {evt.details}</span>}
-              </div>
-            ))}
-          </div>
-        </details>
+        <p className="text-muted-foreground">{error}</p>
       </Card>
     );
   }
@@ -342,7 +231,7 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
   return (
     <div className="space-y-6">
       {/* Tablature Display */}
-      <Card className="p-4 bg-card/50 backdrop-blur">
+      <Card className="p-4 bg-white">
         {isLoading && (
           <div className="text-center py-8">
             <p className="text-muted-foreground mb-2">
@@ -357,9 +246,8 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
         )}
         <div 
           ref={containerRef} 
-          className="rounded-lg border border-border overflow-hidden min-h-[600px]"
-          style={{ height: '600px' }}
           data-alphatab
+          style={{ minHeight: '600px', width: '100%' }}
         />
       </Card>
 
@@ -370,7 +258,7 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
         <div className="flex flex-wrap items-center gap-4 mb-6">
           <Button
             onClick={togglePlayPause}
-            disabled={!isScoreLoaded}
+            disabled={!isPlayerReady}
             size="lg"
             className="gap-2"
           >
@@ -389,7 +277,7 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
           
           <Button
             onClick={stop}
-            disabled={!isPlayerReady && !isScoreLoaded}
+            disabled={!isPlayerReady}
             variant="secondary"
             size="lg"
             className="gap-2"
@@ -401,6 +289,12 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
           <div className="text-sm text-muted-foreground">
             {formatTime(playerState.currentTime)} / {formatTime(playerState.duration)}
           </div>
+
+          {trackCount > 0 && (
+            <div className="text-sm text-muted-foreground">
+              {trackCount} {trackCount === 1 ? 'track' : 'tracks'}
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-4">
@@ -419,45 +313,23 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
         </div>
       </Card>
 
-      {/* Debug/Status Panel */}
+      {/* Status Panel */}
       <Card className="p-6 bg-card/50 backdrop-blur">
-        <details open>
-          <summary className="text-lg font-semibold mb-4 cursor-pointer">
-            Debug & Status Panel
-          </summary>
-          
-          <div className="space-y-4">
-            <div>
-              <h4 className="text-sm font-medium mb-2">Status</h4>
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                <div className="flex items-center gap-2">
-                  <div className={`w-2 h-2 rounded-full ${isLoading ? "bg-yellow-500" : "bg-green-500"}`} />
-                  <span className="text-muted-foreground">Loading: {isLoading ? "Yes" : "No"}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className={`w-2 h-2 rounded-full ${isPlayerReady ? "bg-green-500" : "bg-red-500"}`} />
-                  <span className="text-muted-foreground">Player Ready: {isPlayerReady ? "Yes" : "No"}</span>
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <h4 className="text-sm font-medium mb-2">Event Log</h4>
-              <div className="bg-muted/40 p-3 rounded-md max-h-64 overflow-auto">
-                {debugEvents.map((evt, i) => (
-                  <div key={i} className="text-xs mb-1 font-mono">
-                    <span className="text-muted-foreground">[{evt.timestamp}]</span>{" "}
-                    <span className="font-medium">{evt.event}</span>
-                    {evt.details && <span className="text-muted-foreground"> - {evt.details}</span>}
-                  </div>
-                ))}
-                {debugEvents.length === 0 && (
-                  <p className="text-xs text-muted-foreground">No events yet</p>
-                )}
-              </div>
-            </div>
+        <h3 className="text-lg font-semibold mb-4">Status</h3>
+        <div className="grid grid-cols-2 gap-2 text-sm">
+          <div className="flex items-center gap-2">
+            <div className={`w-2 h-2 rounded-full ${isLoading ? "bg-yellow-500" : "bg-green-500"}`} />
+            <span className="text-muted-foreground">Rendering: {isLoading ? "In Progress" : "Complete"}</span>
           </div>
-        </details>
+          <div className="flex items-center gap-2">
+            <div className={`w-2 h-2 rounded-full ${isPlayerReady ? "bg-green-500" : "bg-yellow-500"}`} />
+            <span className="text-muted-foreground">Player: {isPlayerReady ? "Ready" : "Loading"}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className={`w-2 h-2 rounded-full ${loadProgress === 100 ? "bg-green-500" : "bg-yellow-500"}`} />
+            <span className="text-muted-foreground">SoundFont: {loadProgress === 100 ? "Loaded" : `${loadProgress}%`}</span>
+          </div>
+        </div>
       </Card>
     </div>
   );
