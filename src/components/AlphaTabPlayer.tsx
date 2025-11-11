@@ -39,11 +39,129 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
   const [isPlayerReady, setIsPlayerReady] = useState(false);
   const [trackCount, setTrackCount] = useState(0);
   const [debugEvents, setDebugEvents] = useState<DebugEvent[]>([]);
+  const [diagnostics, setDiagnostics] = useState<any>({
+    soundFontProbe: null,
+    audioContext: null,
+    environment: {
+      userAgent: navigator.userAgent,
+      origin: window.location.origin,
+    },
+  });
 
   const addDebugEvent = (event: string, details?: string) => {
     const timestamp = new Date().toLocaleTimeString();
     console.log(`[AlphaTab] ${event}${details ? ': ' + details : ''}`);
     setDebugEvents((prev) => [...prev, { timestamp, event, details }]);
+  };
+
+  const probeSoundFont = async (url: string) => {
+    addDebugEvent("SoundFont probe", `Testing ${url}`);
+    try {
+      let res = await fetch(url, { method: "HEAD", cache: "no-store" });
+      if (!res.ok || !res.headers.get("content-length")) {
+        addDebugEvent("SoundFont probe", "HEAD failed, trying Range GET");
+        res = await fetch(url, {
+          method: "GET",
+          headers: { Range: "bytes=0-0" },
+          cache: "no-store",
+        });
+      }
+      const probeResult = {
+        status: res.status,
+        statusText: res.statusText,
+        contentLength: res.headers.get("content-length"),
+        contentType: res.headers.get("content-type"),
+        url,
+      };
+      setDiagnostics((prev: any) => ({ ...prev, soundFontProbe: probeResult }));
+      addDebugEvent(
+        "SoundFont probe OK",
+        `${res.status}, ${(parseInt(res.headers.get("content-length") || "0") / 1024 / 1024).toFixed(2)}MB`
+      );
+    } catch (e: any) {
+      const probeResult = { error: e.message, url };
+      setDiagnostics((prev: any) => ({ ...prev, soundFontProbe: probeResult }));
+      addDebugEvent("SoundFont probe error", e.message);
+    }
+  };
+
+  const forceInit = async () => {
+    addDebugEvent("Force init", "Starting forced initialization sequence");
+    const api = apiRef.current;
+    if (!api) {
+      addDebugEvent("Force init", "No API instance available");
+      return;
+    }
+    try {
+      addDebugEvent("Force init", "Attempting play()");
+      await api.play();
+      addDebugEvent("Force init", "play() called successfully");
+      
+      const player: any = api.player;
+      if (player) {
+        const ctx = player.audioContext || player.context;
+        if (ctx) {
+          addDebugEvent("Force init", `AudioContext state: ${ctx.state}`);
+          setDiagnostics((prev: any) => ({
+            ...prev,
+            audioContext: {
+              state: ctx.state,
+              sampleRate: ctx.sampleRate,
+              baseLatency: ctx.baseLatency,
+            },
+          }));
+        }
+      }
+
+      setTimeout(() => {
+        try {
+          api.stop();
+          addDebugEvent("Force init", "stop() called");
+        } catch (e: any) {
+          addDebugEvent("Force init stop error", e.message);
+        }
+      }, 250);
+    } catch (e: any) {
+      addDebugEvent("Force init error", e.message);
+    }
+  };
+
+  const reloadPlayer = () => {
+    addDebugEvent("Manual reload", "User triggered reload");
+    if (apiRef.current) {
+      try {
+        apiRef.current.destroy();
+        apiRef.current = null;
+        addDebugEvent("Manual reload", "Destroyed old instance");
+      } catch (e: any) {
+        addDebugEvent("Manual reload error", e.message);
+      }
+    }
+    window.location.reload();
+  };
+
+  const dumpState = () => {
+    const api: any = apiRef.current;
+    const player = api?.player;
+    const ctx = player?.audioContext || player?.context;
+    
+    const state = {
+      isPlayerReady,
+      loadProgress,
+      containerExists: !!containerRef.current,
+      hasApiRef: !!apiRef.current,
+      hasPlayer: !!player,
+      audioContext: ctx ? {
+        state: ctx.state,
+        sampleRate: ctx.sampleRate,
+        baseLatency: ctx.baseLatency,
+      } : null,
+      playerState,
+      trackCount,
+    };
+    
+    addDebugEvent("State dump", JSON.stringify(state, null, 2));
+    console.log("[AlphaTab] State dump:", state);
   };
 
   useEffect(() => {
@@ -69,8 +187,12 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
     addDebugEvent("Initializing AlphaTab", `File: ${fileUrl}`);
 
     try {
-      // Configure AlphaTab settings following official vite-react example pattern
-      // CRITICAL: Use plain object, not new Settings() instance
+      const soundFontUrl = `${window.location.origin}/soundfont/sonivox.sf2`;
+      
+      // Probe SoundFont availability
+      probeSoundFont(soundFontUrl);
+
+      // Configure AlphaTab settings with explicit playerMode
       const settings = {
         core: {
           file: fileUrl,
@@ -86,17 +208,39 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
           enableCursor: true,
           enableAnimatedBeatCursor: true,
           enableUserInteraction: true,
-          soundFont: `${window.location.origin}/soundfont/sonivox.sf2`
+          playerMode: alphaTab.PlayerMode?.EnabledSynthesizer ?? 2,
+          soundFont: soundFontUrl
         }
       };
       
-      addDebugEvent("Settings configured", `File: ${fileUrl}, SoundFont: /soundfont/sonivox.sf2`);
+      addDebugEvent(
+        "Settings configured",
+        `playerMode=${settings.player.playerMode}, soundFont=${soundFontUrl}`
+      );
 
       // Create AlphaTab API with settings (file loads automatically)
       const api = new alphaTab.AlphaTabApi(containerRef.current, settings);
       apiRef.current = api;
 
-      addDebugEvent("API created successfully");
+      const player: any = api.player;
+      addDebugEvent(
+        "API created",
+        `player exists: ${!!player}, AlphaTab version: ${typeof alphaTab.PlayerMode}`
+      );
+
+      // Watchdog timers
+      setTimeout(() => {
+        if (!isPlayerReady) {
+          addDebugEvent("Watchdog 2s", "Synth pending – waiting for user gesture or force-init");
+        }
+      }, 2000);
+
+      setTimeout(() => {
+        if (!isPlayerReady && loadProgress === 0) {
+          addDebugEvent("Watchdog 6s", "No SoundFont progress after 6s – auto force-init");
+          forceInit();
+        }
+      }, 6000);
 
       // Event: Score Loaded
       api.scoreLoaded.on((score) => {
@@ -114,7 +258,10 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       api.soundFontLoad.on((e: any) => {
         const percentage = Math.floor((e.loaded / e.total) * 100);
         setLoadProgress(percentage);
-        addDebugEvent("SoundFont loading", `${percentage}%`);
+        addDebugEvent(
+          "SoundFont loading",
+          `${percentage}% (${e.loaded}/${e.total} bytes)`
+        );
       });
 
       // Event: SoundFont Loaded
@@ -125,8 +272,22 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
 
       // Event: Player Ready
       api.playerReady.on(() => {
-        addDebugEvent("Player ready", "Playback enabled");
+        const player: any = api.player;
+        const ctx = player?.audioContext || player?.context;
+        const ctxInfo = ctx ? `AudioContext: ${ctx.state}, ${ctx.sampleRate}Hz` : "No AudioContext";
+        addDebugEvent("Player ready", ctxInfo);
         setIsPlayerReady(true);
+        
+        if (ctx) {
+          setDiagnostics((prev: any) => ({
+            ...prev,
+            audioContext: {
+              state: ctx.state,
+              sampleRate: ctx.sampleRate,
+              baseLatency: ctx.baseLatency,
+            },
+          }));
+        }
       });
 
       // Event: Player State Changed
@@ -331,6 +492,96 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
         </div>
       </Card>
 
+      {/* Diagnostics Panel */}
+      <Card className="p-6 bg-card/50 backdrop-blur">
+        <details>
+          <summary className="text-lg font-semibold mb-4 cursor-pointer">
+            Diagnostics & Debug Controls
+          </summary>
+          
+          <div className="space-y-6 mt-4">
+            {/* Environment */}
+            <div>
+              <h4 className="text-sm font-semibold mb-2">Environment</h4>
+              <div className="bg-muted/40 p-3 rounded-md text-xs font-mono space-y-1">
+                <div>Origin: {diagnostics.environment.origin}</div>
+                <div className="truncate">UA: {diagnostics.environment.userAgent}</div>
+              </div>
+            </div>
+
+            {/* AlphaTab Info */}
+            <div>
+              <h4 className="text-sm font-semibold mb-2">AlphaTab</h4>
+              <div className="bg-muted/40 p-3 rounded-md text-xs font-mono space-y-1">
+                <div>PlayerMode: {alphaTab.PlayerMode?.EnabledSynthesizer ?? 2} (EnabledSynthesizer)</div>
+                <div>LayoutMode: {alphaTab.LayoutMode.Page} (Page)</div>
+                <div>Version check: {typeof alphaTab.PlayerMode}</div>
+              </div>
+            </div>
+
+            {/* Audio */}
+            <div>
+              <h4 className="text-sm font-semibold mb-2">Audio</h4>
+              <div className="bg-muted/40 p-3 rounded-md text-xs font-mono space-y-1">
+                {diagnostics.audioContext ? (
+                  <>
+                    <div>State: {diagnostics.audioContext.state}</div>
+                    <div>SampleRate: {diagnostics.audioContext.sampleRate}Hz</div>
+                    <div>BaseLatency: {diagnostics.audioContext.baseLatency ?? "n/a"}</div>
+                  </>
+                ) : (
+                  <div>No AudioContext info yet</div>
+                )}
+              </div>
+            </div>
+
+            {/* SoundFont */}
+            <div>
+              <h4 className="text-sm font-semibold mb-2">SoundFont</h4>
+              <div className="bg-muted/40 p-3 rounded-md text-xs font-mono space-y-1">
+                <div>URL: {window.location.origin}/soundfont/sonivox.sf2</div>
+                {diagnostics.soundFontProbe ? (
+                  diagnostics.soundFontProbe.error ? (
+                    <div className="text-destructive">Error: {diagnostics.soundFontProbe.error}</div>
+                  ) : (
+                    <>
+                      <div>Status: {diagnostics.soundFontProbe.status} {diagnostics.soundFontProbe.statusText}</div>
+                      <div>Size: {diagnostics.soundFontProbe.contentLength} bytes</div>
+                      <div>Type: {diagnostics.soundFontProbe.contentType}</div>
+                    </>
+                  )
+                ) : (
+                  <div>Probe pending...</div>
+                )}
+              </div>
+            </div>
+
+            {/* Debug Controls */}
+            <div>
+              <h4 className="text-sm font-semibold mb-2">Debug Controls</h4>
+              <div className="flex flex-wrap gap-2">
+                <Button onClick={forceInit} size="sm" variant="outline">
+                  Force Init (Play/Stop)
+                </Button>
+                <Button
+                  onClick={() => probeSoundFont(`${window.location.origin}/soundfont/sonivox.sf2`)}
+                  size="sm"
+                  variant="outline"
+                >
+                  Test SoundFont URL
+                </Button>
+                <Button onClick={reloadPlayer} size="sm" variant="outline">
+                  Reload Player
+                </Button>
+                <Button onClick={dumpState} size="sm" variant="outline">
+                  Dump State
+                </Button>
+              </div>
+            </div>
+          </div>
+        </details>
+      </Card>
+
       {/* Status Panel */}
       <Card className="p-6 bg-card/50 backdrop-blur">
         <h3 className="text-lg font-semibold mb-4">Status</h3>
@@ -348,6 +599,12 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
             <span className="text-muted-foreground">SoundFont: {loadProgress === 100 ? "Loaded" : `${loadProgress}%`}</span>
           </div>
         </div>
+        
+        {!isPlayerReady && (
+          <p className="text-xs text-muted-foreground mb-4">
+            💡 If player stuck loading, try <strong>Force Init</strong> in Diagnostics above
+          </p>
+        )}
 
         <details>
           <summary className="text-sm font-medium mb-2 cursor-pointer">Event Log</summary>
