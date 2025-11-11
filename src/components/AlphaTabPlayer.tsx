@@ -72,31 +72,24 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
   };
 
   const inspectSynthStatus = () => {
-    if (!apiRef.current) return;
+    if (!apiRef.current || isLoading) return;
     try {
       const api: any = apiRef.current as any;
-      const player: any = api.player;
+      const player: any = api?.player;
       const synth: any = player?.synthesizer || player?.synth;
       const audioContext: AudioContext | undefined = player?.audioContext || player?.context;
       
       const status = {
-        apiPlayerState: api.playerState ?? 'undefined',
-        isReadyForPlayback: api.isReadyForPlayback ?? false,
+        apiPlayerState: api?.playerState ?? 'undefined',
+        isReadyForPlayback: api?.isReadyForPlayback ?? false,
         audioContextState: audioContext?.state ?? 'unknown',
         synthExists: !!synth,
         synthReady: synth?.ready ?? synth?.isReady ?? null,
         synthLoaded: synth?.loaded ?? null,
-        masterVolume: api.masterVolume ?? player?.volume ?? 'unknown',
+        masterVolume: api?.masterVolume ?? player?.volume ?? 'unknown',
       };
       
       log(`🔍 Synth Status: ${JSON.stringify(status, null, 2)}`);
-      console.log('🔍 AlphaTab Deep Inspection:', {
-        api: apiRef.current,
-        player,
-        synth,
-        audioContext,
-        status,
-      });
       
       setDebugState(prev => ({ 
         ...prev,
@@ -105,7 +98,7 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
         isReadyForPlayback: status.isReadyForPlayback,
       }));
     } catch (e: any) {
-      log(`❌ Failed to inspect synth: ${e?.message || e}`);
+      // Silently fail during initialization
     }
   };
   useEffect(() => {
@@ -228,7 +221,6 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
           soundFontLoaded: true,
           lastEventTime: new Date().toISOString()
         }));
-        inspectSynthStatus();
       });
 
       api.playerReady.on(() => {
@@ -242,7 +234,8 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
           isReadyForPlayback: api.isReadyForPlayback,
           lastEventTime: new Date().toISOString()
         }));
-        inspectSynthStatus();
+        // Delay inspection to avoid stack overflow during init
+        setTimeout(() => inspectSynthStatus(), 500);
       });
 
       api.error.on((e: any) => {
@@ -286,7 +279,6 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       if ('midiLoaded' in api) {
         (api as any).midiLoaded.on(() => {
           log('🎹 ✓ midiLoaded EVENT FIRED');
-          inspectSynthStatus();
         });
       }
 
@@ -294,7 +286,6 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
         (api as any).audioReady.on(() => {
           log('🔊 ✓ audioReady EVENT FIRED');
           setDebugState(prev => ({ ...prev, lastEventTime: new Date().toISOString() }));
-          inspectSynthStatus();
         });
       }
 
@@ -322,16 +313,23 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
     };
   }, [fileUrl]);
 
-  // Periodic synth status polling during loading
+  // Periodic synth status polling after loading completes
   useEffect(() => {
-    if (isLoading || !apiRef.current) return;
+    if (isLoading || !apiRef.current || !isPlayerReady) return;
     
+    // Initial inspection after load
+    const initialTimeout = setTimeout(() => inspectSynthStatus(), 1000);
+    
+    // Periodic polling
     const interval = setInterval(() => {
       inspectSynthStatus();
-    }, 2000);
+    }, 3000);
     
-    return () => clearInterval(interval);
-  }, [isLoading]);
+    return () => {
+      clearTimeout(initialTimeout);
+      clearInterval(interval);
+    };
+  }, [isLoading, isPlayerReady]);
 
   // Auto-unlock AudioContext on first user gesture
   useEffect(() => {
