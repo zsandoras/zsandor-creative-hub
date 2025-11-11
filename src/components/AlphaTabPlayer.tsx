@@ -150,10 +150,14 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       });
 
       api.soundFontLoad.on((e: any) => {
-        const percentage = Math.floor((e.loaded / e.total) * 100);
+        const percentage = e.total > 0 ? Math.floor((e.loaded / e.total) * 100) : 0;
         setLoadProgress(percentage);
         loadProgressRef.current = percentage;
-        addDebugEvent("SoundFont loading", `${percentage}% (${e.loaded}/${e.total} bytes)`);
+        addDebugEvent("SoundFont loading", `${percentage || 'Infinity'}% (${e.loaded}/${e.total} bytes)`);
+        if (e.total > 0 && e.loaded >= e.total) {
+          setIsSoundFontLoaded(true);
+          addDebugEvent("SoundFont loading", "Reached 100% - marking as loaded");
+        }
       });
 
       // Step 9: SoundFont loaded event
@@ -193,6 +197,22 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       });
 
       addDebugEvent("Event listeners registered", "All events subscribed");
+
+      // Unlock and prime audio in the same user gesture
+      try {
+        const actx: any = (api as any).player?.audioContext || (api as any).player?.context;
+        if (actx && actx.state === "suspended") {
+          await actx.resume();
+          addDebugEvent("Audio unlock", "AudioContext resumed on init");
+        }
+        await (api as any).play();
+        setTimeout(() => {
+          try { (api as any).stop(); addDebugEvent("Audio prime", "play->stop performed"); } catch {}
+        }, 120);
+      } catch (e: any) {
+        addDebugEvent("Audio prime error", e?.message || String(e));
+      }
+
 
       // Manually trigger SoundFont load to ensure synth readiness (CDN first, then local fallback)
       const cdnSf = "https://cdn.jsdelivr.net/npm/@coderline/alphatab@1.6.3/dist/soundfont/sonivox.sf2";
