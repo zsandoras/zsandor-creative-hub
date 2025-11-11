@@ -48,9 +48,7 @@ interface DebugEvent {
 
 const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
   const apiRef = useRef<alphaTab.AlphaTabApi | null>(null);
-  const [api, setApi] = useState<alphaTab.AlphaTabApi | null>(null);
-  const atContainer = useRef<HTMLDivElement | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [loadProgress, setLoadProgress] = useState(0);
   const [playerState, setPlayerState] = useState<PlayerState>({
@@ -69,7 +67,7 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
   const [isRenderFinished, setIsRenderFinished] = useState(false);
   const [trackCount, setTrackCount] = useState(0);
   const [debugEvents, setDebugEvents] = useState<DebugEvent[]>([]);
-  
+  const [needsUserGesture, setNeedsUserGesture] = useState(true);
   const initializingRef = useRef(false);
 
   const addDebugEvent = (event: string, details?: string) => {
@@ -82,13 +80,23 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
     addDebugEvent(`STATE: ${state}`, details);
   };
 
-  // Initialize player on user click (inside handler)
-  const initializePlayer = async () => {
-    if (api || !atContainer.current || initializingRef.current) return; // Stop if already initialized
+  const initAlphaTab = async () => {
     logState("LOADING", "User clicked - initializing AlphaTab");
+    if (initializingRef.current || apiRef.current) {
+      logState("LOADING", "Already initialized or initializing");
+      return;
+    }
+
+    const container = document.getElementById("alphaTab");
+    if (!container) {
+      logState("ERROR", "Container #alphaTab not found");
+      setError("AlphaTab container not found");
+      return;
+    }
 
     try {
       initializingRef.current = true;
+      setNeedsUserGesture(false);
       setIsLoading(true);
       setError(null);
       setIsPlayerReady(false);
@@ -96,36 +104,51 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       setIsRenderFinished(false);
       setDebugEvents([]);
 
+      // Create Settings - SIMPLIFIED
       const settings = new alphaTab.Settings();
       settings.player.enablePlayer = true;
-      settings.player.enableUserInteraction = true;
+      settings.player.enableUserInteraction = true; // Allow clicking notation to play
       settings.player.playerMode = alphaTab.PlayerMode.EnabledSynthesizer;
-      settings.player.soundFont = "/soundfont/sonivox.sf2";
+      settings.player.soundFont = "https://cdn.jsdelivr.net/npm/@coderline/alphatab@1.6.3/dist/soundfont/sonivox.sf2";
+      settings.player.scrollElement = (container.querySelector('.at-viewport') as HTMLElement) || undefined;
       settings.display.layoutMode = alphaTab.LayoutMode.Page;
       settings.display.scale = 1.0;
       settings.notation.notationMode = alphaTab.NotationMode.GuitarPro;
       settings.core.fontDirectory = "/font/";
-      settings.core.useWorkers = true;
+      settings.core.useWorkers = false;
 
-      const newApi = new alphaTab.AlphaTabApi(atContainer.current as HTMLElement, settings);
-      (newApi as any).masterVolume = playerState.volume / 100;
-      apiRef.current = newApi;
-      setApi(newApi);
+      logState("LOADING", "Settings configured - single SoundFont URL");
+
+      // Create API
+      const api = new alphaTab.AlphaTabApi(container, settings);
+      (api as any).masterVolume = playerState.volume / 100;
+      apiRef.current = api;
       logState("LOADING", "AlphaTabApi created");
 
+      // Resume AudioContext on user gesture
+      const player: any = (api as any).player;
+      const ctx = player?.audioContext || player?.context;
+      if (ctx) {
+        if (ctx.state === "suspended") {
+          await ctx.resume();
+          logState("LOADING", `AudioContext resumed from suspended`);
+        }
+        logState("LOADING", `AudioContext state: ${ctx.state}`);
+      }
+
       // Event Listeners
-      newApi.scoreLoaded.on((score: any) => {
+      api.scoreLoaded.on((score: any) => {
         logState("LOADING", `Score loaded - ${score.tracks.length} track(s)`);
         setTrackCount(score.tracks.length);
       });
 
-      newApi.renderFinished.on(() => {
+      api.renderFinished.on(() => {
         logState("RENDER_FINISHED", "Tablature rendered - try clicking the notation to play");
         setIsLoading(false);
         setIsRenderFinished(true);
       });
 
-      newApi.soundFontLoad.on((e: any) => {
+      api.soundFontLoad.on((e: any) => {
         const pct = e.total > 0 ? Math.floor((e.loaded / e.total) * 100) : null;
         setLoadProgress(pct ?? 0);
         if (pct !== null) {
@@ -133,31 +156,35 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
         }
       });
 
-      newApi.soundFontLoaded.on(() => {
+      api.soundFontLoaded.on(() => {
         logState("SOUNDFONT_LOADED", "SoundFont ready");
         setLoadProgress(100);
         setIsSoundFontLoaded(true);
       });
 
-      newApi.playerReady.on(() => {
+      api.playerReady.on(() => {
         logState("PLAYER_READY", "Player ready for playback");
         setIsPlayerReady(true);
       });
 
-      newApi.playerStateChanged.on((e: any) => {
+      api.playerStateChanged.on((e: any) => {
         setPlayerState((prev) => ({ ...prev, isPlaying: e.state === 1 }));
         const stateMsg = e.state === 1 ? "Playing" : "Stopped";
         logState("PLAYER_STATE", stateMsg);
       });
 
-      newApi.error.on((error: any) => {
+      api.error.on((error: any) => {
         const errorMsg = error?.message || error?.toString?.() || "Unknown error";
         logState("ERROR", errorMsg);
         setError(`AlphaTab error: ${errorMsg}`);
       });
 
+      logState("LOADING", "Event listeners registered");
+
+      // Load file
       logState("LOADING", `Loading file: ${fileUrl}`);
-      newApi.load(fileUrl);
+      api.load(fileUrl);
+
     } catch (e: any) {
       const message = e?.message || e?.toString?.() || "Unknown error";
       logState("ERROR", `Initialization failed: ${message}`);
@@ -167,19 +194,20 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
     }
   };
 
-  // Cleanup on unmount and when api changes
+
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (api) {
+      if (apiRef.current) {
         try {
-          api.destroy();
+          apiRef.current.destroy();
         } catch (e) {
           console.warn("Error during cleanup:", e);
         }
+        apiRef.current = null;
       }
-      apiRef.current = null;
     };
-  }, [api]);
+  }, []);
 
   const togglePlayPause = async () => {
     if (!apiRef.current) return;
@@ -277,11 +305,11 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
         )}
 
         {/* Initialization Button */}
-        {!api && (
+        {needsUserGesture && (
           <div className="flex flex-col items-center justify-center py-12">
-            <Button onClick={initializePlayer} size="lg" className="gap-2">
+            <Button onClick={initAlphaTab} size="lg" className="gap-2">
               <Play className="h-5 w-5" />
-              Click to Load Music Player
+              Load Tablature & Initialize Player
             </Button>
             <p className="text-sm text-muted-foreground mt-4">
               Click to load the music sheet and initialize audio playback
@@ -293,7 +321,7 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
         )}
 
         {/* Loading Indicator */}
-        {isLoading && (
+        {!needsUserGesture && isLoading && (
           <div className="text-center py-8">
             <p className="text-muted-foreground mb-2">
               Loading {title || "tablature"}...
@@ -307,12 +335,7 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
         )}
 
         {/* AlphaTab Container - always rendered for DOM availability */}
-        <div 
-          id="alphaTab" 
-          ref={atContainer} 
-          className="at-wrap" 
-          style={{ visibility: api ? 'visible' : 'hidden', height: api ? 'auto' : 0 }}
-        >
+        <div id="alphaTab" className="at-wrap" style={{ display: needsUserGesture ? 'none' : 'block' }}>
           <div className="at-content">
             <div className="at-viewport"></div>
           </div>
@@ -320,7 +343,7 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       </Card>
 
       {/* Professional Player Controls */}
-      {api && isRenderFinished && (
+      {!needsUserGesture && isRenderFinished && (
         <Card className="p-0 bg-card border-border overflow-hidden">
           <div className="flex items-center justify-between gap-4 p-4 bg-muted/30">
             {/* Left Controls */}
