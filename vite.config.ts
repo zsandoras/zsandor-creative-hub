@@ -14,6 +14,8 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      "@alphatab-worker": path.resolve(__dirname, "node_modules/@coderline/alphatab/dist/alphaTab.worker.mjs"),
+      "@alphasynth-wasm": path.resolve(__dirname, "node_modules/@coderline/alphatab/dist/alphaSynth.wasm"),
     },
   },
 }));

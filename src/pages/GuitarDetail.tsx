@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -5,7 +6,9 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft } from "lucide-react";
-import AlphaTabPlayer from "@/components/AlphaTabPlayer";
+import * as alphaTab from "@coderline/alphatab";
+import AlphaTabRenderer from "@/components/AlphaTabRenderer";
+import AlphaTabControls from "@/components/AlphaTabControls";
 
 interface GuitarEmbed {
   id: string;
@@ -17,6 +20,7 @@ interface GuitarEmbed {
 
 const GuitarDetail = () => {
   const { id } = useParams<{ id: string }>();
+  const [playerApi, setPlayerApi] = useState<alphaTab.AlphaTabApi | null>(null);
 
   const { data: embed, isLoading } = useQuery({
     queryKey: ["guitar-embed", id],
@@ -59,7 +63,21 @@ const GuitarDetail = () => {
             </Card>
             
             {embed.file_url ? (
-              <AlphaTabPlayer fileUrl={embed.file_url} title={embed.title} />
+              <div className="space-y-6">
+                <Card className="p-4 bg-white">
+                  <AlphaTabRenderer 
+                    fileUrl={embed.file_url} 
+                    onPlayerReady={setPlayerApi}
+                  />
+                </Card>
+                {playerApi && (
+                  <AlphaTabControls 
+                    api={playerApi} 
+                    fileUrl={embed.file_url}
+                    title={embed.title}
+                  />
+                )}
+              </div>
             ) : embed.embed_code ? (
               <Card className="p-6 bg-card/50 backdrop-blur">
                 <div 
