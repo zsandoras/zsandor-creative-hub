@@ -40,7 +40,9 @@ export const WaveformVisualizer = ({
         }
 
         const totalSamples = audioBuffer.length;
-        const bars = 180;
+        const seconds = Math.max(1, Math.round(audioBuffer.duration));
+        // One bar per second, capped to keep rendering light
+        const bars = Math.min(600, Math.max(60, seconds));
         const samplesPerBar = Math.max(1, Math.floor(totalSamples / bars));
         const peaks: number[] = [];
 
@@ -51,14 +53,12 @@ export const WaveformVisualizer = ({
 
           for (let ch = 0; ch < channels.length; ch++) {
             const data = channels[ch];
-            // Step through samples to speed up analysis
             for (let s = start; s < end; s += 64) {
               const v = Math.abs(data[s]);
               if (v > peak) peak = v;
             }
           }
 
-          // Slightly boost quiet parts for better visibility
           peaks.push(Math.min(1, Math.sqrt(peak)));
         }
 
@@ -91,6 +91,8 @@ export const WaveformVisualizer = ({
     const dpr = window.devicePixelRatio || 1;
     const rect = canvas.getBoundingClientRect();
     
+    // Reset transform to avoid cumulative scaling on rerenders
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     canvas.width = rect.width * dpr;
     canvas.height = rect.height * dpr;
     
@@ -105,15 +107,14 @@ export const WaveformVisualizer = ({
       const barHeight = value * rect.height * 0.8;
       const x = index * barWidth;
       const clampedProgress = Math.max(0, Math.min(1, Number.isFinite(progress as number) ? (progress as number) : 0));
-      const progressPosition = clampedProgress * waveformData.length;
+      const progressPosition = Math.floor(clampedProgress * waveformData.length);
 
-      // Color based on whether this bar has been played
+      // Base bars in foreground (white), overlay played in primary (orange)
       if (index < progressPosition) {
-        ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--primary')
-          ? `hsl(${getComputedStyle(document.documentElement).getPropertyValue('--primary')})`
-          : 'hsl(var(--primary))';
+        const primary = getComputedStyle(document.documentElement).getPropertyValue('--primary');
+        ctx.fillStyle = primary ? `hsl(${primary})` : 'hsl(var(--primary))';
       } else {
-        ctx.fillStyle = "hsl(var(--muted-foreground) / 0.3)";
+        ctx.fillStyle = "hsl(var(--foreground) / 0.85)";
       }
 
       ctx.fillRect(
