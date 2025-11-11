@@ -143,7 +143,13 @@ const AlphaTabControls = ({
   }, [api]);
 
   const togglePlayPause = () => {
-    if (api) api.playPause();
+    if (api) {
+      // If starting playback, notify MP3 player to stop
+      if (!isPlaying) {
+        window.dispatchEvent(new CustomEvent('alphaTabPlay'));
+      }
+      api.playPause();
+    }
   };
 
   const stop = () => {

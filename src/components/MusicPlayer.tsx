@@ -127,6 +127,14 @@ export const MusicPlayer = () => {
       }
     };
 
+    // Pause MP3 player when AlphaTab starts playing
+    const handleAlphaTabPlay = () => {
+      if (audio && !audio.paused) {
+        audio.pause();
+        setIsPlaying(false);
+      }
+    };
+
     audio.addEventListener("timeupdate", updateTime);
     audio.addEventListener("loadedmetadata", updateDuration);
     audio.addEventListener("ended", () => {
@@ -157,6 +165,7 @@ export const MusicPlayer = () => {
     window.addEventListener("playTrack", handleTrackChange as EventListener);
     window.addEventListener("togglePlayback", handleTogglePlayback);
     window.addEventListener("seekToPosition", handleSeekToPosition as EventListener);
+    window.addEventListener("alphaTabPlay", handleAlphaTabPlay);
 
     return () => {
       audio.removeEventListener("timeupdate", updateTime);
@@ -164,6 +173,7 @@ export const MusicPlayer = () => {
       window.removeEventListener("playTrack", handleTrackChange as EventListener);
       window.removeEventListener("togglePlayback", handleTogglePlayback);
       window.removeEventListener("seekToPosition", handleSeekToPosition as EventListener);
+      window.removeEventListener("alphaTabPlay", handleAlphaTabPlay);
       document.removeEventListener("keydown", handleKeyPress);
     };
   }, [currentTrackIndex, tracks, currentTrack, isPlaying, loopMode, loopStart, loopEnd]);
