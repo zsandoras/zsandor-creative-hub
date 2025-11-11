@@ -63,7 +63,7 @@ export const ImageCropper = ({ image, onCropComplete, onCancel, open }: ImageCro
     <Dialog open={open} onOpenChange={onCancel}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Crop Image</DialogTitle>
+          <DialogTitle>Crop Image (Drag corners to resize, any ratio)</DialogTitle>
         </DialogHeader>
         
         <div className="relative h-96 bg-black rounded">
@@ -71,7 +71,7 @@ export const ImageCropper = ({ image, onCropComplete, onCancel, open }: ImageCro
             image={image}
             crop={crop}
             zoom={zoom}
-            aspect={4 / 3}
+            aspect={undefined}
             onCropChange={onCropChange}
             onCropComplete={onCropCompleteInternal}
             onZoomChange={setZoom}

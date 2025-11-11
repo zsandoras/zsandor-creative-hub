@@ -34,15 +34,15 @@ export const RainEffect = () => {
     window.addEventListener("mousemove", handleMouseMove);
 
     // Initialize particles
-    const particleCount = 150;
+    const particleCount = 200;
     for (let i = 0; i < particleCount; i++) {
       particlesRef.current.push({
         x: Math.random() * canvas.width,
         y: Math.random() * canvas.height,
         vx: (Math.random() - 0.5) * 0.5,
-        vy: Math.random() * 3 + 2,
-        length: Math.random() * 20 + 10,
-        opacity: Math.random() * 0.5 + 0.1,
+        vy: Math.random() * 4 + 3,
+        length: Math.random() * 25 + 15,
+        opacity: Math.random() * 0.4 + 0.3,
       });
     }
 
@@ -51,7 +51,7 @@ export const RainEffect = () => {
       
       const mouseX = mouseRef.current.x;
       const mouseY = mouseRef.current.y;
-      const avoidRadius = 100;
+      const avoidRadius = 120;
 
       particlesRef.current.forEach((particle) => {
         // Calculate distance to mouse
@@ -59,12 +59,12 @@ export const RainEffect = () => {
         const dy = particle.y - mouseY;
         const distance = Math.sqrt(dx * dx + dy * dy);
 
-        // Avoid mouse cursor
+        // Avoid mouse cursor with stronger force
         if (distance < avoidRadius) {
           const angle = Math.atan2(dy, dx);
           const force = (avoidRadius - distance) / avoidRadius;
-          particle.vx += Math.cos(angle) * force * 0.5;
-          particle.vy += Math.sin(angle) * force * 0.5;
+          particle.vx += Math.cos(angle) * force * 1.2;
+          particle.vy += Math.sin(angle) * force * 0.8;
         }
 
         // Apply velocity
@@ -72,24 +72,33 @@ export const RainEffect = () => {
         particle.y += particle.vy;
 
         // Dampen horizontal movement
-        particle.vx *= 0.95;
+        particle.vx *= 0.92;
 
         // Reset gravity
-        if (particle.vy < 2) particle.vy += 0.1;
+        if (particle.vy < 3) particle.vy += 0.2;
 
         // Wrap around screen
         if (particle.y > canvas.height) {
           particle.y = -particle.length;
           particle.x = Math.random() * canvas.width;
-          particle.vy = Math.random() * 3 + 2;
+          particle.vy = Math.random() * 4 + 3;
         }
         if (particle.x < 0) particle.x = canvas.width;
         if (particle.x > canvas.width) particle.x = 0;
 
-        // Draw particle
+        // Draw particle with gradient
+        const gradient = ctx.createLinearGradient(
+          particle.x, 
+          particle.y, 
+          particle.x + particle.vx * 2, 
+          particle.y + particle.length
+        );
+        gradient.addColorStop(0, `rgba(220, 150, 80, ${particle.opacity})`);
+        gradient.addColorStop(1, `rgba(220, 150, 80, 0)`);
+        
         ctx.beginPath();
-        ctx.strokeStyle = `hsla(var(--primary), ${particle.opacity})`;
-        ctx.lineWidth = 1;
+        ctx.strokeStyle = gradient;
+        ctx.lineWidth = 1.5;
         ctx.moveTo(particle.x, particle.y);
         ctx.lineTo(particle.x + particle.vx * 2, particle.y + particle.length);
         ctx.stroke();
@@ -110,7 +119,7 @@ export const RainEffect = () => {
     <canvas
       ref={canvasRef}
       className="fixed inset-0 pointer-events-none z-0"
-      style={{ opacity: 0.4 }}
+      style={{ opacity: 0.6 }}
     />
   );
 };

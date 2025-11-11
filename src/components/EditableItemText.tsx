@@ -103,6 +103,23 @@ export const EditableItemText = ({
 
   const isClickable = isAdmin && isEditMode;
 
+  // Always show editable field in edit mode even if no value
+  if (!value && isClickable) {
+    return (
+      <Component
+        onClick={handleClick}
+        className={cn(
+          className,
+          "cursor-pointer bg-primary/10 border-2 border-dashed border-primary/50 rounded px-2 py-1 transition-all hover:bg-primary/20 hover:border-primary",
+          isSaving && "opacity-50"
+        )}
+        title="Click to add content"
+      >
+        {field === "title" ? "Click to add title" : "Click to add description"}
+      </Component>
+    );
+  }
+
   if (isEditing) {
     const isMultiline = Component === "p";
     const InputComponent = isMultiline ? "textarea" : "input";
@@ -119,6 +136,7 @@ export const EditableItemText = ({
           className
         )}
         rows={isMultiline ? 3 : undefined}
+        placeholder={field === "title" ? "Enter title" : "Enter description"}
       />
     );
   }

@@ -93,28 +93,26 @@ const FoodGallery = () => {
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>
-                  {(item.title || item.description) && (
-                    <div className="p-4">
-                      <EditableItemText
-                        table="food_gallery"
-                        itemId={item.id}
-                        field="title"
-                        value={item.title}
-                        className="text-lg font-semibold mb-1"
-                        as="h3"
-                        queryKey={["food-gallery"]}
-                      />
-                      <EditableItemText
-                        table="food_gallery"
-                        itemId={item.id}
-                        field="description"
-                        value={item.description}
-                        className="text-sm text-muted-foreground"
-                        as="p"
-                        queryKey={["food-gallery"]}
-                      />
-                    </div>
-                  )}
+                  <div className="p-4">
+                    <EditableItemText
+                      table="food_gallery"
+                      itemId={item.id}
+                      field="title"
+                      value={item.title}
+                      className="text-lg font-semibold mb-1"
+                      as="h3"
+                      queryKey={["food-gallery"]}
+                    />
+                    <EditableItemText
+                      table="food_gallery"
+                      itemId={item.id}
+                      field="description"
+                      value={item.description}
+                      className="text-sm text-muted-foreground"
+                      as="p"
+                      queryKey={["food-gallery"]}
+                    />
+                  </div>
                 </Card>
               ))}
             </div>
@@ -158,28 +156,26 @@ const FoodGallery = () => {
                         alt={foodItems[fullscreenIndex].title || "Food creation"}
                         className="max-w-full max-h-[80vh] object-contain"
                       />
-                      {(foodItems[fullscreenIndex].title || foodItems[fullscreenIndex].description) && (
-                        <div className="mt-6 text-center max-w-2xl">
-                          <EditableItemText
-                            table="food_gallery"
-                            itemId={foodItems[fullscreenIndex].id}
-                            field="title"
-                            value={foodItems[fullscreenIndex].title}
-                            className="text-2xl font-bold mb-2"
-                            as="h3"
-                            queryKey={["food-gallery"]}
-                          />
-                          <EditableItemText
-                            table="food_gallery"
-                            itemId={foodItems[fullscreenIndex].id}
-                            field="description"
-                            value={foodItems[fullscreenIndex].description}
-                            className="text-muted-foreground"
-                            as="p"
-                            queryKey={["food-gallery"]}
-                          />
-                        </div>
-                      )}
+                      <div className="mt-6 text-center max-w-2xl">
+                        <EditableItemText
+                          table="food_gallery"
+                          itemId={foodItems[fullscreenIndex].id}
+                          field="title"
+                          value={foodItems[fullscreenIndex].title}
+                          className="text-2xl font-bold mb-2"
+                          as="h3"
+                          queryKey={["food-gallery"]}
+                        />
+                        <EditableItemText
+                          table="food_gallery"
+                          itemId={foodItems[fullscreenIndex].id}
+                          field="description"
+                          value={foodItems[fullscreenIndex].description}
+                          className="text-muted-foreground"
+                          as="p"
+                          queryKey={["food-gallery"]}
+                        />
+                      </div>
                     </div>
                   </div>
                 )}
