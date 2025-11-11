@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
 import AlphaTabControls from "./AlphaTabControls";
+import { GripVertical } from "lucide-react";
 import "./AlphaTabPlayer.css";
 
 declare global {
@@ -19,12 +20,14 @@ interface AlphaTabPlayerProps {
 
 const AlphaTabPlayer = ({ fileUrl, file, title, onReset, defaultInstrument }: AlphaTabPlayerProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const apiRef = useRef<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [tracks, setTracks] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [alphaTabLoaded, setAlphaTabLoaded] = useState<boolean>(!!window.alphaTab);
+  const [containerWidth, setContainerWidth] = useState(100); // percentage
 
   // Load AlphaTab script from CDN
   useEffect(() => {
@@ -195,30 +198,90 @@ const AlphaTabPlayer = ({ fileUrl, file, title, onReset, defaultInstrument }: Al
   };
 
 
+  const handleResize = (direction: 'left' | 'right', e: React.MouseEvent) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startWidth = containerWidth;
+    
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const deltaX = moveEvent.clientX - startX;
+      const parentWidth = wrapperRef.current?.parentElement?.offsetWidth || 1000;
+      const deltaPercent = (deltaX / parentWidth) * 100;
+      
+      let newWidth;
+      if (direction === 'left') {
+        newWidth = startWidth + (deltaPercent * 2); // *2 because we're growing from center
+      } else {
+        newWidth = startWidth + (deltaPercent * 2);
+      }
+      
+      setContainerWidth(Math.max(50, Math.min(200, newWidth)));
+    };
+    
+    const handleMouseUp = () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+    
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    document.body.style.cursor = 'ew-resize';
+    document.body.style.userSelect = 'none';
+  };
+
   return (
     <>
-      {/* Tablature Display - Resizable */}
-      <div className="group relative w-fit min-w-full">
-        <Card className="relative p-4 bg-card resize overflow-auto border-2 border-border/50 hover:border-primary/50 transition-colors min-w-[400px]" style={{ width: '100%' }}>
-          {error && (
-            <div className="bg-destructive/10 border border-destructive/50 rounded-lg p-4 mb-4">
-              <p className="font-semibold text-destructive">Error Loading Tablature</p>
-              <p className="text-sm text-destructive/80 mt-1">{error}</p>
+      {/* Tablature Display - Custom Resizable */}
+      <div ref={wrapperRef} className="relative w-full flex justify-center">
+        <div 
+          className="group relative transition-all duration-200" 
+          style={{ width: `${containerWidth}%`, minWidth: '400px', maxWidth: '100%' }}
+        >
+          {/* Left Resize Handle */}
+          <div
+            className="absolute left-0 top-0 bottom-0 w-1 bg-border/50 hover:bg-primary/50 cursor-ew-resize z-20 opacity-0 group-hover:opacity-100 transition-opacity"
+            onMouseDown={(e) => handleResize('left', e)}
+          >
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-muted/80 backdrop-blur-sm p-1 rounded">
+              <GripVertical className="h-4 w-4 text-muted-foreground" />
             </div>
-          )}
+          </div>
 
-          <div className="relative">
-            <div ref={containerRef} className="alphatab-container" />
-            {isLoading && (
-              <div className="absolute inset-0 flex items-center justify-center bg-card/60 backdrop-blur-sm">
-                <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                <span className="ml-3 text-muted-foreground">Loading score...</span>
+          {/* Right Resize Handle */}
+          <div
+            className="absolute right-0 top-0 bottom-0 w-1 bg-border/50 hover:bg-primary/50 cursor-ew-resize z-20 opacity-0 group-hover:opacity-100 transition-opacity"
+            onMouseDown={(e) => handleResize('right', e)}
+          >
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-muted/80 backdrop-blur-sm p-1 rounded">
+              <GripVertical className="h-4 w-4 text-muted-foreground" />
+            </div>
+          </div>
+
+          <Card className="relative p-4 bg-card border-2 border-border/50 group-hover:border-primary/50 transition-colors">
+            {error && (
+              <div className="bg-destructive/10 border border-destructive/50 rounded-lg p-4 mb-4">
+                <p className="font-semibold text-destructive">Error Loading Tablature</p>
+                <p className="text-sm text-destructive/80 mt-1">{error}</p>
               </div>
             )}
+
+            <div className="relative">
+              <div ref={containerRef} className="alphatab-container" />
+              {isLoading && (
+                <div className="absolute inset-0 flex items-center justify-center bg-card/60 backdrop-blur-sm">
+                  <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                  <span className="ml-3 text-muted-foreground">Loading score...</span>
+                </div>
+              )}
+            </div>
+          </Card>
+
+          {/* Resize Hint */}
+          <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-muted/80 backdrop-blur-sm text-xs text-muted-foreground px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+            Drag edges to resize • {Math.round(containerWidth)}%
           </div>
-        </Card>
-        <div className="absolute top-2 right-2 bg-muted/80 backdrop-blur-sm text-xs text-muted-foreground px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
-          Drag corner to resize →
         </div>
       </div>
 

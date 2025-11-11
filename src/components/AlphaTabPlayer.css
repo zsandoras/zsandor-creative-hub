@@ -2,7 +2,7 @@
 .alphatab-container {
   background: #ffffff;
   border-radius: 0.75rem;
-  overflow: hidden;
+  overflow: auto;
   box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
   min-height: 480px;
 }
@@ -17,6 +17,30 @@
   max-height: 80vh;
 }
 
+/* Custom scrollbar */
+.alphatab-container::-webkit-scrollbar,
+.alphatab-container .at-viewport::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.alphatab-container::-webkit-scrollbar-track,
+.alphatab-container .at-viewport::-webkit-scrollbar-track {
+  background: hsl(var(--muted));
+  border-radius: 4px;
+}
+
+.alphatab-container::-webkit-scrollbar-thumb,
+.alphatab-container .at-viewport::-webkit-scrollbar-thumb {
+  background: hsl(var(--primary) / 0.5);
+  border-radius: 4px;
+}
+
+.alphatab-container::-webkit-scrollbar-thumb:hover,
+.alphatab-container .at-viewport::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--primary));
+}
+
 /* Improve notation visibility */
 .alphatab-container svg {
   max-width: 100%;
@@ -28,26 +52,6 @@
   padding: 1.5rem;
   background: linear-gradient(to bottom, #f8fafc, #ffffff);
   border-bottom: 1px solid #e2e8f0;
-}
-
-/* Better scrollbar styling */
-.alphatab-container .at-viewport::-webkit-scrollbar {
-  width: 12px;
-  height: 12px;
-}
-
-.alphatab-container .at-viewport::-webkit-scrollbar-track {
-  background: #f1f5f9;
-  border-radius: 6px;
-}
-
-.alphatab-container .at-viewport::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 6px;
-}
-
-.alphatab-container .at-viewport::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
 }
 
 /* Music cursor styles */
