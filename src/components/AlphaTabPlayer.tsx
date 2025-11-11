@@ -228,6 +228,14 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
         `player exists: ${!!player}, AlphaTab version: ${typeof alphaTab.PlayerMode}`
       );
 
+      // Manually trigger soundfont load as a fallback
+      try {
+        const ok = api.loadSoundFont(soundFontUrl);
+        addDebugEvent("loadSoundFont()", ok ? "initiated" : "not supported");
+      } catch (e: any) {
+        addDebugEvent("loadSoundFont error", e.message);
+      }
+
       // Watchdog timers
       setTimeout(() => {
         if (!isPlayerReady) {
@@ -241,6 +249,18 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
           forceInit();
         }
       }, 6000);
+
+      // When player declares ready but no progress, try loadSoundFont again
+      api.playerReady.on(() => {
+        if (loadProgress === 0) {
+          try {
+            const ok2 = api.loadSoundFont(soundFontUrl);
+            addDebugEvent("playerReady -> loadSoundFont()", ok2 ? "initiated" : "not supported");
+          } catch (e: any) {
+            addDebugEvent("playerReady -> loadSoundFont error", e.message);
+          }
+        }
+      });
 
       // Event: Score Loaded
       api.scoreLoaded.on((score) => {
@@ -465,6 +485,11 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
             Stop
           </Button>
 
+          {/* Debug: Visible Force Init */}
+          <Button onClick={forceInit} variant="outline" size="sm" className="gap-2">
+            Force Init
+          </Button>
+
           <div className="text-sm text-muted-foreground">
             {formatTime(playerState.currentTime)} / {formatTime(playerState.duration)}
           </div>
@@ -494,7 +519,7 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
 
       {/* Diagnostics Panel */}
       <Card className="p-6 bg-card/50 backdrop-blur">
-        <details>
+        <details open>
           <summary className="text-lg font-semibold mb-4 cursor-pointer">
             Diagnostics & Debug Controls
           </summary>
