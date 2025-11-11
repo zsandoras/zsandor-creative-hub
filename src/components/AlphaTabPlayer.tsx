@@ -117,6 +117,8 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       newApi.scoreLoaded.on((score: any) => {
         logState("LOADING", `Score loaded - ${score.tracks.length} track(s)`);
         setTrackCount(score.tracks.length);
+        // Ensure a render happens even if initial layout was hidden
+        try { newApi.render(); } catch {}
       });
 
       newApi.renderFinished.on(() => {
@@ -306,12 +308,12 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
           </div>
         )}
 
-        {/* AlphaTab Container - always rendered for DOM availability */}
+        {/* AlphaTab Container - must have layout size for render */}
         <div 
-          id="alphaTab" 
-          ref={atContainer} 
-          className="at-wrap" 
-          style={{ visibility: api ? 'visible' : 'hidden', height: api ? 'auto' : 0 }}
+          id="alphaTab"
+          ref={atContainer}
+          className="at-wrap"
+          style={{ visibility: isRenderFinished ? 'visible' : 'hidden', minHeight: 200 }}
         >
           <div className="at-content">
             <div className="at-viewport"></div>
