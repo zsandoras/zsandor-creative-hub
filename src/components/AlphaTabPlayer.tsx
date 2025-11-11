@@ -7,12 +7,27 @@ interface AlphaTabPlayerProps {
   title?: string;
 }
 
+interface PlayerState {
+  isPlaying: boolean;
+  currentTime: number;
+  duration: number;
+  tracks: Array<{ index: number; name: string }>;
+  selectedTracks: number[];
+}
+
 const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const apiRef = useRef<alphaTab.AlphaTabApi | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [logs, setLogs] = useState<string[]>([]);
+  const [playerState, setPlayerState] = useState<PlayerState>({
+    isPlaying: false,
+    currentTime: 0,
+    duration: 0,
+    tracks: [],
+    selectedTracks: [],
+  });
   const log = (msg: string) => setLogs((prev) => [...prev, `[${new Date().toLocaleTimeString()}] ${msg}`]);
   useEffect(() => {
     if (!containerRef.current) {
@@ -47,11 +62,12 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       settings.core.fontDirectory = "/font/";
       // Disable workers for simpler bundler setup
       settings.core.useWorkers = false;
-      // Minimal display just to render something reliable
+      // Display layout
       settings.display.layoutMode = alphaTab.LayoutMode.Page;
-      // Basic player disabled to reduce moving parts for now
-      settings.player.enablePlayer = false;
-      settings.player.enableCursor = false;
+      // Enable player
+      settings.player.enablePlayer = true;
+      settings.player.enableCursor = true;
+      settings.player.soundFont = "/soundfont/sonivox.sf2";
       // Load file directly
       settings.core.file = fileUrl;
       log('AlphaTab settings prepared');
@@ -69,17 +85,33 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       }
 
       const timeoutId = window.setTimeout(() => {
-        log('Render timeout after 10s');
+        log('Render timeout after 15s');
         setIsLoading(false);
         setError((prev) => prev ?? 'Render timeout: AlphaTab did not finish rendering.');
-      }, 10000);
+      }, 15000);
 
-      // Events
+      // Render events
       api.renderFinished.on(() => {
         log('renderFinished event received');
         window.clearTimeout(timeoutId);
         setIsLoading(false);
+
+        // Extract track info
+        const score = api.score;
+        if (score) {
+          const tracks = score.tracks.map((t: any, i: number) => ({
+            index: i,
+            name: t.name,
+          }));
+          setPlayerState((prev) => ({
+            ...prev,
+            tracks,
+            selectedTracks: [0], // Select first track by default
+          }));
+          log(`Loaded ${tracks.length} tracks`);
+        }
       });
+
       api.error.on((e: any) => {
         const message = e?.message || e?.reason || e?.toString?.() || 'Unknown error';
         log(`AlphaTab error: ${message}`);
@@ -87,6 +119,19 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
         window.clearTimeout(timeoutId);
         setError(`AlphaTab error: ${message}`);
         setIsLoading(false);
+      });
+
+      // Player events
+      api.playerStateChanged.on((e: any) => {
+        setPlayerState((prev) => ({ ...prev, isPlaying: e.state === 1 }));
+      });
+
+      api.playerPositionChanged.on((e: any) => {
+        setPlayerState((prev) => ({
+          ...prev,
+          currentTime: e.currentTime / 1000,
+          duration: e.endTime / 1000,
+        }));
       });
     } catch (e: any) {
       const message = e?.message || e?.toString?.() || 'Unknown init error';
@@ -98,10 +143,36 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
 
     return () => {
       log('Cleanup: destroying AlphaTab instance');
-      apiRef.current?.destroy();
-      apiRef.current = null;
+      if (apiRef.current) {
+        try {
+          apiRef.current.destroy();
+        } catch (e) {
+          console.warn('Cleanup error', e);
+        }
+        apiRef.current = null;
+      }
     };
   }, [fileUrl]);
+
+  const togglePlayPause = () => {
+    if (!apiRef.current) return;
+    if (playerState.isPlaying) {
+      apiRef.current.pause();
+    } else {
+      apiRef.current.play();
+    }
+  };
+
+  const stop = () => {
+    if (!apiRef.current) return;
+    apiRef.current.stop();
+  };
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
 
   if (error) {
     return (
@@ -127,9 +198,51 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
           </pre>
         </Card>
       )}
+
+      {!isLoading && !error && (
+        <Card className="p-4 bg-card/50 backdrop-blur">
+          <div className="flex items-center gap-4 flex-wrap">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={togglePlayPause}
+                className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors font-medium"
+              >
+                {playerState.isPlaying ? 'Pause' : 'Play'}
+              </button>
+              <button
+                onClick={stop}
+                className="px-4 py-2 bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/90 transition-colors"
+              >
+                Stop
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span>{formatTime(playerState.currentTime)}</span>
+              <span>/</span>
+              <span>{formatTime(playerState.duration)}</span>
+            </div>
+
+            {playerState.tracks.length > 0 && (
+              <div className="flex items-center gap-2 ml-auto">
+                <span className="text-sm text-muted-foreground">Tracks:</span>
+                {playerState.tracks.map((track) => (
+                  <span
+                    key={track.index}
+                    className="text-xs px-2 py-1 bg-muted rounded-md text-muted-foreground"
+                  >
+                    {track.name}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        </Card>
+      )}
+
       <div
         ref={containerRef}
-        className="w-full min-h-[600px] rounded-lg overflow-hidden border border-border bg-background"
+        className="w-full min-h-[600px] rounded-lg overflow-auto border border-border bg-background/95 backdrop-blur"
         style={{ visibility: isLoading ? "hidden" : "visible" }}
       />
     </div>
