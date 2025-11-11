@@ -27,10 +27,10 @@ const AlphaTabPlayer = ({ fileUrl, file, title, onReset, defaultInstrument }: Al
   const [tracks, setTracks] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [alphaTabLoaded, setAlphaTabLoaded] = useState<boolean>(!!window.alphaTab);
-  const [containerWidth, setContainerWidth] = useState(110); // percentage (slightly wider than controls)
-  const [containerHeight, setContainerHeight] = useState(800); // pixels (increased from 600)
+  const [containerWidth, setContainerWidth] = useState(80); // percentage
+  const [containerHeight, setContainerHeight] = useState(1000); // pixels
   const [isHovered, setIsHovered] = useState(false);
-  const [scaleControls, setScaleControls] = useState(false);
+  const [scaleControls, setScaleControls] = useState(true);
 
   // Handle wheel events to enable scrolling on hover
   useEffect(() => {

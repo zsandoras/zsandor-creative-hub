@@ -661,7 +661,7 @@ const AlphaTabControls = ({
             </DropdownMenu>
           )}
 
-          <div className="hidden lg:flex items-center gap-2 px-2 border-l">
+          <div className="hidden xl:flex items-center gap-2 px-2 border-l">
             <ZoomIn className="h-4 w-4 text-muted-foreground flex-shrink-0" />
             <Slider
               value={[zoom]}
@@ -669,19 +669,19 @@ const AlphaTabControls = ({
               min={25}
               max={300}
               step={5}
-              className="w-20"
+              className="w-16"
             />
             <span className="text-xs text-muted-foreground min-w-[4ch] text-right">{zoom}%</span>
           </div>
 
-          <div className="hidden lg:flex items-center gap-2 px-2 border-l">
+          <div className="hidden xl:flex items-center gap-2 px-2 border-l">
             <Volume2 className="h-4 w-4 text-muted-foreground" />
             <Slider
               value={[volume]}
               onValueChange={handleVolumeChange}
               max={100}
               step={1}
-              className="w-20"
+              className="w-16"
             />
             <span className="text-xs text-muted-foreground min-w-[3ch]">{volume}%</span>
           </div>
