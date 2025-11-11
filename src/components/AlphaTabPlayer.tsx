@@ -294,7 +294,7 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       setDebugEvents([]);
 
       addDebugEvent("Initializing AlphaTab", `File: ${fileUrl}`);
-      addDebugEvent("Init mode", "player=disabled (display-only)");
+      addDebugEvent("Init mode", "player=enabled (minimal synth mode)");
 
       const soundFontUrl = `${window.location.origin}/soundfont/sonivox.sf2`;
       
@@ -309,9 +309,11 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
             useWorkers: false, // Keep false for stability
           },
           player: {
-            enablePlayer: false, // DISABLED for isolation testing
-            enableCursor: false,
-            enableUserInteraction: false,
+            enablePlayer: true, // RE-ENABLED for audio
+            enableCursor: false, // Keep cursor disabled for now
+            enableUserInteraction: false, // Keep interaction disabled for now
+            scrollMode: "off" as any, // No scrolling
+            soundFont: soundFontUrl,
           },
           display: {
             layoutMode: alphaTab.LayoutMode.Page,
@@ -324,23 +326,15 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
 
         addDebugEvent(
           "Settings configured",
-          "player=disabled (display-only mode)"
+          "player=enabled, cursor/interaction=disabled"
         );
 
         // Create AlphaTab API with settings (file loads automatically)
         const api = new alphaTab.AlphaTabApi(containerRef.current, settings);
         apiRef.current = api;
         addDebugEvent("API creation successful", "Instance created");
-        
-        // Manual render trigger (needed when player is disabled)
-        try {
-          api.render();
-          addDebugEvent("Render triggered", "Manual render() called");
-        } catch (e: any) {
-          addDebugEvent("Render trigger error", e.message);
-        }
 
-        // Event listeners - minimal set for display-only mode
+        // Event listeners - minimal set with player enabled
         api.scoreLoaded.on((score: any) => {
           addDebugEvent("Score loaded", `Track count: ${score.tracks.length}`);
           setTrackCount(score.tracks.length);
@@ -351,13 +345,48 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
           setIsLoading(false);
         });
 
+        api.soundFontLoad.on((e: any) => {
+          const percentage = Math.floor((e.loaded / e.total) * 100);
+          setLoadProgress(percentage);
+          loadProgressRef.current = percentage;
+          addDebugEvent(
+            "SoundFont loading",
+            `${percentage}% (${e.loaded}/${e.total} bytes)`
+          );
+        });
+
+        api.soundFontLoaded.on(() => {
+          addDebugEvent("SoundFont loaded", "Ready for playback");
+          setLoadProgress(100);
+          loadProgressRef.current = 100;
+        });
+
+        api.playerReady.on(() => {
+          const player: any = api.player;
+          const ctx = player?.audioContext || player?.context;
+          const ctxInfo = ctx ? `AudioContext: ${ctx.state}` : "No AudioContext";
+          addDebugEvent("Player ready", ctxInfo);
+          setIsPlayerReady(true);
+          
+          if (ctx) {
+            setDiagnostics((prev: any) => ({
+              ...prev,
+              audioContext: {
+                state: ctx.state,
+                sampleRate: ctx.sampleRate,
+                baseLatency: ctx.baseLatency,
+              },
+            }));
+          }
+        });
+
         api.error.on((error: any) => {
           const errorMsg = error?.message || error?.toString?.() || "Unknown error";
           addDebugEvent("AlphaTab error", errorMsg);
           setError(`AlphaTab error: ${errorMsg}`);
         });
 
-        addDebugEvent("Event listeners registered", "Basic events subscribed (display-only)");
+        addDebugEvent("Event listeners registered", "Minimal player events subscribed");
 
       } catch (e: any) {
         const message = e?.message || e?.toString?.() || "Unknown error";
