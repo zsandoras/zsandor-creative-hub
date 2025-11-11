@@ -151,21 +151,38 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       addDebugEvent("Test Beep", "No API instance");
       return;
     }
-    
+
     try {
+      // Ensure AudioContext is resumed
       const player = api.player;
       const ctx = player?.audioContext || player?.context;
       if (ctx && ctx.state === "suspended") {
         await ctx.resume();
-        addDebugEvent("Test Beep", `AudioContext resumed (was ${ctx.state})`);
+        addDebugEvent("Test Beep", `AudioContext resumed (was suspended)`);
       }
-      
-      // Try to play a test note (A4 = MIDI 69)
-      if (api.playNote) {
-        api.playNote(69, 500, 1.0);
-        addDebugEvent("Test Beep", "playNote(69, 500ms, 1.0) called");
+
+      // Ensure synthesizer is ready
+      if (!api.isReadyForPlayback) {
+        addDebugEvent("Test Beep", "Synth not ready, calling forceInit()");
+        await forceInit();
+      }
+
+      // Require a valid Note object per AlphaTab docs
+      const score = api.score;
+      const note = score?.tracks?.[0]?.staves?.[0]?.bars?.[0]?.voices?.[0]?.beats?.[0]?.notes?.[0];
+      if (!note) {
+        addDebugEvent("Test Beep", "No note found in score to play");
+        return;
+      }
+
+      if (typeof api.playNote === "function") {
+        api.playNote(note);
+        addDebugEvent("Test Beep", "api.playNote(first note) called");
+      } else if (typeof player?.playNote === "function") {
+        player.playNote(note);
+        addDebugEvent("Test Beep", "player.playNote(first note) called");
       } else {
-        addDebugEvent("Test Beep", "playNote method not available");
+        addDebugEvent("Test Beep", "No playNote method on API or player");
       }
     } catch (e: any) {
       addDebugEvent("Test Beep error", e.message);
