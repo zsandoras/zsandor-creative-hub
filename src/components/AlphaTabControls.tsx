@@ -155,37 +155,38 @@ const AlphaTabControls = ({
   const handleSynthInstrumentChange = (instrument: typeof INSTRUMENTS[0]) => {
     setCurrentInstrument(instrument);
     if (api) {
-      // Store the selected instrument for the next MIDI load
-      (api as any)._customInstrument = instrument.program;
-      
-      // Set up MIDI event interceptor to change program
-      const midiLoadHandler = (e: any) => {
-        if (e && e.midi) {
-          // Find all program change events and update them
-          e.midi.events.forEach((track: any) => {
-            if (track && Array.isArray(track)) {
-              track.forEach((event: any) => {
-                if (event && event.command === 0xC0) {
-                  // Program Change event
-                  event.data1 = instrument.program;
-                }
-              });
+      const program = instrument.program;
+
+      // Prepare handler to rewrite all Program Change events except drums (channel 9)
+      const midiLoadHandler = (file: any) => {
+        try {
+          const MidiEventType = (window as any).alphaTab?.midi?.MidiEventType;
+          const events = file?.events ?? [];
+          for (const ev of events) {
+            const isProgramChange = MidiEventType
+              ? ev.type === MidiEventType.ProgramChange || ev.command === MidiEventType.ProgramChange
+              : ev.command === 0xC0;
+            if (isProgramChange && ev.channel !== 9) {
+              if (typeof ev.program === "number") ev.program = program;
+              if (typeof ev.data1 === "number") ev.data1 = program; // safety for raw midi fields
             }
-          });
+          }
+        } catch (err) {
+          console.warn("Failed to rewrite MIDI program changes:", err);
         }
       };
 
-      // Remove old handler if exists
+      // Remove old handler if any, then attach the new one
       if ((api as any)._midiLoadHandler) {
         api.midiLoad.off((api as any)._midiLoadHandler);
       }
-      
-      // Store and add new handler
       (api as any)._midiLoadHandler = midiLoadHandler;
       api.midiLoad.on(midiLoadHandler);
-      
-      // Reload MIDI with new instrument
-      api.loadMidiForScore();
+
+      // Regenerate and reload the MIDI so the change takes effect
+      if (typeof api.loadMidiForScore === "function") {
+        api.loadMidiForScore();
+      }
     }
   };
 
