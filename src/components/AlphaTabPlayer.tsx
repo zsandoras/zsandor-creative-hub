@@ -306,7 +306,7 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
           core: {
             file: fileUrl,
             fontDirectory: "/font/",
-            useWorkers: true,
+            useWorkers: false, // Keep false for stability
           },
           player: {
             enablePlayer: false, // DISABLED for isolation testing
@@ -315,6 +315,7 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
           },
           display: {
             layoutMode: alphaTab.LayoutMode.Page,
+            scale: 1.0,
           },
           notation: {
             notationMode: alphaTab.NotationMode.GuitarPro,
@@ -330,6 +331,14 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
         const api = new alphaTab.AlphaTabApi(containerRef.current, settings);
         apiRef.current = api;
         addDebugEvent("API creation successful", "Instance created");
+        
+        // Manual render trigger (needed when player is disabled)
+        try {
+          api.render();
+          addDebugEvent("Render triggered", "Manual render() called");
+        } catch (e: any) {
+          addDebugEvent("Render trigger error", e.message);
+        }
 
         // Event listeners - minimal set for display-only mode
         api.scoreLoaded.on((score: any) => {
