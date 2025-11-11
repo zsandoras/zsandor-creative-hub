@@ -136,7 +136,7 @@ const GuitarDetail = () => {
             )}
             
             <div className="relative w-full flex justify-center mt-6 px-4">
-              <div className="w-full max-w-[1400px]">
+              <div className="w-full max-w-6xl">
                 <Card className="p-6 bg-card/50 backdrop-blur">
                   <CommentSection
                     contentType="guitar_embed"

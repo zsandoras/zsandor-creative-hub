@@ -372,7 +372,7 @@ const AlphaTabPlayer = ({ fileUrl, file, title, onReset, defaultInstrument }: Al
               width: scaleControls 
                 ? (containerWidth > 100 ? `${containerWidth}vw` : `${containerWidth}%`)
                 : '100%',
-              maxWidth: scaleControls ? 'none' : '1400px',
+              maxWidth: scaleControls ? 'none' : '1152px',
               minWidth: '400px'
             }}
           >
