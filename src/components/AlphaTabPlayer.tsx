@@ -64,6 +64,7 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       settings.core.fontDirectory = "/font/";
       settings.core.useWorkers = true;
       settings.display.layoutMode = alphaTab.LayoutMode.Page;
+      settings.core.engine = "svg";
       
       // Enable player with synthesizer mode
       settings.player.enablePlayer = true;
@@ -261,10 +262,14 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
             )}
           </div>
         )}
-        <div
-          ref={containerRef}
-          className="at-viewport min-h-[600px] rounded-lg border border-border overflow-hidden"
-        />
+        <div 
+          ref={containerRef} 
+          className="at-wrap rounded-lg border border-border overflow-hidden"
+        >
+          <div className="at-content">
+            <div className="at-viewport"></div>
+          </div>
+        </div>
       </Card>
 
       {/* Custom Controls */}

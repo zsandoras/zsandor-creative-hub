@@ -1,7 +1,16 @@
 /* AlphaTab styles for tablature rendering */
+
+/* Container sizing - CRITICAL for rendering */
+.at-wrap, 
+.at-content, 
+.at-viewport {
+  width: 100%;
+  height: 600px;
+}
+
 .at-viewport {
   background: hsl(var(--background));
-  overflow-y: auto;
+  overflow: auto;
   border-radius: 0.5rem;
 }
 
