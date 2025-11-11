@@ -121,27 +121,11 @@ const GuitarDetail = () => {
             {embed.file_url ? (
               <>
                 <div className="space-y-6">
-                  {(() => {
-                    const player = AlphaTabPlayer({ 
-                      fileUrl: embed.file_url, 
-                      title: embed.title,
-                      defaultInstrument: embed.default_instrument
-                    });
-                    
-                    return (
-                      <>
-                        <div className="group relative w-fit min-w-full">
-                          <div className="resize overflow-auto border-2 border-border/50 hover:border-primary/50 rounded-lg transition-colors min-w-[400px]" style={{ width: '100%' }}>
-                            {player.tablature}
-                          </div>
-                          <div className="absolute top-2 right-2 bg-muted/80 backdrop-blur-sm text-xs text-muted-foreground px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                            Drag corner to resize →
-                          </div>
-                        </div>
-                        {player.controls}
-                      </>
-                    );
-                  })()}
+                  <AlphaTabPlayer 
+                    fileUrl={embed.file_url} 
+                    title={embed.title}
+                    defaultInstrument={embed.default_instrument}
+                  />
                 </div>
                 <Card className="p-6 mt-6 bg-card/50 backdrop-blur">
                   <CommentSection

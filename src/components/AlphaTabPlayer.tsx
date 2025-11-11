@@ -195,40 +195,48 @@ const AlphaTabPlayer = ({ fileUrl, file, title, onReset, defaultInstrument }: Al
   };
 
 
-  return {
-    tablature: (
-      <Card className="relative p-4 bg-card">
-        {error && (
-          <div className="bg-destructive/10 border border-destructive/50 rounded-lg p-4 mb-4">
-            <p className="font-semibold text-destructive">Error Loading Tablature</p>
-            <p className="text-sm text-destructive/80 mt-1">{error}</p>
-          </div>
-        )}
-
-        <div className="relative">
-          <div ref={containerRef} className="alphatab-container" />
-          {isLoading && (
-            <div className="absolute inset-0 flex items-center justify-center bg-card/60 backdrop-blur-sm">
-              <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-              <span className="ml-3 text-muted-foreground">Loading score...</span>
+  return (
+    <>
+      {/* Tablature Display - Resizable */}
+      <div className="group relative w-fit min-w-full">
+        <Card className="relative p-4 bg-card resize overflow-auto border-2 border-border/50 hover:border-primary/50 transition-colors min-w-[400px]" style={{ width: '100%' }}>
+          {error && (
+            <div className="bg-destructive/10 border border-destructive/50 rounded-lg p-4 mb-4">
+              <p className="font-semibold text-destructive">Error Loading Tablature</p>
+              <p className="text-sm text-destructive/80 mt-1">{error}</p>
             </div>
           )}
+
+          <div className="relative">
+            <div ref={containerRef} className="alphatab-container" />
+            {isLoading && (
+              <div className="absolute inset-0 flex items-center justify-center bg-card/60 backdrop-blur-sm">
+                <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                <span className="ml-3 text-muted-foreground">Loading score...</span>
+              </div>
+            )}
+          </div>
+        </Card>
+        <div className="absolute top-2 right-2 bg-muted/80 backdrop-blur-sm text-xs text-muted-foreground px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+          Drag corner to resize →
         </div>
-      </Card>
-    ),
-    controls: !isLoading && !error && apiRef.current ? (
-      <AlphaTabControls
-        api={apiRef.current}
-        isPlaying={isPlaying}
-        title={title}
-        artist="Unknown Artist"
-        fileUrl={fileUrl}
-        onOpenFile={onReset}
-        tracks={tracks}
-        defaultInstrument={defaultInstrument}
-      />
-    ) : null,
-  };
+      </div>
+
+      {/* Professional Player Controls */}
+      {!isLoading && !error && apiRef.current && (
+        <AlphaTabControls
+          api={apiRef.current}
+          isPlaying={isPlaying}
+          title={title}
+          artist="Unknown Artist"
+          fileUrl={fileUrl}
+          onOpenFile={onReset}
+          tracks={tracks}
+          defaultInstrument={defaultInstrument}
+        />
+      )}
+    </>
+  );
 };
 
 export default AlphaTabPlayer;
