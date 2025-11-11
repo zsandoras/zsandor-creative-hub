@@ -104,12 +104,12 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       setIsRenderFinished(false);
       setDebugEvents([]);
 
-      // Create Settings - SIMPLIFIED
+      // Create Settings - use CDN soundfont with correct player mode
       const settings = new alphaTab.Settings();
       settings.player.enablePlayer = true;
-      settings.player.enableUserInteraction = true; // Allow clicking notation to play
+      settings.player.enableUserInteraction = true;
       settings.player.playerMode = alphaTab.PlayerMode.EnabledSynthesizer;
-      settings.player.soundFont = "https://cdn.jsdelivr.net/npm/@coderline/alphatab@1.6.3/dist/soundfont/sonivox.sf2";
+      settings.player.soundFont = "https://cdn.jsdelivr.net/npm/@coderline/alphatab@latest/dist/soundfont/sonivox.sf2";
       settings.player.scrollElement = (container.querySelector('.at-viewport') as HTMLElement) || undefined;
       settings.display.layoutMode = alphaTab.LayoutMode.Page;
       settings.display.scale = 1.0;
@@ -117,7 +117,7 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       settings.core.fontDirectory = "/font/";
       settings.core.useWorkers = false;
 
-      logState("LOADING", "Settings configured - single SoundFont URL");
+      logState("LOADING", `Settings configured - SoundFont: ${settings.player.soundFont}`);
 
       // Create API
       const api = new alphaTab.AlphaTabApi(container, settings);
