@@ -68,11 +68,13 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       // Display layout
       settings.display.layoutMode = alphaTab.LayoutMode.Page;
       // Enable player
-      settings.player.playerMode = alphaTab.PlayerMode.EnabledSynthesizer;
-      settings.player.enablePlayer = true; // keep for older versions
+      // Enable player with synthesizer mode
+      settings.player.enablePlayer = true;
       settings.player.enableCursor = true;
       settings.player.soundFont = "/soundfont/sonivox.sf2";
-      (settings.player as any).scrollElement = viewportRef.current as any;
+      if (viewportRef.current) {
+        (settings.player as any).scrollElement = viewportRef.current;
+      }
       // Load file directly
       settings.core.file = fileUrl;
       log('AlphaTab settings prepared');
@@ -125,8 +127,9 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       });
 
       api.playerReady.on(() => {
-        log('Player ready');
+        log('Player ready - controls enabled');
         setIsPlayerReady(true);
+        setLoadProgress(100);
       });
 
       api.error.on((e: any) => {
@@ -191,13 +194,18 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
 
   if (error) {
     return (
-      <Card className="p-8 bg-card/50 backdrop-blur">
-        <p className="text-destructive font-medium mb-2">{error}</p>
-        <p className="text-muted-foreground text-sm mb-4">File: {fileUrl}</p>
-        <pre className="text-xs text-muted-foreground bg-muted/40 p-3 rounded-md overflow-auto max-h-64">
+      <div className="space-y-4">
+        <Card className="p-8 bg-card/50 backdrop-blur">
+          <p className="text-destructive font-medium mb-2">{error}</p>
+          <p className="text-muted-foreground text-sm mb-4">File: {fileUrl}</p>
+          <details className="text-xs">
+            <summary className="cursor-pointer text-muted-foreground mb-2">Debug logs</summary>
+            <pre className="text-muted-foreground bg-muted/40 p-3 rounded-md overflow-auto max-h-64">
 {logs.join('\n') || 'No logs yet'}
-        </pre>
-      </Card>
+            </pre>
+          </details>
+        </Card>
+      </div>
     );
   }
 
@@ -208,9 +216,12 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
           <p className="text-muted-foreground mb-2">
             Loading{title ? ` ${title}` : ' tab'}...
           </p>
-          <pre className="text-xs text-muted-foreground bg-muted/40 p-3 rounded-md overflow-auto max-h-64">
+          <details className="text-xs">
+            <summary className="cursor-pointer text-muted-foreground mb-2">Debug logs</summary>
+            <pre className="text-muted-foreground bg-muted/40 p-3 rounded-md overflow-auto max-h-64">
 {logs.join('\n') || 'Initializing...'}
-          </pre>
+            </pre>
+          </details>
         </Card>
       )}
 
@@ -251,7 +262,7 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
                   </>
                 )}
               </button>
-              {!isPlayerReady && (
+              {!isPlayerReady && loadProgress < 100 && (
                 <span className="text-sm text-muted-foreground">
                   Loading player... {loadProgress}%
                 </span>
