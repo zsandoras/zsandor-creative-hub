@@ -104,25 +104,20 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       setIsRenderFinished(false);
       setDebugEvents([]);
 
-      // Create Settings - use CDN URLs for worker and wasm
+      // Create Settings - SIMPLIFIED
       const settings = new alphaTab.Settings();
-      settings.core.fontDirectory = "/font/";
-      (settings.core as any).file = { 
-        workerUrl: "https://cdn.jsdelivr.net/npm/@coderline/alphatab@latest/dist/alphaTab.worker.mjs" 
-      };
       settings.player.enablePlayer = true;
-      settings.player.enableUserInteraction = true;
+      settings.player.enableUserInteraction = true; // Allow clicking notation to play
       settings.player.playerMode = alphaTab.PlayerMode.EnabledSynthesizer;
-      settings.player.soundFont = "/soundfont/sonivox.sf2";
-      (settings.player as any).synth = { 
-        wasmFile: "https://cdn.jsdelivr.net/npm/@coderline/alphatab@latest/dist/alphaSynth.wasm" 
-      };
+      settings.player.soundFont = "https://cdn.jsdelivr.net/npm/@coderline/alphatab@1.6.3/dist/soundfont/sonivox.sf2";
       settings.player.scrollElement = (container.querySelector('.at-viewport') as HTMLElement) || undefined;
       settings.display.layoutMode = alphaTab.LayoutMode.Page;
       settings.display.scale = 1.0;
       settings.notation.notationMode = alphaTab.NotationMode.GuitarPro;
+      settings.core.fontDirectory = "/font/";
+      settings.core.useWorkers = false;
 
-      logState("LOADING", `Settings configured - SoundFont: ${settings.player.soundFont}`);
+      logState("LOADING", "Settings configured - single SoundFont URL");
 
       // Create API
       const api = new alphaTab.AlphaTabApi(container, settings);
@@ -130,15 +125,26 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       apiRef.current = api;
       logState("LOADING", "AlphaTabApi created");
 
-      // Resume AudioContext on user gesture
+      // Resume AudioContext on user gesture and check player state
       const player: any = (api as any).player;
-      const ctx = player?.audioContext || player?.context;
-      if (ctx) {
-        if (ctx.state === "suspended") {
-          await ctx.resume();
-          logState("LOADING", `AudioContext resumed from suspended`);
+      logState("LOADING", `Player object exists: ${!!player}`);
+      
+      if (player) {
+        logState("LOADING", `Player ready state: ${player.ready || player.isReady || 'unknown'}`);
+        logState("LOADING", `Player state: ${player.state || 'unknown'}`);
+        
+        const ctx = player.audioContext || player.context;
+        if (ctx) {
+          if (ctx.state === "suspended") {
+            await ctx.resume();
+            logState("LOADING", `AudioContext resumed from suspended`);
+          }
+          logState("LOADING", `AudioContext state: ${ctx.state}`);
+        } else {
+          logState("LOADING", `No AudioContext found on player`);
         }
-        logState("LOADING", `AudioContext state: ${ctx.state}`);
+      } else {
+        logState("LOADING", `No player object - this means synth not initialized!`);
       }
 
       // Event Listeners
@@ -165,28 +171,11 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
         logState("SOUNDFONT_LOADED", "SoundFont ready");
         setLoadProgress(100);
         setIsSoundFontLoaded(true);
-        
-        // Log synth details
-        const player: any = (api as any).player;
-        const synth = player?.synthesizer || player?._synthesizer;
-        logState("SOUNDFONT_LOADED", `Synth available: ${!!synth}`);
-        if (synth) {
-          logState("SOUNDFONT_LOADED", `Synth has noteOn: ${typeof synth.noteOn === 'function'}`);
-        }
       });
 
       api.playerReady.on(() => {
         logState("PLAYER_READY", "Player ready for playback");
         setIsPlayerReady(true);
-        
-        // Log player details
-        const player: any = (api as any).player;
-        logState("PLAYER_READY", `Player object exists: ${!!player}`);
-        if (player) {
-          const audioContext = player.audioContext || player.context;
-          logState("PLAYER_READY", `AudioContext exists: ${!!audioContext}`);
-          logState("PLAYER_READY", `AudioContext state: ${audioContext?.state}`);
-        }
       });
 
       api.playerStateChanged.on((e: any) => {
@@ -207,6 +196,16 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       logState("LOADING", `Loading file: ${fileUrl}`);
       api.load(fileUrl);
       
+      // Check if player is initializing after load
+      setTimeout(() => {
+        const playerCheck: any = (api as any).player;
+        logState("DEBUG", `Player check after load - exists: ${!!playerCheck}`);
+        if (playerCheck) {
+          logState("DEBUG", `Player isReady: ${playerCheck.isReady}, ready: ${playerCheck.ready}`);
+          logState("DEBUG", `Player soundFontLoaded: ${playerCheck.soundFontLoaded}`);
+        }
+      }, 2000);
+
     } catch (e: any) {
       const message = e?.message || e?.toString?.() || "Unknown error";
       logState("ERROR", `Initialization failed: ${message}`);
@@ -313,51 +312,6 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, "0")}`;
-  };
-
-  const testBeep = async () => {
-    if (!apiRef.current) {
-      logState("TEST_BEEP", "API not initialized");
-      return;
-    }
-
-    try {
-      const api: any = apiRef.current;
-      const player = api.player;
-      
-      logState("TEST_BEEP", "Starting test beep...");
-      logState("TEST_BEEP", `Player exists: ${!!player}`);
-      
-      if (player) {
-        const synth = player.synthesizer || player._synthesizer;
-        logState("TEST_BEEP", `Synth exists: ${!!synth}`);
-        
-        const audioContext = player.audioContext || player.context;
-        logState("TEST_BEEP", `AudioContext exists: ${!!audioContext}`);
-        logState("TEST_BEEP", `AudioContext state: ${audioContext?.state}`);
-        
-        if (audioContext && audioContext.state === "suspended") {
-          await audioContext.resume();
-          logState("TEST_BEEP", "AudioContext resumed");
-        }
-
-        if (synth && typeof synth.noteOn === "function") {
-          logState("TEST_BEEP", "Playing note: C4 (60) on channel 0");
-          synth.noteOn(0, 60, 100); // Channel 0, Middle C, velocity 100
-          
-          setTimeout(() => {
-            if (synth && typeof synth.noteOff === "function") {
-              synth.noteOff(0, 60);
-              logState("TEST_BEEP", "Note off");
-            }
-          }, 500);
-        } else {
-          logState("TEST_BEEP", "Synth or noteOn method not available");
-        }
-      }
-    } catch (e: any) {
-      logState("TEST_BEEP", `Error: ${e?.message || e}`);
-    }
   };
 
   return (
@@ -588,21 +542,6 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
                   {isSoundFontLoaded && isPlayerReady ? "✅ Ready to play" : "⏳ Initializing..."}
                 </div>
               </div>
-            </div>
-            
-            <div>
-              <h4 className="text-sm font-semibold mb-2">Test Audio</h4>
-              <Button 
-                onClick={testBeep}
-                disabled={!isPlayerReady || !isSoundFontLoaded}
-                size="sm"
-                className="w-full"
-              >
-                🔊 Test Beep (Check Event Log)
-              </Button>
-              <p className="text-xs text-muted-foreground mt-2">
-                Click to test synth - watch the Event Log below for details
-              </p>
             </div>
           </div>
         </details>
