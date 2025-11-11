@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { Music2, Guitar, UtensilsCrossed, Shield, Edit3 } from "lucide-react";
+import { Music2, Guitar, UtensilsCrossed, Shield, Edit3, Disc3 } from "lucide-react";
 import { Button } from "./ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -13,6 +13,7 @@ export const Navigation = () => {
   const navItems = [
     { path: "/", label: "Home", icon: null },
     { path: "/guitar", label: "Guitar Pro", icon: Guitar },
+    { path: "/recordings", label: "Recordings", icon: Disc3 },
     { path: "/food", label: "Food Gallery", icon: UtensilsCrossed },
   ];
 

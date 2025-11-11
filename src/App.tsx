@@ -10,6 +10,7 @@ import { AuthProvider } from "./hooks/useAuth";
 import Home from "./pages/Home";
 import GuitarPro from "./pages/GuitarPro";
 import GuitarDetail from "./pages/GuitarDetail";
+import Recordings from "./pages/Recordings";
 import FoodGallery from "./pages/FoodGallery";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/admin/Dashboard";
@@ -28,24 +29,27 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <RainEffect />
-          <div className="relative z-10">
-            <Navigation />
-            <MusicPlayer />
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/guitar" element={<GuitarPro />} />
-              <Route path="/guitar/:id" element={<GuitarDetail />} />
-              <Route path="/food" element={<FoodGallery />} />
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/admin" element={<Dashboard />} />
-              <Route path="/admin/music" element={<MusicManager />} />
-              <Route path="/admin/food" element={<FoodManager />} />
-              <Route path="/admin/guitar" element={<GuitarManager />} />
-              <Route path="/admin/settings" element={<Settings />} />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+          <div className="relative">
+            <RainEffect />
+            <div className="relative" style={{ zIndex: 10 }}>
+              <Navigation />
+              <MusicPlayer />
+              <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="/guitar" element={<GuitarPro />} />
+                <Route path="/guitar/:id" element={<GuitarDetail />} />
+                <Route path="/recordings" element={<Recordings />} />
+                <Route path="/food" element={<FoodGallery />} />
+                <Route path="/auth" element={<Auth />} />
+                <Route path="/admin" element={<Dashboard />} />
+                <Route path="/admin/music" element={<MusicManager />} />
+                <Route path="/admin/food" element={<FoodManager />} />
+                <Route path="/admin/guitar" element={<GuitarManager />} />
+                <Route path="/admin/settings" element={<Settings />} />
+                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </div>
           </div>
         </AuthProvider>
       </BrowserRouter>
