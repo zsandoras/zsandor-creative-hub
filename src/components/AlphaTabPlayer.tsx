@@ -87,6 +87,13 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       return;
     }
 
+    // Wait for CDN alphaTab to load
+    if (typeof window !== 'undefined' && !(window as any).alphaTab) {
+      logState("ERROR", "AlphaTab CDN not loaded yet");
+      setError("AlphaTab library not loaded. Please refresh the page.");
+      return;
+    }
+
     const container = document.getElementById("alphaTab");
     if (!container) {
       logState("ERROR", "Container #alphaTab not found");
