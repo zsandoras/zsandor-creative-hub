@@ -5,6 +5,7 @@ import { Slider } from "./ui/slider";
 import { Card } from "./ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
+import { cn } from "@/lib/utils";
 
 interface Track {
   id: string;
@@ -107,73 +108,116 @@ export const MusicPlayer = () => {
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
+  const [isExpanded, setIsExpanded] = useState(false);
+
   if (!tracks.length) return null;
 
   return (
-    <Card className="fixed bottom-6 right-6 w-80 bg-card/95 backdrop-blur-lg border-border shadow-2xl">
+    <Card 
+      className="fixed bottom-6 right-6 bg-card/95 backdrop-blur-lg border-border shadow-2xl transition-all duration-300"
+      style={{ width: isExpanded ? '320px' : '280px' }}
+      onMouseEnter={() => setIsExpanded(true)}
+      onMouseLeave={() => setIsExpanded(false)}
+    >
       <audio ref={audioRef} src={currentTrack?.file_url} />
       
-      <div className="p-4 space-y-3">
-        <div className="text-center">
-          <h3 className="font-semibold text-sm truncate">{currentTrack?.title}</h3>
-          {currentTrack?.artist && (
-            <p className="text-xs text-muted-foreground">{currentTrack.artist}</p>
-          )}
-        </div>
-
-        <Slider
-          value={[currentTime]}
-          max={duration || 100}
-          step={1}
-          onValueChange={handleSeek}
-          className="cursor-pointer"
-        />
-
-        <div className="flex justify-between text-xs text-muted-foreground">
-          <span>{formatTime(currentTime)}</span>
-          <span>{formatTime(duration)}</span>
-        </div>
-
-        <div className="flex items-center justify-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handlePrevious}
-            disabled={tracks.length <= 1}
-          >
-            <SkipBack className="h-4 w-4" />
-          </Button>
-
+      <div className="p-3">
+        {/* Compact header with play button and title */}
+        <div className="flex items-center gap-3 mb-2">
           <Button
             variant="default"
             size="icon"
             onClick={togglePlay}
-            className="h-10 w-10"
+            className="h-9 w-9 shrink-0"
           >
-            {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
+            {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
           </Button>
+          
+          <div className="flex-1 min-w-0">
+            <h3 className="font-semibold text-sm truncate">{currentTrack?.title}</h3>
+            {currentTrack?.artist && (
+              <p className="text-xs text-muted-foreground truncate">{currentTrack.artist}</p>
+            )}
+          </div>
 
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleNext}
-            disabled={tracks.length <= 1}
-          >
-            <SkipForward className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-1 shrink-0">
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleMute}>
+              {isMuted ? <VolumeX className="h-3 w-3" /> : <Volume2 className="h-3 w-3" />}
+            </Button>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" onClick={toggleMute}>
-            {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-          </Button>
+        {/* Expanded track list */}
+        {isExpanded && tracks.length > 1 && (
+          <div className="mb-3 max-h-48 overflow-y-auto space-y-1 animate-fade-in">
+            {tracks.map((track, index) => (
+              <button
+                key={track.id}
+                onClick={() => {
+                  setCurrentTrackIndex(index);
+                  setIsPlaying(true);
+                }}
+                className={cn(
+                  "w-full text-left p-2 rounded text-xs transition-colors",
+                  index === currentTrackIndex 
+                    ? "bg-primary/20 text-primary" 
+                    : "hover:bg-secondary text-muted-foreground"
+                )}
+              >
+                <div className="truncate font-medium">{track.title}</div>
+                {track.artist && <div className="truncate text-[10px]">{track.artist}</div>}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Expanded controls */}
+        {isExpanded && (
+          <div className="flex items-center justify-center gap-2 mb-3 animate-fade-in">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={handlePrevious}
+              disabled={tracks.length <= 1}
+            >
+              <SkipBack className="h-3 w-3" />
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={handleNext}
+              disabled={tracks.length <= 1}
+            >
+              <SkipForward className="h-3 w-3" />
+            </Button>
+
+            <div className="flex-1">
+              <Slider
+                value={[isMuted ? 0 : volume]}
+                max={100}
+                step={1}
+                onValueChange={(value) => setVolume(value[0])}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Progress bar at bottom */}
+        <div className="space-y-1">
           <Slider
-            value={[isMuted ? 0 : volume]}
-            max={100}
+            value={[currentTime]}
+            max={duration || 100}
             step={1}
-            onValueChange={(value) => setVolume(value[0])}
-            className="flex-1"
+            onValueChange={handleSeek}
+            className="cursor-pointer"
           />
+          <div className="flex justify-between text-[10px] text-muted-foreground">
+            <span>{formatTime(currentTime)}</span>
+            <span>{formatTime(duration)}</span>
+          </div>
         </div>
       </div>
     </Card>
