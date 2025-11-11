@@ -93,6 +93,8 @@ const AlphaTabControls = ({
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [originalBPM, setOriginalBPM] = useState<number | null>(null);
   const [currentBPM, setCurrentBPM] = useState<number | null>(null);
+  const [timeOffset, setTimeOffset] = useState(0);
+  const lastTimeRef = useRef(0);
   const [zoom, setZoom] = useState(100);
   const [countIn, setCountIn] = useState(false);
   const [metronome, setMetronome] = useState(false);
@@ -176,11 +178,13 @@ const AlphaTabControls = ({
 
     // Listen to player position changes for time tracking
     const positionHandler = (e: any) => {
-      // Freeze scrubber when not playing to avoid repeat aliasing on pause
-      if (!isPlaying && !e.isSeek) {
-        return;
-      }
       if (typeof e.currentTime === 'number') {
+        // Detect repeat/loop: if time decreased significantly, we looped back
+        if (lastTimeRef.current > 0 && e.currentTime < lastTimeRef.current - 1000) {
+          // Add the last time to offset to make scrubber monotonic
+          setTimeOffset(prev => prev + lastTimeRef.current);
+        }
+        lastTimeRef.current = e.currentTime;
         setCurrentTime(e.currentTime);
       }
       if (typeof e.endTime === 'number') {
@@ -205,7 +209,7 @@ const AlphaTabControls = ({
         api.playerPositionChanged.off(positionHandler);
       }
     };
-  }, [api, isPlaying]);
+  }, [api]);
 
   const togglePlayPause = () => {
     if (api) {
@@ -226,42 +230,11 @@ const AlphaTabControls = ({
     
     const newBPM = Math.max(20, Math.min(300, currentBPM + change));
     setCurrentBPM(newBPM);
-
-    // Capture current playback state and position
-    const wasPlaying = isPlaying;
-    const savedTime = currentTime;
     
-    // Modify the tempo in the score (affects rendered BPM text)
-    if (api.score && api.score.masterBars) {
-      for (const masterBar of api.score.masterBars) {
-        if (masterBar.tempoAutomation) {
-          masterBar.tempoAutomation.value = newBPM;
-        }
-      }
-      // Re-render to update the displayed BPM in the tablature without resetting playback UI
-      api.render();
-    }
-    
-    // Update playback speed based on BPM ratio (affects audio timing)
+    // Update playback speed based on BPM ratio (no render, no MIDI reload)
     const speed = newBPM / originalBPM;
     setPlaybackSpeed(speed);
     api.playbackSpeed = speed;
-
-    // Regenerate MIDI with new tempo and restore time without restart
-    if (typeof api.loadMidiForScore === "function") {
-      api.loadMidiForScore();
-      // Restore position shortly after MIDI is regenerated
-      window.setTimeout(() => {
-        try {
-          api.timePosition = savedTime;
-          if (wasPlaying) api.play();
-        } catch {}
-      }, 80);
-    } else {
-      // Fallback
-      api.timePosition = savedTime;
-      if (wasPlaying) api.play();
-    }
   };
 
   const handleZoomChange = (zoomLevel: number) => {
@@ -455,7 +428,11 @@ const AlphaTabControls = ({
 
   const handleSeek = (value: number[]) => {
     if (api) {
-      api.timePosition = value[0];
+      const seekTime = value[0] - timeOffset;
+      api.timePosition = Math.max(0, seekTime);
+      // Reset offset on manual seek
+      setTimeOffset(0);
+      lastTimeRef.current = seekTime;
     }
   };
 
@@ -704,17 +681,17 @@ const AlphaTabControls = ({
       {/* Bottom row: Full-width scrubber */}
       <div className="flex items-center gap-2 px-4 py-3 bg-muted/20 border-t border-border">
         <span className="text-sm text-muted-foreground whitespace-nowrap">
-          {formatTime(currentTime)}
+          {formatTime(currentTime + timeOffset)}
         </span>
         <Slider
-          value={[currentTime]}
+          value={[currentTime + timeOffset]}
           onValueChange={handleSeek}
-          max={duration}
+          max={duration + timeOffset}
           step={100}
           className="flex-1"
         />
         <span className="text-sm text-muted-foreground whitespace-nowrap">
-          {formatTime(duration)}
+          {formatTime(duration + timeOffset)}
         </span>
       </div>
 
