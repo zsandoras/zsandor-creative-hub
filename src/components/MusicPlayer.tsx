@@ -66,6 +66,12 @@ export const MusicPlayer = () => {
       const { index } = e.detail;
       setCurrentTrackIndex(index);
       setIsPlaying(true);
+      if (audio && tracks[index]) {
+        // Ensure immediate playback from user gesture
+        audio.src = tracks[index].file_url;
+        audio.currentTime = 0;
+        audio.play();
+      }
     };
 
     const handleTogglePlayback = () => {

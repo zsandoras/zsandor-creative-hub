@@ -18,24 +18,67 @@ export const WaveformVisualizer = ({
   const [waveformData, setWaveformData] = useState<number[]>([]);
 
   useEffect(() => {
-    // Generate more realistic waveform data
-    const bars = 180;
-    const data: number[] = [];
-    
-    // Create a wave-like pattern that looks more like actual audio
-    for (let i = 0; i < bars; i++) {
-      const position = i / bars;
-      // Create peaks and valleys that look more natural
-      const wave1 = Math.sin(position * Math.PI * 8) * 0.3;
-      const wave2 = Math.sin(position * Math.PI * 3) * 0.2;
-      const randomness = Math.random() * 0.2;
-      const baseHeight = 0.4;
-      
-      const value = Math.abs(baseHeight + wave1 + wave2 + randomness);
-      data.push(Math.min(value, 1));
+    if (!audioUrl) {
+      setWaveformData([]);
+      return;
     }
-    
-    setWaveformData(data);
+
+    let isCancelled = false;
+    const controller = new AbortController();
+
+    const analyze = async () => {
+      try {
+        const res = await fetch(audioUrl, { signal: controller.signal });
+        const arrayBuffer = await res.arrayBuffer();
+        const AudioCtx = (window.AudioContext || (window as any).webkitAudioContext);
+        const audioCtx = new AudioCtx();
+        const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer.slice(0));
+
+        const channels: Float32Array[] = [];
+        for (let ch = 0; ch < audioBuffer.numberOfChannels; ch++) {
+          channels.push(audioBuffer.getChannelData(ch));
+        }
+
+        const totalSamples = audioBuffer.length;
+        const bars = 180;
+        const samplesPerBar = Math.max(1, Math.floor(totalSamples / bars));
+        const peaks: number[] = [];
+
+        for (let i = 0; i < bars; i++) {
+          const start = i * samplesPerBar;
+          const end = Math.min((i + 1) * samplesPerBar, totalSamples);
+          let peak = 0;
+
+          for (let ch = 0; ch < channels.length; ch++) {
+            const data = channels[ch];
+            // Step through samples to speed up analysis
+            for (let s = start; s < end; s += 64) {
+              const v = Math.abs(data[s]);
+              if (v > peak) peak = v;
+            }
+          }
+
+          // Slightly boost quiet parts for better visibility
+          peaks.push(Math.min(1, Math.sqrt(peak)));
+        }
+
+        if (!isCancelled) setWaveformData(peaks);
+        audioCtx.close();
+      } catch (err) {
+        if (!isCancelled) {
+          // Fallback simple shape if decode fails
+          const bars = 180;
+          const data: number[] = Array.from({ length: bars }, (_, i) => 0.3 + 0.2 * Math.sin((i / bars) * Math.PI * 4));
+          setWaveformData(data.map((v) => Math.min(1, Math.abs(v))));
+        }
+      }
+    };
+
+    analyze();
+    return () => {
+      isCancelled = true;
+      controller.abort();
+    };
   }, [audioUrl]);
 
   useEffect(() => {
@@ -65,7 +108,9 @@ export const WaveformVisualizer = ({
 
       // Color based on whether this bar has been played
       if (index < progressPosition) {
-        ctx.fillStyle = "hsl(var(--primary))";
+        ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--primary')
+          ? `hsl(${getComputedStyle(document.documentElement).getPropertyValue('--primary')})`
+          : 'hsl(var(--primary))';
       } else {
         ctx.fillStyle = "hsl(var(--muted-foreground) / 0.3)";
       }
