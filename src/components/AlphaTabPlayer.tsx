@@ -27,12 +27,17 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
         // Dynamically import AlphaTab
         const AlphaTabApi = (await import("@coderline/alphatab")).AlphaTabApi;
         
-        // Initialize AlphaTab
+        // Initialize AlphaTab with CDN resources
         const settings = {
           file: fileUrl,
+          core: {
+            fontDirectory: "https://cdn.jsdelivr.net/npm/@coderline/alphatab@latest/dist/font/",
+            engine: "html5",
+          },
           player: {
             enablePlayer: true,
             enableCursor: true,
+            soundFont: "https://cdn.jsdelivr.net/npm/@coderline/alphatab@latest/dist/soundfont/sonivox.sf2",
           },
           display: {
             layoutMode: "page" as const,
