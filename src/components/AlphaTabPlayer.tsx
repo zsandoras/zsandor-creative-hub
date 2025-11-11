@@ -28,6 +28,7 @@ const AlphaTabPlayer = ({ fileUrl, file, title, onReset, defaultInstrument }: Al
   const [error, setError] = useState<string | null>(null);
   const [alphaTabLoaded, setAlphaTabLoaded] = useState<boolean>(!!window.alphaTab);
   const [containerWidth, setContainerWidth] = useState(100); // percentage
+  const [containerHeight, setContainerHeight] = useState(600); // pixels
 
   // Load AlphaTab script from CDN
   useEffect(() => {
@@ -198,7 +199,7 @@ const AlphaTabPlayer = ({ fileUrl, file, title, onReset, defaultInstrument }: Al
   };
 
 
-  const handleResize = (direction: 'left' | 'right', e: React.MouseEvent) => {
+  const handleHorizontalResize = (direction: 'left' | 'right', e: React.MouseEvent) => {
     e.preventDefault();
     const startX = e.clientX;
     const startWidth = containerWidth;
@@ -210,12 +211,12 @@ const AlphaTabPlayer = ({ fileUrl, file, title, onReset, defaultInstrument }: Al
       
       let newWidth;
       if (direction === 'left') {
-        newWidth = startWidth + (deltaPercent * 2); // *2 because we're growing from center
+        newWidth = startWidth - (deltaPercent * 2); // Subtract for left, so moving right decreases width
       } else {
-        newWidth = startWidth + (deltaPercent * 2);
+        newWidth = startWidth + (deltaPercent * 2); // Add for right
       }
       
-      setContainerWidth(Math.max(50, Math.min(200, newWidth)));
+      setContainerWidth(Math.max(50, Math.min(300, newWidth))); // Allow up to 300%
     };
     
     const handleMouseUp = () => {
@@ -231,18 +232,59 @@ const AlphaTabPlayer = ({ fileUrl, file, title, onReset, defaultInstrument }: Al
     document.body.style.userSelect = 'none';
   };
 
+  const handleVerticalResize = (direction: 'top' | 'bottom', e: React.MouseEvent) => {
+    e.preventDefault();
+    const startY = e.clientY;
+    const startHeight = containerHeight;
+    
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const deltaY = moveEvent.clientY - startY;
+      
+      let newHeight;
+      if (direction === 'top') {
+        newHeight = startHeight - (deltaY * 2); // Subtract for top
+      } else {
+        newHeight = startHeight + (deltaY * 2); // Add for bottom
+      }
+      
+      setContainerHeight(Math.max(300, Math.min(2000, newHeight))); // 300px to 2000px
+    };
+    
+    const handleMouseUp = () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+    
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    document.body.style.cursor = 'ns-resize';
+    document.body.style.userSelect = 'none';
+  };
+
   return (
     <>
       {/* Tablature Display - Custom Resizable */}
-      <div ref={wrapperRef} className="relative w-full flex justify-center">
+      <div ref={wrapperRef} className="relative w-full flex justify-center overflow-visible">
         <div 
           className="group relative transition-all duration-200" 
-          style={{ width: `${containerWidth}%`, minWidth: '400px', maxWidth: '100%' }}
+          style={{ width: `${containerWidth}%`, minWidth: '400px' }}
         >
+          {/* Top Resize Handle */}
+          <div
+            className="absolute left-0 right-0 top-0 h-1 bg-border/50 hover:bg-primary/50 cursor-ns-resize z-20 opacity-0 group-hover:opacity-100 transition-opacity"
+            onMouseDown={(e) => handleVerticalResize('top', e)}
+          >
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-muted/80 backdrop-blur-sm p-1 rounded">
+              <GripVertical className="h-4 w-4 text-muted-foreground rotate-90" />
+            </div>
+          </div>
+
           {/* Left Resize Handle */}
           <div
             className="absolute left-0 top-0 bottom-0 w-1 bg-border/50 hover:bg-primary/50 cursor-ew-resize z-20 opacity-0 group-hover:opacity-100 transition-opacity"
-            onMouseDown={(e) => handleResize('left', e)}
+            onMouseDown={(e) => handleHorizontalResize('left', e)}
           >
             <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-muted/80 backdrop-blur-sm p-1 rounded">
               <GripVertical className="h-4 w-4 text-muted-foreground" />
@@ -252,14 +294,24 @@ const AlphaTabPlayer = ({ fileUrl, file, title, onReset, defaultInstrument }: Al
           {/* Right Resize Handle */}
           <div
             className="absolute right-0 top-0 bottom-0 w-1 bg-border/50 hover:bg-primary/50 cursor-ew-resize z-20 opacity-0 group-hover:opacity-100 transition-opacity"
-            onMouseDown={(e) => handleResize('right', e)}
+            onMouseDown={(e) => handleHorizontalResize('right', e)}
           >
             <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-muted/80 backdrop-blur-sm p-1 rounded">
               <GripVertical className="h-4 w-4 text-muted-foreground" />
             </div>
           </div>
 
-          <Card className="relative p-4 bg-card border-2 border-border/50 group-hover:border-primary/50 transition-colors">
+          {/* Bottom Resize Handle */}
+          <div
+            className="absolute left-0 right-0 bottom-0 h-1 bg-border/50 hover:bg-primary/50 cursor-ns-resize z-20 opacity-0 group-hover:opacity-100 transition-opacity"
+            onMouseDown={(e) => handleVerticalResize('bottom', e)}
+          >
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-muted/80 backdrop-blur-sm p-1 rounded">
+              <GripVertical className="h-4 w-4 text-muted-foreground rotate-90" />
+            </div>
+          </div>
+
+          <Card className="relative p-4 bg-card border-2 border-border/50 group-hover:border-primary/50 transition-colors" style={{ height: `${containerHeight}px` }}>
             {error && (
               <div className="bg-destructive/10 border border-destructive/50 rounded-lg p-4 mb-4">
                 <p className="font-semibold text-destructive">Error Loading Tablature</p>
@@ -267,8 +319,8 @@ const AlphaTabPlayer = ({ fileUrl, file, title, onReset, defaultInstrument }: Al
               </div>
             )}
 
-            <div className="relative">
-              <div ref={containerRef} className="alphatab-container" />
+            <div className="relative h-full">
+              <div ref={containerRef} className="alphatab-container h-full" />
               {isLoading && (
                 <div className="absolute inset-0 flex items-center justify-center bg-card/60 backdrop-blur-sm">
                   <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
@@ -280,7 +332,7 @@ const AlphaTabPlayer = ({ fileUrl, file, title, onReset, defaultInstrument }: Al
 
           {/* Resize Hint */}
           <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-muted/80 backdrop-blur-sm text-xs text-muted-foreground px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
-            Drag edges to resize • {Math.round(containerWidth)}%
+            Drag edges to resize • {Math.round(containerWidth)}% × {containerHeight}px
           </div>
         </div>
       </div>
