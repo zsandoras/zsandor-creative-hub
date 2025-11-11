@@ -190,7 +190,42 @@ const AlphaTabControls = ({
 
   const handlePrint = () => {
     if (api && typeof api.print === 'function') {
-      api.print();
+      const originalOpen = window.open;
+      let popup: Window | null = null;
+      // Intercept the popup to auto-open the browser print dialog
+      (window as any).open = (...args: any[]) => {
+        const win = originalOpen.apply(window, args as any);
+        popup = win;
+        try {
+          win?.addEventListener('load', () => {
+            try {
+              win.focus();
+              win.print();
+            } catch {
+              // ignore
+            }
+          });
+        } catch {
+          // ignore
+        }
+        return win as Window | null;
+      };
+      try {
+        api.print();
+      } finally {
+        // Restore and fallback trigger in case load didn’t fire
+        (window as any).open = originalOpen;
+        if (popup) {
+          setTimeout(() => {
+            try {
+              popup!.focus();
+              popup!.print();
+            } catch {
+              // ignore
+            }
+          }, 800);
+        }
+      }
     }
   };
 
@@ -295,9 +330,8 @@ const AlphaTabControls = ({
   };
 
   const handleExportPDF = () => {
-    if (api && typeof api.print === 'function') {
-      api.print();
-    }
+    // Use AlphaTab print popup and auto-trigger the system print dialog (user can choose "Save as PDF")
+    handlePrint();
   };
 
   const handleSeek = (value: number[]) => {

@@ -88,6 +88,39 @@ const AlphaTabPlayer = ({ fileUrl, file, title, onReset, defaultInstrument }: Al
 
       api.scoreLoaded.on((score: any) => {
         setTracks(score.tracks);
+        // Ensure score header shows title and transcriber (arranger) on print and screen
+        try {
+          const at = window.alphaTab;
+          if (at?.model && at?.platform) {
+            if (!score.style) {
+              score.style = new at.model.ScoreStyle();
+            }
+            const HeaderFooterStyle = at.model.HeaderFooterStyle;
+            const ScoreSubElement = at.model.ScoreSubElement;
+            const TextAlign = at.platform.TextAlign;
+
+            // Title on the left (keeps default if already set)
+            score.style.headerAndFooter.set(
+              ScoreSubElement.Title,
+              new HeaderFooterStyle("%TITLE%", true, TextAlign.Left)
+            );
+
+            // Transcriber on the right as "arr. <name>"
+            score.style.headerAndFooter.set(
+              ScoreSubElement.Transcriber,
+              new HeaderFooterStyle("arr. %TABBER%", true, TextAlign.Right)
+            );
+
+            // Re-render score to apply header/footer style
+            if (typeof api.renderScore === 'function') {
+              api.renderScore(score);
+            } else {
+              api.render();
+            }
+          }
+        } catch (e) {
+          console.warn("Failed to apply header/footer style:", e);
+        }
       });
 
       api.renderFinished.on(() => {
