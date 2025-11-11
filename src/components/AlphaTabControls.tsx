@@ -72,16 +72,19 @@ const AlphaTabControls = ({
   useEffect(() => {
     if (!api) return;
 
-    const updateTime = () => {
-      const player = (api as any).player;
-      if (player) {
-        setCurrentTime(player.playbackRange?.startTick || 0);
-        setDuration(player.playbackRange?.endTick || 0);
-      }
+    // Listen to player position changes for time tracking
+    const positionHandler = (e: any) => {
+      setCurrentTime(e.currentTime);
+      setDuration(e.endTime);
     };
 
-    const interval = setInterval(updateTime, 100);
-    return () => clearInterval(interval);
+    api.playerPositionChanged.on(positionHandler);
+
+    return () => {
+      if (api.playerPositionChanged) {
+        api.playerPositionChanged.off(positionHandler);
+      }
+    };
   }, [api]);
 
   const togglePlayPause = () => {
@@ -151,20 +154,38 @@ const AlphaTabControls = ({
 
   const handleSynthInstrumentChange = (instrument: typeof INSTRUMENTS[0]) => {
     setCurrentInstrument(instrument);
-    if (api && (api as any).player) {
-      // Change the MIDI program for all channels
-      const player = (api as any).player;
-      if (player.midiEventsPlayedFilter) {
-        // Apply instrument change to synthesizer
-        for (let channel = 0; channel < 16; channel++) {
-          player.midiEventsPlayedFilter.push({
-            channel: channel,
-            command: 0xC0, // Program Change
-            data1: instrument.program,
-            data2: 0,
+    if (api) {
+      // Store the selected instrument for the next MIDI load
+      (api as any)._customInstrument = instrument.program;
+      
+      // Set up MIDI event interceptor to change program
+      const midiLoadHandler = (e: any) => {
+        if (e && e.midi) {
+          // Find all program change events and update them
+          e.midi.events.forEach((track: any) => {
+            if (track && Array.isArray(track)) {
+              track.forEach((event: any) => {
+                if (event && event.command === 0xC0) {
+                  // Program Change event
+                  event.data1 = instrument.program;
+                }
+              });
+            }
           });
         }
+      };
+
+      // Remove old handler if exists
+      if ((api as any)._midiLoadHandler) {
+        api.midiLoad.off((api as any)._midiLoadHandler);
       }
+      
+      // Store and add new handler
+      (api as any)._midiLoadHandler = midiLoadHandler;
+      api.midiLoad.on(midiLoadHandler);
+      
+      // Reload MIDI with new instrument
+      api.loadMidiForScore();
     }
   };
 
@@ -175,8 +196,8 @@ const AlphaTabControls = ({
     }
   };
 
-  const formatTime = (ticks: number) => {
-    const seconds = Math.floor(ticks / 1000);
+  const formatTime = (milliseconds: number) => {
+    const seconds = Math.floor(milliseconds / 1000);
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
