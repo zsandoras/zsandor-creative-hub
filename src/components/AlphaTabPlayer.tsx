@@ -241,222 +241,124 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       addDebugEvent("Init guard", "Already initializing, skipping");
       return;
     }
-    initializingRef.current = true;
 
-    // Cleanup previous instance
-    if (apiRef.current) {
-      try {
-        apiRef.current.destroy();
-      } catch (e) {
-        console.warn("Error destroying previous alphaTab instance:", e);
+    // Width check - ensure container has dimensions before init
+    const checkWidth = () => {
+      const width = containerRef.current?.offsetWidth || 0;
+      if (width === 0) {
+        addDebugEvent("Width check", "Container width is 0, retrying...");
+        return false;
       }
-      apiRef.current = null;
-    }
+      addDebugEvent("Width check", `Container width: ${width}px`);
+      return true;
+    };
 
-    setIsLoading(true);
-    setError(null);
-    setIsPlayerReady(false);
-    setTrackCount(0);
-    setLoadProgress(0);
-    loadProgressRef.current = 0;
-    readySetRef.current = false;
-    setDebugEvents([]);
+    // Retry width check with requestAnimationFrame
+    let widthCheckAttempts = 0;
+    const maxWidthChecks = 10;
+    
+    const initWhenReady = () => {
+      if (!checkWidth()) {
+        widthCheckAttempts++;
+        if (widthCheckAttempts < maxWidthChecks) {
+          requestAnimationFrame(initWhenReady);
+        } else {
+          addDebugEvent("Width check failed", "Max attempts reached, proceeding anyway");
+          startInit();
+        }
+      } else {
+        startInit();
+      }
+    };
 
-    addDebugEvent("Initializing AlphaTab", `File: ${fileUrl}`);
+    const startInit = () => {
+      initializingRef.current = true;
 
-    try {
+      // Cleanup previous instance
+      if (apiRef.current) {
+        try {
+          apiRef.current.destroy();
+        } catch (e) {
+          console.warn("Error destroying previous alphaTab instance:", e);
+        }
+        apiRef.current = null;
+      }
+
+      setIsLoading(true);
+      setError(null);
+      setIsPlayerReady(false);
+      setTrackCount(0);
+      setLoadProgress(0);
+      loadProgressRef.current = 0;
+      readySetRef.current = false;
+      setDebugEvents([]);
+
+      addDebugEvent("Initializing AlphaTab", `File: ${fileUrl}`);
+      addDebugEvent("Init mode", "player=disabled (display-only)");
+
       const soundFontUrl = `${window.location.origin}/soundfont/sonivox.sf2`;
       
-      // Probe SoundFont availability
+      // Probe SoundFont with a HEAD/Range request first
       probeSoundFont(soundFontUrl);
 
-      // Configure AlphaTab settings with explicit playerMode
-      const settings = {
-        core: {
-          file: fileUrl,
-          fontDirectory: "/font/",
-          useWorkers: false
-        },
-        display: {
-          layoutMode: alphaTab.LayoutMode.Page,
-          scale: 1.0
-        },
-        player: {
-          enablePlayer: true,
-          enableCursor: true,
-          enableAnimatedBeatCursor: true,
-          enableUserInteraction: true,
-          playerMode: alphaTab.PlayerMode?.EnabledSynthesizer ?? 2,
-          soundFont: soundFontUrl
-        }
-      };
-      
-      addDebugEvent(
-        "Settings configured",
-        `playerMode=${settings.player.playerMode}, soundFont=${soundFontUrl}`
-      );
+      try {
+        const settings = {
+          core: {
+            file: fileUrl,
+            fontDirectory: "/font/",
+            useWorkers: true,
+          },
+          player: {
+            enablePlayer: false, // DISABLED for isolation testing
+            enableCursor: false,
+            enableUserInteraction: false,
+          },
+          display: {
+            layoutMode: alphaTab.LayoutMode.Page,
+          },
+          notation: {
+            notationMode: alphaTab.NotationMode.GuitarPro,
+          },
+        };
 
-      // Create AlphaTab API with settings (file loads automatically)
-      const api = new alphaTab.AlphaTabApi(containerRef.current, settings);
-      apiRef.current = api;
-      addDebugEvent("API creation successful", "Instance created");
-
-      const player: any = api.player;
-      addDebugEvent(
-        "API player check",
-        `player exists: ${!!player}, AlphaTab version: ${typeof alphaTab.PlayerMode}`
-      );
-
-      // Log readiness properties
-      addDebugEvent(
-        "Player mode",
-        `actualPlayerMode=${api.actualPlayerMode}, isReadyForPlayback=${api.isReadyForPlayback}`
-      );
-
-      // SoundFont loads automatically from settings - don't call it manually
-
-      // Watchdog: 2-second check
-      setTimeout(() => {
-        if (!readySetRef.current) {
-          addDebugEvent("Watchdog 2s", "Synth pending – waiting for user gesture or force-init");
-        }
-      }, 2000);
-
-      // Watchdog: 6-second auto force-init
-      setTimeout(() => {
-        if (loadProgressRef.current < 100 || !readySetRef.current) {
-          addDebugEvent("Watchdog 6s", "No SoundFont progress after 6s – auto force-init");
-          forceInit();
-        }
-      }, 6000);
-
-      // Poll for isReadyForPlayback
-      let pollCount = 0;
-      const maxPolls = 40; // 10 seconds at 250ms intervals
-      const pollInterval = setInterval(() => {
-        pollCount++;
-        if (api.isReadyForPlayback) {
-          if (!readySetRef.current) {
-            readySetRef.current = true;
-            setIsPlayerReady(true);
-            const ctx = player?.audioContext || player?.context;
-            addDebugEvent(
-              "Readiness poll",
-              `isReadyForPlayback=true at ${pollCount * 250}ms, AudioContext=${ctx?.state}`
-            );
-            if (ctx) {
-              setDiagnostics((prev: any) => ({
-                ...prev,
-                audioContext: {
-                  state: ctx.state,
-                  sampleRate: ctx.sampleRate,
-                  baseLatency: ctx.baseLatency,
-                },
-              }));
-            }
-          }
-          clearInterval(pollInterval);
-        } else if (pollCount >= maxPolls) {
-          addDebugEvent(
-            "Readiness poll timeout",
-            `isReadyForPlayback still ${api.isReadyForPlayback} after 10s`
-          );
-          clearInterval(pollInterval);
-        }
-      }, 250);
-
-      // Event: midiLoad
-      api.midiLoad.on(() => {
-        addDebugEvent("MIDI Load", "MIDI conversion started");
-      });
-
-      // Event: midiLoaded
-      api.midiLoaded.on(() => {
-        addDebugEvent("MIDI Loaded", "MIDI conversion complete");
-      });
-
-      // Event: Score Loaded
-      api.scoreLoaded.on((score) => {
-        addDebugEvent("Score loaded", `${score?.tracks?.length || 0} tracks`);
-        setTrackCount(score?.tracks?.length || 0);
-      });
-
-      // Event: Render Finished
-      api.renderFinished.on((result) => {
-        addDebugEvent("Render finished");
-        setIsLoading(false);
-      });
-
-      // Event: SoundFont Loading Progress
-      api.soundFontLoad.on((e: any) => {
-        const percentage = Math.floor((e.loaded / e.total) * 100);
-        setLoadProgress(percentage);
-        loadProgressRef.current = percentage;
         addDebugEvent(
-          "SoundFont loading",
-          `${percentage}% (${e.loaded}/${e.total} bytes)`
+          "Settings configured",
+          "player=disabled (display-only mode)"
         );
-      });
 
-      // Event: SoundFont Loaded
-      api.soundFontLoaded.on(() => {
-        addDebugEvent("SoundFont loaded", "Ready for playback");
-        setLoadProgress(100);
-        loadProgressRef.current = 100;
-      });
+        // Create AlphaTab API with settings (file loads automatically)
+        const api = new alphaTab.AlphaTabApi(containerRef.current, settings);
+        apiRef.current = api;
+        addDebugEvent("API creation successful", "Instance created");
 
-      // Event: Player Ready
-      api.playerReady.on(() => {
-        const player: any = api.player;
-        const ctx = player?.audioContext || player?.context;
-        const ctxInfo = ctx ? `AudioContext: ${ctx.state}, ${ctx.sampleRate}Hz` : "No AudioContext";
-        addDebugEvent("Player ready", ctxInfo);
-        setIsPlayerReady(true);
-        
-        if (ctx) {
-          setDiagnostics((prev: any) => ({
-            ...prev,
-            audioContext: {
-              state: ctx.state,
-              sampleRate: ctx.sampleRate,
-              baseLatency: ctx.baseLatency,
-            },
-          }));
-        }
-      });
+        // Event listeners - minimal set for display-only mode
+        api.scoreLoaded.on((score: any) => {
+          addDebugEvent("Score loaded", `Track count: ${score.tracks.length}`);
+          setTrackCount(score.tracks.length);
+        });
 
-      // Event: Player State Changed
-      api.playerStateChanged.on((e: any) => {
-        const isPlaying = e.state === 1; // 1 = Playing
-        setPlayerState((prev) => ({ ...prev, isPlaying }));
-        addDebugEvent("Player state", isPlaying ? "Playing" : "Paused");
-      });
+        api.renderFinished.on(() => {
+          addDebugEvent("Render finished", "Tablature rendered successfully");
+          setIsLoading(false);
+        });
 
-      // Event: Player Position Changed
-      api.playerPositionChanged.on((e: any) => {
-        setPlayerState((prev) => ({
-          ...prev,
-          currentTime: e.currentTime / 1000,
-          duration: e.endTime / 1000,
-        }));
-      });
+        api.error.on((error: any) => {
+          const errorMsg = error?.message || error?.toString?.() || "Unknown error";
+          addDebugEvent("AlphaTab error", errorMsg);
+          setError(`AlphaTab error: ${errorMsg}`);
+        });
 
-      // Event: Error handling
-      api.error.on((e: any) => {
+        addDebugEvent("Event listeners registered", "Basic events subscribed (display-only)");
+
+      } catch (e: any) {
         const message = e?.message || e?.toString?.() || "Unknown error";
-        addDebugEvent("Error", message);
-        setError(`Failed to load tablature: ${message}`);
+        addDebugEvent("Initialization error", message);
+        setError(`Failed to initialize: ${message}`);
         setIsLoading(false);
-      });
+      }
+    };
 
-      addDebugEvent("Event listeners registered", "All events subscribed");
-
-    } catch (e: any) {
-      const message = e?.message || e?.toString?.() || "Unknown error";
-      addDebugEvent("Initialization error", message);
-      setError(`Failed to initialize: ${message}`);
-      setIsLoading(false);
-    }
+    initWhenReady();
 
     return () => {
       initializingRef.current = false;
@@ -539,19 +441,18 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
-  if (error) {
-    return (
-      <Card className="p-8 bg-card/50 backdrop-blur">
-        <h2 className="text-xl font-semibold text-destructive mb-4">Error Loading Tablature</h2>
-        <p className="text-muted-foreground">{error}</p>
-      </Card>
-    );
-  }
-
   return (
     <div className="space-y-6">
       {/* Tablature Display */}
       <Card className="p-4 bg-white">
+        {/* Error Banner */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+            <p className="font-semibold text-red-700">Error Loading Tablature</p>
+            <p className="text-sm text-red-600 mt-1">{error}</p>
+          </div>
+        )}
+
         {isLoading && (
           <div className="text-center py-8">
             <p className="text-muted-foreground mb-2">
@@ -565,8 +466,7 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
           </div>
         )}
         <div 
-          ref={containerRef} 
-          data-alphatab
+          ref={containerRef}
           style={{ minHeight: '600px', width: '100%' }}
         />
       </Card>
