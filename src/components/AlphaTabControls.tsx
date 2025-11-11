@@ -178,6 +178,10 @@ const AlphaTabControls = ({
 
     // Listen to player position changes for time tracking
     const positionHandler = (e: any) => {
+      // Freeze scrubber updates when paused (unless it's a manual seek)
+      if (!isPlaying && !(e && e.isSeek)) {
+        return;
+      }
       if (typeof e.currentTime === 'number') {
         // Only detect repeats when playing to avoid false positives during pause
         if (isPlaying && lastTimeRef.current > 0 && e.currentTime < lastTimeRef.current - 1000) {
