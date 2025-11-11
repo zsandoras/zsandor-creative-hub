@@ -14,9 +14,10 @@ interface AlphaTabPlayerProps {
   file?: File;
   title?: string;
   onReset?: () => void;
+  defaultInstrument?: { name: string; program: number } | null;
 }
 
-const AlphaTabPlayer = ({ fileUrl, file, title, onReset }: AlphaTabPlayerProps) => {
+const AlphaTabPlayer = ({ fileUrl, file, title, onReset, defaultInstrument }: AlphaTabPlayerProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const apiRef = useRef<any>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -192,6 +193,7 @@ const AlphaTabPlayer = ({ fileUrl, file, title, onReset }: AlphaTabPlayerProps) 
           fileUrl={fileUrl}
           onOpenFile={onReset}
           tracks={tracks}
+          defaultInstrument={defaultInstrument}
         />
       )}
     </div>

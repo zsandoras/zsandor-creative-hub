@@ -11,6 +11,47 @@ import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Trash2, ArrowLeft } from "lucide-react";
 import { Link } from "react-router-dom";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+const INSTRUMENTS = [
+  { name: "Violin", program: 40 },
+  { name: "Viola", program: 41 },
+  { name: "Cello", program: 42 },
+  { name: "Contrabass", program: 43 },
+  { name: "Acoustic Guitar (nylon)", program: 24 },
+  { name: "Acoustic Guitar (steel)", program: 25 },
+  { name: "Electric Guitar (jazz)", program: 26 },
+  { name: "Electric Guitar (clean)", program: 27 },
+  { name: "Electric Guitar (muted)", program: 28 },
+  { name: "Overdriven Guitar", program: 29 },
+  { name: "Distortion Guitar", program: 30 },
+  { name: "Guitar Harmonics", program: 31 },
+  { name: "Acoustic Bass", program: 32 },
+  { name: "Electric Bass (finger)", program: 33 },
+  { name: "Electric Bass (pick)", program: 34 },
+  { name: "Fretless Bass", program: 35 },
+  { name: "Piano", program: 0 },
+  { name: "Electric Piano", program: 4 },
+  { name: "Harpsichord", program: 6 },
+  { name: "Organ", program: 16 },
+  { name: "Accordion", program: 21 },
+  { name: "Strings Ensemble", program: 48 },
+  { name: "Synth Strings", program: 50 },
+  { name: "Choir Aahs", program: 52 },
+  { name: "Trumpet", program: 56 },
+  { name: "Trombone", program: 57 },
+  { name: "French Horn", program: 60 },
+  { name: "Saxophone", program: 65 },
+  { name: "Flute", program: 73 },
+  { name: "Synth Lead", program: 80 },
+  { name: "Synth Pad", program: 88 },
+];
 
 interface GuitarEmbed {
   id: string;
@@ -19,6 +60,7 @@ interface GuitarEmbed {
   file_url: string | null;
   description: string | null;
   display_order: number;
+  default_instrument: { name: string; program: number } | null;
 }
 
 const GuitarManager = () => {
@@ -26,6 +68,7 @@ const GuitarManager = () => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const [selectedInstrument, setSelectedInstrument] = useState<string>("40");
   const [uploading, setUploading] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -39,7 +82,10 @@ const GuitarManager = () => {
         .order("display_order", { ascending: true });
       
       if (error) throw error;
-      return data as GuitarEmbed[];
+      return (data || []).map((item: any) => ({
+        ...item,
+        default_instrument: item.default_instrument as { name: string; program: number } | null,
+      })) as GuitarEmbed[];
     },
   });
 
@@ -109,6 +155,9 @@ const GuitarManager = () => {
         .from("guitar-files")
         .getPublicUrl(filePath);
 
+      // Get selected instrument
+      const instrument = INSTRUMENTS.find((i) => i.program === Number(selectedInstrument));
+
       // Insert into database
       const { error: insertError } = await supabase
         .from("guitar_embeds")
@@ -117,6 +166,7 @@ const GuitarManager = () => {
           file_url: publicUrl,
           description: description || null,
           display_order: embeds.length,
+          default_instrument: instrument ? { name: instrument.name, program: instrument.program } : null,
         });
 
       if (insertError) throw insertError;
@@ -124,6 +174,7 @@ const GuitarManager = () => {
       toast({ title: "Guitar Pro file uploaded successfully!" });
       setTitle("");
       setDescription("");
+      setSelectedInstrument("40");
       setFile(null);
       // Reset file input
       const fileInput = document.getElementById("gpFile") as HTMLInputElement;
@@ -183,6 +234,21 @@ const GuitarManager = () => {
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Optional description"
               />
+            </div>
+            <div>
+              <Label htmlFor="instrument">Default Instrument *</Label>
+              <Select value={selectedInstrument} onValueChange={setSelectedInstrument}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select an instrument" />
+                </SelectTrigger>
+                <SelectContent className="max-h-80">
+                  {INSTRUMENTS.map((instrument) => (
+                    <SelectItem key={instrument.program} value={String(instrument.program)}>
+                      {instrument.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <Label htmlFor="gpFile">Guitar Pro File *</Label>

@@ -13,6 +13,7 @@ interface GuitarEmbed {
   embed_code: string | null;
   file_url: string | null;
   description: string | null;
+  default_instrument: { name: string; program: number } | null;
 }
 
 const GuitarDetail = () => {
@@ -28,7 +29,10 @@ const GuitarDetail = () => {
         .single();
       
       if (error) throw error;
-      return data as GuitarEmbed;
+      return {
+        ...data,
+        default_instrument: data.default_instrument as { name: string; program: number } | null,
+      } as GuitarEmbed;
     },
     enabled: !!id,
   });
@@ -59,7 +63,11 @@ const GuitarDetail = () => {
             </Card>
             
             {embed.file_url ? (
-              <AlphaTabPlayer fileUrl={embed.file_url} title={embed.title} />
+              <AlphaTabPlayer 
+                fileUrl={embed.file_url} 
+                title={embed.title}
+                defaultInstrument={embed.default_instrument}
+              />
             ) : embed.embed_code ? (
               <Card className="p-6 bg-card/50 backdrop-blur">
                 <div 

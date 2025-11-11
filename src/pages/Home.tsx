@@ -2,6 +2,7 @@ import { Music2, Guitar, Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Link } from "react-router-dom";
+import { EditableText } from "@/components/EditableText";
 
 const Home = () => {
   return (
@@ -21,9 +22,13 @@ const Home = () => {
             </span>
           </h1>
           
-          <p className="text-xl md:text-2xl text-muted-foreground mb-12 max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-200">
-            Musician, guitarist, and creative soul exploring the art of sound and taste
-          </p>
+          <EditableText
+            pageKey="home"
+            contentKey="hero_subtitle"
+            defaultValue="Musician, guitarist, and creative soul exploring the art of sound and taste"
+            className="text-xl md:text-2xl text-muted-foreground mb-12 max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-200"
+            as="p"
+          />
           
           <div className="flex flex-wrap gap-4 justify-center animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-300">
             <Link to="/guitar">
@@ -46,10 +51,20 @@ const Home = () => {
         <div className="grid md:grid-cols-3 gap-8">
           <Card className="p-8 hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 bg-card/50 backdrop-blur">
             <Guitar className="h-12 w-12 text-primary mb-4" />
-            <h3 className="text-2xl font-bold mb-3">Guitar Pro</h3>
-            <p className="text-muted-foreground mb-4">
-              Explore my guitar compositions and tablatures. Each piece tells a story through strings.
-            </p>
+            <EditableText
+              pageKey="home"
+              contentKey="guitar_title"
+              defaultValue="Guitar Pro"
+              className="text-2xl font-bold mb-3"
+              as="h3"
+            />
+            <EditableText
+              pageKey="home"
+              contentKey="guitar_description"
+              defaultValue="Explore my guitar compositions and tablatures. Each piece tells a story through strings."
+              className="text-muted-foreground mb-4"
+              as="p"
+            />
             <Link to="/guitar">
               <Button variant="ghost" className="group">
                 View Collection
@@ -60,10 +75,20 @@ const Home = () => {
 
           <Card className="p-8 hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 bg-card/50 backdrop-blur">
             <Camera className="h-12 w-12 text-primary mb-4" />
-            <h3 className="text-2xl font-bold mb-3">Culinary Art</h3>
-            <p className="text-muted-foreground mb-4">
-              A visual journey through my culinary creations. Food as art, crafted with passion.
-            </p>
+            <EditableText
+              pageKey="home"
+              contentKey="food_title"
+              defaultValue="Culinary Art"
+              className="text-2xl font-bold mb-3"
+              as="h3"
+            />
+            <EditableText
+              pageKey="home"
+              contentKey="food_description"
+              defaultValue="A visual journey through my culinary creations. Food as art, crafted with passion."
+              className="text-muted-foreground mb-4"
+              as="p"
+            />
             <Link to="/food">
               <Button variant="ghost" className="group">
                 Browse Gallery
@@ -74,10 +99,20 @@ const Home = () => {
 
           <Card className="p-8 hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 bg-card/50 backdrop-blur">
             <Music2 className="h-12 w-12 text-primary mb-4" />
-            <h3 className="text-2xl font-bold mb-3">Music Player</h3>
-            <p className="text-muted-foreground mb-4">
-              Listen to my compositions. The music player in the corner brings my work to your ears.
-            </p>
+            <EditableText
+              pageKey="home"
+              contentKey="music_title"
+              defaultValue="Music Player"
+              className="text-2xl font-bold mb-3"
+              as="h3"
+            />
+            <EditableText
+              pageKey="home"
+              contentKey="music_description"
+              defaultValue="Listen to my compositions. The music player in the corner brings my work to your ears."
+              className="text-muted-foreground mb-4"
+              as="p"
+            />
             <Button variant="ghost" disabled className="opacity-50">
               Playing Now
             </Button>

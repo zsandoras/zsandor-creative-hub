@@ -30,6 +30,7 @@ interface AlphaTabControlsProps {
   fileUrl?: string;
   onOpenFile?: () => void;
   tracks?: any[];
+  defaultInstrument?: { name: string; program: number } | null;
 }
 
 // Common MIDI instruments
@@ -75,6 +76,7 @@ const AlphaTabControls = ({
   fileUrl,
   onOpenFile,
   tracks = [],
+  defaultInstrument,
 }: AlphaTabControlsProps) => {
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [zoom, setZoom] = useState(100);
@@ -88,8 +90,13 @@ const AlphaTabControls = ({
   const [volume, setVolume] = useState(80);
 
   useEffect(() => {
-    loadDefaultInstrument();
-  }, []);
+    // Load default instrument from prop or fallback to settings
+    if (defaultInstrument) {
+      setCurrentInstrument(defaultInstrument);
+    } else {
+      loadDefaultInstrument();
+    }
+  }, [defaultInstrument]);
 
   const loadDefaultInstrument = async () => {
     try {
@@ -97,7 +104,7 @@ const AlphaTabControls = ({
         .from("app_settings")
         .select("value")
         .eq("key", "default_instrument")
-        .single();
+        .maybeSingle();
 
       if (data?.value && typeof data.value === 'object' && 'program' in data.value) {
         const defaultInst = INSTRUMENTS.find((i) => i.program === (data.value as any).program);
