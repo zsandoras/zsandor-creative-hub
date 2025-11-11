@@ -86,13 +86,6 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
         const modeName = (alphaTab as any).PlayerMode?.[mode] ?? String(mode);
         log(`Player actual mode: ${mode} (${modeName})`);
       } catch {}
-      
-      try {
-        api.load(fileUrl as any);
-        log('api.load(fileUrl) called');
-      } catch (e: any) {
-        log(`api.load failed: ${e?.message || e}`);
-      }
 
       const timeoutId = window.setTimeout(() => {
         log('Render timeout after 15s');
