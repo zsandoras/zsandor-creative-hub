@@ -26,18 +26,32 @@ const AlphaTabPlayer = ({ fileUrl, file, title, onReset }: AlphaTabPlayerProps) 
   const [tracks, setTracks] = useState<any[]>([]);
   const [selectedTrackIndex, setSelectedTrackIndex] = useState(0);
   const [playbackSpeed, setPlaybackSpeed] = useState(100);
-  const [error, setError] = useState<string | null>(null);
+const [error, setError] = useState<string | null>(null);
+  const [alphaTabLoaded, setAlphaTabLoaded] = useState<boolean>(!!window.alphaTab);
 
   // Load AlphaTab script from CDN
   useEffect(() => {
-    if (window.alphaTab) return;
+    if (window.alphaTab) {
+      setAlphaTabLoaded(true);
+      return;
+    }
 
     const script = document.createElement("script");
     script.src = "https://cdn.jsdelivr.net/npm/@coderline/alphatab@latest/dist/alphaTab.js";
     script.async = true;
+    script.onload = () => {
+      setAlphaTabLoaded(true);
+    };
+    script.onerror = () => {
+      console.error("Failed to load AlphaTab CDN script");
+      setError("Failed to load AlphaTab player");
+      setIsLoading(false);
+    };
     document.body.appendChild(script);
 
     return () => {
+      script.onload = null;
+      script.onerror = null;
       if (script.parentNode) {
         script.parentNode.removeChild(script);
       }
@@ -46,8 +60,9 @@ const AlphaTabPlayer = ({ fileUrl, file, title, onReset }: AlphaTabPlayerProps) 
 
   // Initialize AlphaTab
   useEffect(() => {
-    if (!containerRef.current || !window.alphaTab) return;
+    if (!containerRef.current || !alphaTabLoaded || !window.alphaTab) return;
     if (apiRef.current) return;
+    setIsLoading(true);
 
     try {
       const api = new window.alphaTab.AlphaTabApi(containerRef.current, {
@@ -106,7 +121,7 @@ const AlphaTabPlayer = ({ fileUrl, file, title, onReset }: AlphaTabPlayerProps) 
         apiRef.current = null;
       }
     };
-  }, [fileUrl, file]);
+  }, [alphaTabLoaded, fileUrl, file]);
 
   const loadFile = async (api: any) => {
     try {
@@ -159,7 +174,7 @@ const AlphaTabPlayer = ({ fileUrl, file, title, onReset }: AlphaTabPlayerProps) 
   return (
     <div className="space-y-6">
       {/* Tablature Display */}
-      <Card className="p-4 bg-card">
+      <Card className="relative p-4 bg-card">
         {error && (
           <div className="bg-destructive/10 border border-destructive/50 rounded-lg p-4 mb-4">
             <p className="font-semibold text-destructive">Error Loading Tablature</p>
