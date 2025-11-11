@@ -86,7 +86,7 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
           enableCursor: true,
           enableAnimatedBeatCursor: true,
           enableUserInteraction: true,
-          soundFont: "/soundfont/sonivox.sf2"
+          soundFont: `${window.location.origin}/soundfont/sonivox.sf2`
         }
       };
       
