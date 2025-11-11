@@ -61,16 +61,24 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
     }
 
     try {
-      // Set data attributes on container and let alphaTab handle everything
-      containerRef.current.setAttribute('data-file', fileUrl);
-      containerRef.current.setAttribute('data-soundfont', window.location.origin + '/soundfont/sonivox.sf2');
-      containerRef.current.setAttribute('data-player', 'true');
-      containerRef.current.setAttribute('data-enable-cursor', 'true');
-      containerRef.current.setAttribute('data-enable-animated-beat-cursor', 'true');
+      // Use Settings object for proper initialization
+      const settings = new alphaTab.Settings();
+      settings.core.fontDirectory = "/font/";
+      settings.core.useWorkers = false;
+      settings.display.layoutMode = alphaTab.LayoutMode.Page;
+      settings.player.enablePlayer = true;
+      settings.player.enableCursor = true;
+      settings.player.enableAnimatedBeatCursor = true;
+      settings.player.soundFont = window.location.origin + "/soundfont/sonivox.sf2";
+      settings.core.file = fileUrl;
       
-      log(`AlphaTab data attributes set. SoundFont: ${window.location.origin}/soundfont/sonivox.sf2`);
+      if (viewportRef.current) {
+        (settings.player as any).scrollElement = viewportRef.current;
+      }
+      
+      log(`AlphaTab settings prepared. SoundFont: ${settings.player.soundFont}`);
 
-      const api = new alphaTab.AlphaTabApi(containerRef.current, null as any);
+      const api = new alphaTab.AlphaTabApi(containerRef.current, settings);
       apiRef.current = api;
       log('AlphaTabApi created');
 
