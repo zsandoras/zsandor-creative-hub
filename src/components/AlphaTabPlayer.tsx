@@ -453,14 +453,12 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
           </div>
         )}
 
-        {/* AlphaTab Container with official DOM structure */}
-        {!needsUserGesture && (
-          <div id="alphaTab" className="at-wrap">
-            <div className="at-content">
-              <div className="at-viewport"></div>
-            </div>
+        {/* AlphaTab Container - always rendered for DOM availability */}
+        <div id="alphaTab" className="at-wrap" style={{ display: needsUserGesture ? 'none' : 'block' }}>
+          <div className="at-content">
+            <div className="at-viewport"></div>
           </div>
-        )}
+        </div>
       </Card>
 
       {/* Custom Controls */}
