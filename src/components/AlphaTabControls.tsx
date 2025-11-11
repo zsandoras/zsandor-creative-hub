@@ -33,6 +33,10 @@ interface AlphaTabControlsProps {
 
 // Common MIDI instruments
 const INSTRUMENTS = [
+  { name: "Violin", program: 40 },
+  { name: "Viola", program: 41 },
+  { name: "Cello", program: 42 },
+  { name: "Contrabass", program: 43 },
   { name: "Acoustic Guitar (nylon)", program: 24 },
   { name: "Acoustic Guitar (steel)", program: 25 },
   { name: "Electric Guitar (jazz)", program: 26 },
@@ -40,13 +44,26 @@ const INSTRUMENTS = [
   { name: "Electric Guitar (muted)", program: 28 },
   { name: "Overdriven Guitar", program: 29 },
   { name: "Distortion Guitar", program: 30 },
+  { name: "Guitar Harmonics", program: 31 },
+  { name: "Acoustic Bass", program: 32 },
   { name: "Electric Bass (finger)", program: 33 },
   { name: "Electric Bass (pick)", program: 34 },
-  { name: "Acoustic Bass", program: 32 },
+  { name: "Fretless Bass", program: 35 },
   { name: "Piano", program: 0 },
   { name: "Electric Piano", program: 4 },
-  { name: "Strings", program: 48 },
+  { name: "Harpsichord", program: 6 },
+  { name: "Organ", program: 16 },
+  { name: "Accordion", program: 21 },
+  { name: "Strings Ensemble", program: 48 },
+  { name: "Synth Strings", program: 50 },
+  { name: "Choir Aahs", program: 52 },
+  { name: "Trumpet", program: 56 },
+  { name: "Trombone", program: 57 },
+  { name: "French Horn", program: 60 },
+  { name: "Saxophone", program: 65 },
+  { name: "Flute", program: 73 },
   { name: "Synth Lead", program: 80 },
+  { name: "Synth Pad", program: 88 },
 ];
 
 const AlphaTabControls = ({
@@ -283,9 +300,9 @@ const AlphaTabControls = ({
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="gap-1">
-                <Guitar className="h-4 w-4" />
-                <span className="hidden sm:inline">Synth</span>
+              <Button variant="ghost" size="sm" className="gap-1 max-w-[180px]">
+                <Guitar className="h-4 w-4 flex-shrink-0" />
+                <span className="hidden sm:inline truncate">{currentInstrument.name}</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="max-h-80 overflow-y-auto">
