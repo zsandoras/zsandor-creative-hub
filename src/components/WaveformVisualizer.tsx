@@ -104,7 +104,8 @@ export const WaveformVisualizer = ({
     waveformData.forEach((value, index) => {
       const barHeight = value * rect.height * 0.8;
       const x = index * barWidth;
-      const progressPosition = progress * waveformData.length;
+      const clampedProgress = Math.max(0, Math.min(1, Number.isFinite(progress as number) ? (progress as number) : 0));
+      const progressPosition = clampedProgress * waveformData.length;
 
       // Color based on whether this bar has been played
       if (index < progressPosition) {
