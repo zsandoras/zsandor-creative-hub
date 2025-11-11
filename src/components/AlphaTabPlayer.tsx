@@ -123,6 +123,16 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
             selectedTracks: [0],
           }));
           log(`Loaded ${tracks.length} tracks`);
+          
+          // Manually trigger soundfont load after render
+          const soundFontUrl = window.location.origin + "/soundfont/sonivox.sf2";
+          log(`🎵 Manually loading soundFont from: ${soundFontUrl}`);
+          try {
+            api.loadSoundFontFromUrl(soundFontUrl, false);
+            log('🎵 loadSoundFontFromUrl() called');
+          } catch (e: any) {
+            log(`❌ loadSoundFontFromUrl failed: ${e?.message || e}`);
+          }
         }
       });
 
