@@ -49,6 +49,8 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
     },
   });
   const loadProgressRef = useRef(0);
+  const initializingRef = useRef(false);
+  const readySetRef = useRef(false);
 
   const addDebugEvent = (event: string, details?: string) => {
     const timestamp = new Date().toLocaleTimeString();
@@ -234,6 +236,13 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
   useEffect(() => {
     if (!containerRef.current) return;
 
+    // Prevent double initialization
+    if (initializingRef.current) {
+      addDebugEvent("Init guard", "Already initializing, skipping");
+      return;
+    }
+    initializingRef.current = true;
+
     // Cleanup previous instance
     if (apiRef.current) {
       try {
@@ -250,6 +259,7 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
     setTrackCount(0);
     setLoadProgress(0);
     loadProgressRef.current = 0;
+    readySetRef.current = false;
     setDebugEvents([]);
 
     addDebugEvent("Initializing AlphaTab", `File: ${fileUrl}`);
@@ -289,10 +299,11 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       // Create AlphaTab API with settings (file loads automatically)
       const api = new alphaTab.AlphaTabApi(containerRef.current, settings);
       apiRef.current = api;
+      addDebugEvent("API creation successful", "Instance created");
 
       const player: any = api.player;
       addDebugEvent(
-        "API created",
+        "API player check",
         `player exists: ${!!player}, AlphaTab version: ${typeof alphaTab.PlayerMode}`
       );
 
@@ -302,39 +313,47 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
         `actualPlayerMode=${api.actualPlayerMode}, isReadyForPlayback=${api.isReadyForPlayback}`
       );
 
-      // Use the documented loadSoundFontFromUrl method
-      try {
-        if (api.loadSoundFontFromUrl) {
-          (api as any).loadSoundFontFromUrl(soundFontUrl, true);
-          addDebugEvent("loadSoundFontFromUrl()", "initiated");
-        } else {
-          addDebugEvent("loadSoundFontFromUrl", "method not available");
+      // SoundFont loads automatically from settings - don't call it manually
+
+      // Watchdog: 2-second check
+      setTimeout(() => {
+        if (!readySetRef.current) {
+          addDebugEvent("Watchdog 2s", "Synth pending – waiting for user gesture or force-init");
         }
-      } catch (e: any) {
-        addDebugEvent("loadSoundFontFromUrl error", e.message);
-      }
+      }, 2000);
+
+      // Watchdog: 6-second auto force-init
+      setTimeout(() => {
+        if (loadProgressRef.current < 100 || !readySetRef.current) {
+          addDebugEvent("Watchdog 6s", "No SoundFont progress after 6s – auto force-init");
+          forceInit();
+        }
+      }, 6000);
 
       // Poll for isReadyForPlayback
       let pollCount = 0;
       const maxPolls = 40; // 10 seconds at 250ms intervals
       const pollInterval = setInterval(() => {
         pollCount++;
-        if (api.isReadyForPlayback && !isPlayerReady) {
-          setIsPlayerReady(true);
-          const ctx = player?.audioContext || player?.context;
-          addDebugEvent(
-            "Readiness poll",
-            `isReadyForPlayback=true at ${pollCount * 250}ms, AudioContext=${ctx?.state}`
-          );
-          if (ctx) {
-            setDiagnostics((prev: any) => ({
-              ...prev,
-              audioContext: {
-                state: ctx.state,
-                sampleRate: ctx.sampleRate,
-                baseLatency: ctx.baseLatency,
-              },
-            }));
+        if (api.isReadyForPlayback) {
+          if (!readySetRef.current) {
+            readySetRef.current = true;
+            setIsPlayerReady(true);
+            const ctx = player?.audioContext || player?.context;
+            addDebugEvent(
+              "Readiness poll",
+              `isReadyForPlayback=true at ${pollCount * 250}ms, AudioContext=${ctx?.state}`
+            );
+            if (ctx) {
+              setDiagnostics((prev: any) => ({
+                ...prev,
+                audioContext: {
+                  state: ctx.state,
+                  sampleRate: ctx.sampleRate,
+                  baseLatency: ctx.baseLatency,
+                },
+              }));
+            }
           }
           clearInterval(pollInterval);
         } else if (pollCount >= maxPolls) {
@@ -430,6 +449,8 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
         setIsLoading(false);
       });
 
+      addDebugEvent("Event listeners registered", "All events subscribed");
+
     } catch (e: any) {
       const message = e?.message || e?.toString?.() || "Unknown error";
       addDebugEvent("Initialization error", message);
@@ -438,6 +459,7 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
     }
 
     return () => {
+      initializingRef.current = false;
       if (apiRef.current) {
         try {
           apiRef.current.destroy();
