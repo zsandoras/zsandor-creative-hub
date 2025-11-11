@@ -97,7 +97,7 @@ const AlphaTabPlayer = ({ fileUrl, file, title, onReset, defaultInstrument }: Al
           soundFont: "https://cdn.jsdelivr.net/npm/@coderline/alphatab@latest/dist/soundfont/sonivox.sf2",
           enableCursor: true,
           scrollMode: window.alphaTab.ScrollMode.OffScreen,
-          scrollElement: containerRef.current?.parentElement, // Scroll within the Card container
+          scrollElement: containerRef.current, // This is the actual scrollable container
         },
       });
 
