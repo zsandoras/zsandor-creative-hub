@@ -136,6 +136,10 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       settings.core.useWorkers = true;
       settings.display.layoutMode = alphaTab.LayoutMode.Page;
       
+      // CRITICAL: Must enable player first before setting playerMode
+      settings.player.enablePlayer = true;
+      log('✅ Player enabled (enablePlayer = true)');
+      
       // Validate and set playerMode with fallback
       log(`PlayerMode enum available: ${JSON.stringify(Object.keys(alphaTab.PlayerMode || {}))}`);
       const desiredMode = alphaTab.PlayerMode?.EnabledAutomatic ?? alphaTab.PlayerMode?.EnabledSynthesizer ?? 1;
