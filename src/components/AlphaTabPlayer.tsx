@@ -1,7 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import * as alphaTab from "@coderline/alphatab";
-import alphaTabWorkerUrl from '@coderline/alphatab/dist/alphaTab.worker.mjs?url';
-import alphaSynthWasmUrl from '@coderline/alphatab/dist/alphaSynth.wasm?url';
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -106,15 +104,19 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       setIsRenderFinished(false);
       setDebugEvents([]);
 
-      // Create Settings - manually configure worker and wasm URLs
+      // Create Settings - use CDN URLs for worker and wasm
       const settings = new alphaTab.Settings();
       settings.core.fontDirectory = "/font/";
-      (settings.core as any).file = { workerUrl: alphaTabWorkerUrl };
+      (settings.core as any).file = { 
+        workerUrl: "https://cdn.jsdelivr.net/npm/@coderline/alphatab@latest/dist/alphaTab.worker.mjs" 
+      };
       settings.player.enablePlayer = true;
       settings.player.enableUserInteraction = true;
       settings.player.playerMode = alphaTab.PlayerMode.EnabledSynthesizer;
       settings.player.soundFont = "/soundfont/sonivox.sf2";
-      (settings.player as any).synth = { wasmFile: alphaSynthWasmUrl };
+      (settings.player as any).synth = { 
+        wasmFile: "https://cdn.jsdelivr.net/npm/@coderline/alphatab@latest/dist/alphaSynth.wasm" 
+      };
       settings.player.scrollElement = (container.querySelector('.at-viewport') as HTMLElement) || undefined;
       settings.display.layoutMode = alphaTab.LayoutMode.Page;
       settings.display.scale = 1.0;
