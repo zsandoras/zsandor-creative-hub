@@ -264,12 +264,9 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
         )}
         <div 
           ref={containerRef} 
-          className="at-wrap rounded-lg border border-border overflow-hidden"
-        >
-          <div className="at-content">
-            <div className="at-viewport"></div>
-          </div>
-        </div>
+          className="rounded-lg border border-border overflow-hidden"
+          data-alphatab
+        />
       </Card>
 
       {/* Custom Controls */}
