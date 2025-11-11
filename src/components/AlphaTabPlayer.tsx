@@ -109,7 +109,7 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       settings.player.enablePlayer = true;
       settings.player.enableUserInteraction = true;
       settings.player.playerMode = alphaTab.PlayerMode.EnabledSynthesizer;
-      settings.player.soundFont = "https://cdn.jsdelivr.net/npm/@coderline/alphatab@latest/dist/soundfont/sonivox.sf2";
+      settings.player.soundFont = "/soundfont/sonivox.sf2";
       settings.player.scrollElement = (container.querySelector('.at-viewport') as HTMLElement) || undefined;
       settings.display.layoutMode = alphaTab.LayoutMode.Page;
       settings.display.scale = 1.0;
