@@ -8,7 +8,8 @@ import { ChevronRight } from "lucide-react";
 interface GuitarEmbed {
   id: string;
   title: string;
-  embed_code: string;
+  embed_code: string | null;
+  file_url: string | null;
   description: string | null;
 }
 

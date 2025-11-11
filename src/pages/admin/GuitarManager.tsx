@@ -26,7 +26,7 @@ const GuitarManager = () => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [file, setFile] = useState<File | null>(null);
-  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -54,9 +54,29 @@ const GuitarManager = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["guitar-embeds"] });
-      toast({ title: "Embed deleted successfully" });
+      toast({ title: "File deleted successfully" });
     },
   });
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (selectedFile) {
+      // Validate file type
+      const validExtensions = [".gp3", ".gp4", ".gp5", ".gpx", ".gp"];
+      const fileExtension = selectedFile.name.toLowerCase().slice(selectedFile.name.lastIndexOf("."));
+      
+      if (!validExtensions.includes(fileExtension)) {
+        toast({
+          title: "Invalid file type",
+          description: "Please upload a Guitar Pro file (.gp3, .gp4, .gp5, .gpx, .gp)",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      setFile(selectedFile);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,11 +90,11 @@ const GuitarManager = () => {
       return;
     }
 
-    setSaving(true);
+    setUploading(true);
 
     try {
       // Upload file to storage
-      const fileExt = file.name.split('.').pop();
+      const fileExt = file.name.split(".").pop();
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
       const filePath = `${fileName}`;
 
@@ -90,7 +110,7 @@ const GuitarManager = () => {
         .getPublicUrl(filePath);
 
       // Insert into database
-      const { error } = await supabase
+      const { error: insertError } = await supabase
         .from("guitar_embeds")
         .insert({
           title,
@@ -99,12 +119,16 @@ const GuitarManager = () => {
           display_order: embeds.length,
         });
 
-      if (error) throw error;
+      if (insertError) throw insertError;
 
       toast({ title: "Guitar Pro file uploaded successfully!" });
       setTitle("");
-      setFile(null);
       setDescription("");
+      setFile(null);
+      // Reset file input
+      const fileInput = document.getElementById("gpFile") as HTMLInputElement;
+      if (fileInput) fileInput.value = "";
+      
       queryClient.invalidateQueries({ queryKey: ["guitar-embeds"] });
     } catch (error: any) {
       toast({
@@ -113,7 +137,7 @@ const GuitarManager = () => {
         variant: "destructive",
       });
     } finally {
-      setSaving(false);
+      setUploading(false);
     }
   };
 
@@ -136,11 +160,11 @@ const GuitarManager = () => {
         </Link>
 
         <h1 className="text-4xl font-bold mb-8 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-          Guitar Embeds Manager
+          Guitar Pro Manager
         </h1>
 
         <Card className="p-6 mb-8 bg-card/50 backdrop-blur">
-          <h2 className="text-2xl font-bold mb-4">Add New Guitar Pro File</h2>
+          <h2 className="text-2xl font-bold mb-4">Upload Guitar Pro File</h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <Label htmlFor="title">Title *</Label>
@@ -161,30 +185,30 @@ const GuitarManager = () => {
               />
             </div>
             <div>
-              <Label htmlFor="file">Guitar Pro File *</Label>
+              <Label htmlFor="gpFile">Guitar Pro File *</Label>
               <Input
-                id="file"
+                id="gpFile"
                 type="file"
-                accept=".gp3,.gp4,.gp5,.gpx,.gp"
-                onChange={(e) => setFile(e.target.files?.[0] || null)}
+                accept=".gp,.gp3,.gp4,.gp5,.gpx"
+                onChange={handleFileChange}
               />
-              <p className="text-xs text-muted-foreground mt-1">
-                Upload Guitar Pro files (.gp3, .gp4, .gp5, .gpx, .gp)
-              </p>
               {file && (
-                <p className="text-xs text-primary mt-1">
+                <p className="text-sm text-muted-foreground mt-2">
                   Selected: {file.name} ({(file.size / 1024).toFixed(2)} KB)
                 </p>
               )}
+              <p className="text-xs text-muted-foreground mt-1">
+                Upload a Guitar Pro file (.gp3, .gp4, .gp5, .gpx, .gp)
+              </p>
             </div>
-            <Button type="submit" disabled={saving}>
-              {saving ? "Uploading..." : "Upload File"}
+            <Button type="submit" disabled={uploading}>
+              {uploading ? "Uploading..." : "Upload File"}
             </Button>
           </form>
         </Card>
 
         <Card className="p-6 bg-card/50 backdrop-blur">
-          <h2 className="text-2xl font-bold mb-4">Existing Files</h2>
+          <h2 className="text-2xl font-bold mb-4">Uploaded Files</h2>
           {embeds.length === 0 ? (
             <p className="text-muted-foreground">No files uploaded yet</p>
           ) : (
@@ -200,7 +224,9 @@ const GuitarManager = () => {
                       <p className="text-sm text-muted-foreground">{embed.description}</p>
                     )}
                     {embed.file_url && (
-                      <p className="text-xs text-muted-foreground mt-1">Guitar Pro file</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Guitar Pro file uploaded
+                      </p>
                     )}
                   </div>
                   <Button

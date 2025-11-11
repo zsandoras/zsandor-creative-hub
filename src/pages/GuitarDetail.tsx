@@ -50,8 +50,8 @@ const GuitarDetail = () => {
             <Skeleton className="h-[600px] w-full" />
           </Card>
         ) : embed ? (
-          <div className="space-y-6">
-            <Card className="p-6 bg-card/50 backdrop-blur">
+          <div>
+            <Card className="p-6 mb-6 bg-card/50 backdrop-blur">
               <h1 className="text-3xl font-bold mb-2">{embed.title}</h1>
               {embed.description && (
                 <p className="text-muted-foreground">{embed.description}</p>
@@ -70,7 +70,7 @@ const GuitarDetail = () => {
             ) : (
               <Card className="p-12 text-center bg-card/50 backdrop-blur">
                 <p className="text-lg text-muted-foreground">
-                  No content available for this guitar tab.
+                  No content available for this tab.
                 </p>
               </Card>
             )}

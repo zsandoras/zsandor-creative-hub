@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Play, Pause, Square, Volume2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
 
 interface AlphaTabPlayerProps {
   fileUrl: string;
@@ -14,101 +15,119 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
   const [api, setApi] = useState<any>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [tempo, setTempo] = useState([100]);
-  const [volume, setVolume] = useState([80]);
+  const [volume, setVolume] = useState([100]);
 
   useEffect(() => {
     if (!alphaTabRef.current) return;
 
     const loadAlphaTab = async () => {
       try {
-        const { AlphaTabApi } = await import("@coderline/alphatab");
+        // Dynamically import AlphaTab
+        const AlphaTabApi = (await import("@coderline/alphatab")).AlphaTabApi;
         
+        // Initialize AlphaTab
         const settings = {
-          core: {
-            file: fileUrl,
-            useWorkers: true,
-          },
+          file: fileUrl,
           player: {
             enablePlayer: true,
             enableCursor: true,
             enableUserInteraction: true,
             soundFont: "https://cdn.jsdelivr.net/npm/@coderline/alphatab@latest/dist/soundfont/sonivox.sf2",
           },
+          display: {
+            staveProfile: "ScoreTab" as const,
+            layoutMode: "page" as const,
+          },
         };
 
-        const apiInstance = new AlphaTabApi(alphaTabRef.current!, settings);
+        const alphaTab = new AlphaTabApi(alphaTabRef.current, settings);
         
-        apiInstance.renderStarted.on(() => {
-          setIsLoading(true);
+        // Set up event listeners
+        alphaTab.playerStateChanged.on((state: any) => {
+          setIsPlaying(state.state === 1); // 1 = playing
         });
 
-        apiInstance.renderFinished.on(() => {
+        alphaTab.renderFinished.on(() => {
           setIsLoading(false);
         });
 
-        apiInstance.playerStateChanged.on((e: any) => {
-          setIsPlaying(e.state === 1); // 1 = playing
+        alphaTab.error.on((error: any) => {
+          console.error("AlphaTab error:", error);
+          setError("Failed to load guitar tab. Please check the file format.");
+          setIsLoading(false);
         });
 
-        setApi(apiInstance);
-
-        return () => {
-          apiInstance?.destroy();
-        };
-      } catch (error) {
-        console.error("Error loading AlphaTab:", error);
+        setApi(alphaTab);
+      } catch (err) {
+        console.error("Failed to initialize AlphaTab:", err);
+        setError("Failed to initialize player");
         setIsLoading(false);
       }
     };
 
     loadAlphaTab();
+
+    return () => {
+      if (api) {
+        api.destroy();
+      }
+    };
   }, [fileUrl]);
 
-  const handlePlayPause = () => {
-    if (!api) return;
-    if (isPlaying) {
-      api.pause();
-    } else {
-      api.play();
+  useEffect(() => {
+    if (api && api.player) {
+      api.player.playbackSpeed = tempo[0] / 100;
     }
-  };
+  }, [tempo, api]);
 
-  const handleStop = () => {
-    if (!api) return;
-    api.stop();
-  };
+  useEffect(() => {
+    if (api && api.player) {
+      api.player.volume = volume[0] / 100;
+    }
+  }, [volume, api]);
 
-  const handleTempoChange = (value: number[]) => {
-    setTempo(value);
+  const togglePlay = () => {
     if (api) {
-      api.playbackSpeed = value[0] / 100;
+      if (isPlaying) {
+        api.pause();
+      } else {
+        api.play();
+      }
     }
   };
 
-  const handleVolumeChange = (value: number[]) => {
-    setVolume(value);
+  const stop = () => {
     if (api) {
-      api.masterVolume = value[0] / 100;
+      api.stop();
     }
   };
+
+  if (error) {
+    return (
+      <Card className="p-8 text-center bg-card/50 backdrop-blur">
+        <p className="text-destructive">{error}</p>
+      </Card>
+    );
+  }
 
   return (
     <div className="space-y-4">
       <Card className="p-4 bg-card/50 backdrop-blur">
-        <div className="flex flex-wrap gap-4 items-center justify-between mb-4">
+        <div className="flex flex-wrap items-center gap-4">
           <div className="flex gap-2">
             <Button
-              onClick={handlePlayPause}
-              disabled={isLoading || !api}
+              onClick={togglePlay}
+              disabled={isLoading}
               size="icon"
               variant="default"
             >
               {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
             </Button>
             <Button
-              onClick={handleStop}
-              disabled={isLoading || !api}
+              onClick={stop}
+              disabled={isLoading}
               size="icon"
               variant="secondary"
             >
@@ -116,49 +135,45 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
             </Button>
           </div>
 
-          <div className="flex gap-4 items-center flex-1 max-w-md">
-            <div className="flex-1">
-              <label className="text-xs text-muted-foreground mb-1 block">
-                Tempo: {tempo[0]}%
-              </label>
-              <Slider
-                value={tempo}
-                onValueChange={handleTempoChange}
-                min={50}
-                max={200}
-                step={5}
-                disabled={isLoading || !api}
-              />
-            </div>
-            <div className="flex-1">
-              <label className="text-xs text-muted-foreground mb-1 block flex items-center gap-1">
-                <Volume2 className="h-3 w-3" />
-                Volume: {volume[0]}%
-              </label>
-              <Slider
-                value={volume}
-                onValueChange={handleVolumeChange}
-                min={0}
-                max={100}
-                step={5}
-                disabled={isLoading || !api}
-              />
-            </div>
+          <div className="flex items-center gap-2 flex-1 min-w-[200px]">
+            <Label className="text-sm whitespace-nowrap">Tempo: {tempo[0]}%</Label>
+            <Slider
+              value={tempo}
+              onValueChange={setTempo}
+              min={50}
+              max={200}
+              step={5}
+              className="flex-1"
+              disabled={isLoading}
+            />
+          </div>
+
+          <div className="flex items-center gap-2 flex-1 min-w-[200px]">
+            <Volume2 className="h-4 w-4" />
+            <Slider
+              value={volume}
+              onValueChange={setVolume}
+              min={0}
+              max={100}
+              step={5}
+              className="flex-1"
+              disabled={isLoading}
+            />
           </div>
         </div>
       </Card>
 
-      <div className="relative min-h-[600px] rounded-lg overflow-hidden border border-border bg-background">
-        {isLoading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur z-10">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-              <p className="text-muted-foreground">Loading {title}...</p>
-            </div>
-          </div>
-        )}
-        <div ref={alphaTabRef} className="w-full" />
-      </div>
+      {isLoading && (
+        <Card className="p-8 text-center bg-card/50 backdrop-blur">
+          <p className="text-muted-foreground">Loading {title}...</p>
+        </Card>
+      )}
+
+      <div
+        ref={alphaTabRef}
+        className="w-full min-h-[600px] rounded-lg overflow-hidden border border-border bg-background"
+        style={{ display: isLoading ? "none" : "block" }}
+      />
     </div>
   );
 };
