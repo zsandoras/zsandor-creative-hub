@@ -69,7 +69,8 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       // Display layout
       settings.display.layoutMode = alphaTab.LayoutMode.Page;
       // Enable player with synthesizer mode - use absolute URL for soundfont
-      settings.player.enablePlayer = true;
+      settings.player.playerMode = alphaTab.PlayerMode.EnabledSynthesizer;
+      settings.player.enablePlayer = true; // compatibility flag
       settings.player.enableCursor = true;
       settings.player.enableAnimatedBeatCursor = true;
       settings.player.outputMode = alphaTab.PlayerOutputMode.WebAudioScriptProcessor;
@@ -84,6 +85,19 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       const api = new alphaTab.AlphaTabApi(containerRef.current, settings);
       apiRef.current = api;
       log('AlphaTabApi created');
+
+      // Hook synth/player-level events for deeper diagnostics
+      try {
+        const synth: any = (api as any).player;
+        synth?.ready?.on?.(() => log('synth.ready'));
+        synth?.prepared?.on?.(() => log('synth.prepared'));
+        synth?.midiLoaded?.on?.(() => log('synth.midiLoaded'));
+        synth?.midiLoadFailed?.on?.((err: any) => log(`synth.midiLoadFailed: ${JSON.stringify(err)}`));
+        synth?.soundFontLoadFailed?.on?.((err: any) => log(`synth.soundFontLoadFailed: ${JSON.stringify(err)}`));
+        synth?.finished?.on?.(() => log('synth.finished'));
+      } catch (e: any) {
+        log(`Synth hook error: ${e?.message || e}`);
+      }
 
       try {
         // Explicitly trigger load as a fallback (in addition to settings.core.file)
