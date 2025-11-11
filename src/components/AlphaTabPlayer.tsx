@@ -69,18 +69,22 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       settings.player.enablePlayer = true;
       settings.player.enableCursor = true;
       settings.player.enableAnimatedBeatCursor = true;
-      settings.player.soundFont = "https://cdn.jsdelivr.net/npm/@coderline/alphatab@latest/dist/soundfont/sonivox.sf2";
+      settings.player.soundFont = "https://cdn.jsdelivr.net/npm/@coderline/alphatab@1.6.3/dist/soundfont/sonivox.sf2";
+      settings.player.playerMode = alphaTab.PlayerMode?.EnabledSynthesizer ?? 2;
       
       addDebugEvent("Settings configured", `SoundFont: ${settings.player.soundFont}`);
 
       // Create AlphaTab API
       const api = new alphaTab.AlphaTabApi(containerRef.current, settings);
       apiRef.current = api;
-      addDebugEvent("AlphaTab API created");
+      const actualMode = (api as any).settings?.player?.playerMode ?? 'unknown';
+      addDebugEvent("AlphaTab API created", `Player mode: ${actualMode}`);
 
       // Score loaded event
       api.scoreLoaded.on(() => {
         addDebugEvent("Score loaded", `Tracks: ${api.score?.tracks.length || 0}`);
+        addDebugEvent("Triggering render");
+        api.render();
       });
 
       // Render finished event
@@ -259,10 +263,8 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
         )}
         <div
           ref={containerRef}
-          className="min-h-[600px] rounded-lg border border-border overflow-hidden"
-        >
-          <div className="at-viewport w-full" />
-        </div>
+          className="at-viewport min-h-[600px] rounded-lg border border-border overflow-hidden"
+        />
       </Card>
 
       {/* Custom Controls */}
