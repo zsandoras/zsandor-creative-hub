@@ -4,6 +4,8 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "react-router-dom";
 import { ChevronRight } from "lucide-react";
+import { EditableText } from "@/components/EditableText";
+import { EditableItemText } from "@/components/EditableItemText";
 
 interface GuitarEmbed {
   id: string;
@@ -31,12 +33,20 @@ const GuitarPro = () => {
     <main className="min-h-screen bg-background pt-24 pb-16">
       <div className="container mx-auto px-4">
         <div className="text-center mb-12">
-          <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-            Guitar Pro Collection
-          </h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Explore my guitar tablatures and compositions
-          </p>
+          <EditableText
+            pageKey="guitar"
+            contentKey="page_title"
+            defaultValue="Guitar Pro Collection"
+            className="text-5xl font-bold mb-4 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent"
+            as="h1"
+          />
+          <EditableText
+            pageKey="guitar"
+            contentKey="page_subtitle"
+            defaultValue="Explore my guitar tablatures and compositions"
+            className="text-xl text-muted-foreground max-w-2xl mx-auto"
+            as="p"
+          />
         </div>
 
         {isLoading ? (
@@ -54,13 +64,25 @@ const GuitarPro = () => {
               <Link key={embed.id} to={`/guitar/${embed.id}`}>
                 <Card className="p-6 bg-card/50 backdrop-blur hover:shadow-xl transition-all hover:-translate-y-1 group">
                   <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <h2 className="text-xl font-bold mb-1 group-hover:text-primary transition-colors">
-                        {embed.title}
-                      </h2>
-                      {embed.description && (
-                        <p className="text-sm text-muted-foreground">{embed.description}</p>
-                      )}
+                    <div className="flex-1" onClick={(e) => e.preventDefault()}>
+                      <EditableItemText
+                        table="guitar_embeds"
+                        itemId={embed.id}
+                        field="title"
+                        value={embed.title}
+                        className="text-xl font-bold mb-1 group-hover:text-primary transition-colors"
+                        as="h2"
+                        queryKey={["guitar-embeds"]}
+                      />
+                      <EditableItemText
+                        table="guitar_embeds"
+                        itemId={embed.id}
+                        field="description"
+                        value={embed.description}
+                        className="text-sm text-muted-foreground"
+                        as="p"
+                        queryKey={["guitar-embeds"]}
+                      />
                     </div>
                     <ChevronRight className="h-6 w-6 text-muted-foreground group-hover:text-primary transition-colors" />
                   </div>

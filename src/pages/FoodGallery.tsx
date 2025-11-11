@@ -6,6 +6,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { EditableText } from "@/components/EditableText";
+import { EditableItemText } from "@/components/EditableItemText";
 
 interface FoodItem {
   id: string;
@@ -46,12 +48,20 @@ const FoodGallery = () => {
     <main className="min-h-screen bg-background pt-24 pb-16">
       <div className="container mx-auto px-4">
         <div className="text-center mb-12">
-          <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-            Culinary Gallery
-          </h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            A visual journey through my culinary creations
-          </p>
+          <EditableText
+            pageKey="food"
+            contentKey="page_title"
+            defaultValue="Culinary Gallery"
+            className="text-5xl font-bold mb-4 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent"
+            as="h1"
+          />
+          <EditableText
+            pageKey="food"
+            contentKey="page_subtitle"
+            defaultValue="A visual journey through my culinary creations"
+            className="text-xl text-muted-foreground max-w-2xl mx-auto"
+            as="p"
+          />
         </div>
 
         {isLoading ? (
@@ -84,13 +94,25 @@ const FoodGallery = () => {
                     <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>
                   {(item.title || item.description) && (
-                    <div className="p-4">
-                      {item.title && (
-                        <h3 className="text-lg font-semibold mb-1">{item.title}</h3>
-                      )}
-                      {item.description && (
-                        <p className="text-sm text-muted-foreground">{item.description}</p>
-                      )}
+                    <div className="p-4" onClick={(e) => e.stopPropagation()}>
+                      <EditableItemText
+                        table="food_gallery"
+                        itemId={item.id}
+                        field="title"
+                        value={item.title}
+                        className="text-lg font-semibold mb-1"
+                        as="h3"
+                        queryKey={["food-gallery"]}
+                      />
+                      <EditableItemText
+                        table="food_gallery"
+                        itemId={item.id}
+                        field="description"
+                        value={item.description}
+                        className="text-sm text-muted-foreground"
+                        as="p"
+                        queryKey={["food-gallery"]}
+                      />
                     </div>
                   )}
                 </Card>
@@ -138,12 +160,24 @@ const FoodGallery = () => {
                       />
                       {(foodItems[fullscreenIndex].title || foodItems[fullscreenIndex].description) && (
                         <div className="mt-6 text-center max-w-2xl">
-                          {foodItems[fullscreenIndex].title && (
-                            <h3 className="text-2xl font-bold mb-2">{foodItems[fullscreenIndex].title}</h3>
-                          )}
-                          {foodItems[fullscreenIndex].description && (
-                            <p className="text-muted-foreground">{foodItems[fullscreenIndex].description}</p>
-                          )}
+                          <EditableItemText
+                            table="food_gallery"
+                            itemId={foodItems[fullscreenIndex].id}
+                            field="title"
+                            value={foodItems[fullscreenIndex].title}
+                            className="text-2xl font-bold mb-2"
+                            as="h3"
+                            queryKey={["food-gallery"]}
+                          />
+                          <EditableItemText
+                            table="food_gallery"
+                            itemId={foodItems[fullscreenIndex].id}
+                            field="description"
+                            value={foodItems[fullscreenIndex].description}
+                            className="text-muted-foreground"
+                            as="p"
+                            queryKey={["food-gallery"]}
+                          />
                         </div>
                       )}
                     </div>
