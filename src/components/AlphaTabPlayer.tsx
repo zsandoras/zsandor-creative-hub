@@ -135,8 +135,13 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       // Use default worker setting (true) to avoid synchronous recursion during MIDI init
       settings.core.useWorkers = true;
       settings.display.layoutMode = alphaTab.LayoutMode.Page;
-      // Avoid forcing synthesizer during score load to prevent MIDI recursion; enable on user playback
-      settings.player.playerMode = alphaTab.PlayerMode.EnabledAutomatic;
+      
+      // Validate and set playerMode with fallback
+      log(`PlayerMode enum available: ${JSON.stringify(Object.keys(alphaTab.PlayerMode || {}))}`);
+      const desiredMode = alphaTab.PlayerMode?.EnabledAutomatic ?? alphaTab.PlayerMode?.EnabledSynthesizer ?? 1;
+      log(`Setting playerMode to: ${desiredMode} (desired: EnabledAutomatic)`);
+      settings.player.playerMode = desiredMode;
+      
       settings.player.enableCursor = true;
       settings.player.enableAnimatedBeatCursor = true;
       settings.player.soundFont = window.location.origin + "/soundfont/sonivox.sf2";
@@ -148,11 +153,27 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       const api = new alphaTab.AlphaTabApi(containerRef.current, settings);
       apiRef.current = api;
       log('AlphaTabApi created');
+      
+      // Verify actual player mode and warn if disabled
       try {
         const mode = api.actualPlayerMode;
         const modeName = (alphaTab as any).PlayerMode?.[mode] ?? String(mode);
         log(`Player actual mode: ${mode} (${modeName})`);
-      } catch {}
+        
+        if (mode === 0) {
+          log('⚠️ WARNING: Player is DISABLED (mode 0)! Audio will not work. This will prevent soundFont loading and playback.');
+          // Attempt to manually enable if possible
+          try {
+            const modeOverride = 1; // EnabledAutomatic numeric value
+            (api as any).settings.player.playerMode = modeOverride;
+            log(`🔧 Attempted to override playerMode to ${modeOverride}`);
+          } catch (e2: any) {
+            log(`❌ Failed to override playerMode: ${e2?.message || e2}`);
+          }
+        }
+      } catch (e: any) {
+        log(`⚠️ Could not verify player mode: ${e?.message || e}`);
+      }
 
       const timeoutId = window.setTimeout(() => {
         log('Render timeout after 15s');
