@@ -61,54 +61,18 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
     }
 
     try {
-      const settings = new alphaTab.Settings();
-      // Fonts served locally from /public
-      settings.core.fontDirectory = "/font/";
-      // Disable workers for simpler bundler setup
-      settings.core.useWorkers = false;
-      // Display layout
-      settings.display.layoutMode = alphaTab.LayoutMode.Page;
-      // Enable player with synthesizer mode - use absolute URL for soundfont
-      settings.player.playerMode = alphaTab.PlayerMode.EnabledSynthesizer;
-      settings.player.enableCursor = true;
-      settings.player.enableAnimatedBeatCursor = true;
-      settings.player.soundFont = window.location.origin + "/soundfont/sonivox.sf2";
-      if (viewportRef.current) {
-        (settings.player as any).scrollElement = viewportRef.current;
-      }
-      // Load file directly
-      settings.core.file = fileUrl;
-      log(`AlphaTab settings prepared. SoundFont URL: ${settings.player.soundFont}`);
+      // Set data attributes on container and let alphaTab handle everything
+      containerRef.current.setAttribute('data-file', fileUrl);
+      containerRef.current.setAttribute('data-soundfont', window.location.origin + '/soundfont/sonivox.sf2');
+      containerRef.current.setAttribute('data-player', 'true');
+      containerRef.current.setAttribute('data-enable-cursor', 'true');
+      containerRef.current.setAttribute('data-enable-animated-beat-cursor', 'true');
+      
+      log(`AlphaTab data attributes set. SoundFont: ${window.location.origin}/soundfont/sonivox.sf2`);
 
-      const api = new alphaTab.AlphaTabApi(containerRef.current, settings);
+      const api = new alphaTab.AlphaTabApi(containerRef.current, null as any);
       apiRef.current = api;
       log('AlphaTabApi created');
-      try {
-        const mode = api.actualPlayerMode;
-        const modeName = (alphaTab as any).PlayerMode?.[mode] ?? String(mode);
-        log(`Player actual mode: ${mode} (${modeName})`);
-      } catch {}
-
-      // Hook synth/player-level events for deeper diagnostics
-      try {
-        const synth: any = (api as any).player;
-        synth?.ready?.on?.(() => log('synth.ready'));
-        synth?.prepared?.on?.(() => log('synth.prepared'));
-        synth?.midiLoaded?.on?.(() => log('synth.midiLoaded'));
-        synth?.midiLoadFailed?.on?.((err: any) => log(`synth.midiLoadFailed: ${JSON.stringify(err)}`));
-        synth?.soundFontLoadFailed?.on?.((err: any) => log(`synth.soundFontLoadFailed: ${JSON.stringify(err)}`));
-        synth?.finished?.on?.(() => log('synth.finished'));
-      } catch (e: any) {
-        log(`Synth hook error: ${e?.message || e}`);
-      }
-
-      try {
-        // Explicitly trigger load as a fallback (in addition to settings.core.file)
-        api.load(fileUrl as any);
-        log('api.load(fileUrl) called');
-      } catch (e: any) {
-        log(`api.load failed: ${e?.message || e}`);
-      }
 
       const timeoutId = window.setTimeout(() => {
         log('Render timeout after 15s');
@@ -133,33 +97,9 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
           setPlayerState((prev) => ({
             ...prev,
             tracks,
-            selectedTracks: [0], // Select first track by default
+            selectedTracks: [0],
           }));
           log(`Loaded ${tracks.length} tracks`);
-          
-          // Manually trigger soundfont load after render
-          try {
-            log('🎵 Manually triggering soundFont load...');
-            const soundFontUrl = window.location.origin + "/soundfont/sonivox.sf2";
-            fetch(soundFontUrl)
-              .then(response => {
-                if (!response.ok) {
-                  throw new Error(`Failed to fetch soundfont: ${response.status}`);
-                }
-                return response.arrayBuffer();
-              })
-              .then(arrayBuffer => {
-                log(`🎵 SoundFont downloaded (${arrayBuffer.byteLength} bytes), loading into player...`);
-                const ok = api.loadSoundFont(new Uint8Array(arrayBuffer), false);
-                log(`🎵 SoundFont load triggered: ${ok}`);
-              })
-              .catch(err => {
-                log(`❌ SoundFont load failed: ${err.message}`);
-                setError(`Failed to load soundfont: ${err.message}`);
-              });
-          } catch (e: any) {
-            log(`❌ SoundFont fetch error: ${e.message}`);
-          }
         }
       });
 
@@ -171,18 +111,9 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       });
 
       api.soundFontLoaded.on(() => {
-        log('🎵 SoundFont fully loaded - Auto-starting playback for testing');
+        log('🎵 SoundFont fully loaded');
         setLoadProgress(100);
         setIsPlayerReady(true);
-        // Auto-play for testing
-        if (apiRef.current) {
-          try {
-            apiRef.current.play();
-            log('▶️ Auto-play started');
-          } catch (e: any) {
-            log(`❌ Auto-play failed: ${e.message}`);
-          }
-        }
       });
 
       api.playerReady.on(() => {
@@ -203,8 +134,7 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       api.playerStateChanged.on((e: any) => {
         const isPlaying = e.state === alphaTab.synth.PlayerState.Playing;
         setPlayerState((prev) => ({ ...prev, isPlaying }));
-        const ready: any = (api as any).isReadyForPlayback;
-        log(`♪ Player state: ${isPlaying ? 'Playing' : 'Paused'} (ready=${String(ready)})`);
+        log(`♪ Player state: ${isPlaying ? 'Playing' : 'Paused'}`);
       });
 
       api.playerPositionChanged.on((e: any) => {
@@ -265,39 +195,24 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
 
   const togglePlayPause = async () => {
     if (!apiRef.current) {
-      console.warn('API not ready');
+      log('API not ready');
       return;
     }
-    const api: any = apiRef.current as any;
-    const synth: any = api.player;
-    const ac: AudioContext | undefined = synth?.audioContext || synth?.context;
-    if (ac && ac.state === 'suspended') {
-      try {
-        await ac.resume();
-        log('🔓 AudioContext resumed (Play)');
-      } catch (e: any) {
-        log(`❌ AudioContext resume failed: ${e?.message || e}`);
-      }
-    }
-    const ready = api.isReadyForPlayback;
-    const mode = api.actualPlayerMode;
-    const modeName = (alphaTab as any).PlayerMode?.[mode] ?? String(mode);
-    let started: any;
+    
     try {
-      if (synth?.play) {
-        started = synth.play();
-      } else if (api.play) {
-        api.play();
-        started = true;
-      } else if (api.playPause) {
-        api.playPause();
-        started = undefined;
-      }
+      // Resume AudioContext if suspended
+      await (apiRef.current as any).audioContext?.resume();
+      log('🔓 AudioContext resumed');
     } catch (e: any) {
-      log(`❌ play() error: ${e?.message || e}`);
+      log(`❌ AudioContext resume failed: ${e?.message || e}`);
     }
-    const acState = ac?.state ?? 'n/a';
-    log(`▶️ play() started=${String(started)} | ready=${String(ready)} | mode=${mode}(${modeName}) | hasPlayer=${!!synth} | ac=${acState}`);
+    
+    try {
+      apiRef.current.playPause();
+      log('▶️ playPause() called');
+    } catch (e: any) {
+      log(`❌ playPause() error: ${e?.message || e}`);
+    }
   };
   const stop = () => {
     if (!apiRef.current) return;
@@ -308,22 +223,10 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
   const unlockAudio = async () => {
     log('🔧 Initialize Audio clicked');
     try {
-      const player: any = (apiRef.current as any)?.player;
-      const ac: AudioContext | undefined = player?.audioContext || player?.context;
-      if (ac && ac.state === 'suspended') {
-        await ac.resume();
-        log('🔓 AudioContext resumed');
-      } else {
-        log(`AudioContext state: ${ac?.state ?? 'n/a'}`);
-      }
-      // poke the player
-      if (player?.play) {
-        const ok = player.play();
-        log(`▶️ synth.play() returned ${String(ok)}`);
-      } else {
-        (apiRef.current as any)?.playPause?.();
-        log('▶️ api.playPause() called as fallback');
-      }
+      await (apiRef.current as any)?.audioContext?.resume();
+      log('🔓 AudioContext resumed');
+      apiRef.current?.playPause();
+      log('▶️ playPause() called');
     } catch (e: any) {
       log(`❌ Audio unlock failed: ${e?.message || e}`);
     }
