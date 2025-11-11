@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import * as alphaTab from "@coderline/alphatab";
-import "@coderline/alphatab/dist/alphaTab.webAudio.js";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -105,18 +104,18 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       setIsRenderFinished(false);
       setDebugEvents([]);
 
-      // Create Settings - SIMPLIFIED
+      // Create Settings - Force WebAudio (no workers)
       const settings = new alphaTab.Settings();
+      settings.core.useWorkers = false; // This forces WebAudio backend instead of worker
+      settings.core.fontDirectory = "/font/";
+      settings.core.logLevel = alphaTab.LogLevel.Debug; // Enable debug logging
       settings.player.enablePlayer = true;
-      settings.player.enableUserInteraction = true; // Allow clicking notation to play
-      settings.player.playerMode = alphaTab.PlayerMode.EnabledSynthesizer;
+      settings.player.enableUserInteraction = true;
       settings.player.soundFont = "/soundfont/sonivox.sf2";
       settings.player.scrollElement = (container.querySelector('.at-viewport') as HTMLElement) || undefined;
       settings.display.layoutMode = alphaTab.LayoutMode.Page;
       settings.display.scale = 1.0;
       settings.notation.notationMode = alphaTab.NotationMode.GuitarPro;
-      settings.core.fontDirectory = "/font/";
-      settings.core.useWorkers = false;
 
       logState("LOADING", "Settings configured - single SoundFont URL");
 
