@@ -4,9 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Play } from 'lucide-react';
 import '@/styles/alphatab.css';
 
-// Import the worker/synth files using our Vite aliases
-import alphaTabWorkerUrl from '@alphatab-worker?url';
-import alphaSynthWasmUrl from '@alphasynth-wasm?url';
+// Import worker and WASM files directly from the package
+import alphaTabWorkerUrl from '@coderline/alphatab/dist/alphaTab.worker.mjs?url';
+import alphaSynthWasmUrl from '@coderline/alphatab/dist/alphaSynth.wasm?url';
 
 // Define the props this component accepts
 interface AlphaTabRendererProps {
