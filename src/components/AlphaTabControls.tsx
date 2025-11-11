@@ -16,6 +16,7 @@ import {
   FileDown,
   ScrollText,
   CircleDot,
+  Maximize2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -36,6 +37,8 @@ interface AlphaTabControlsProps {
   onOpenFile?: () => void;
   tracks?: any[];
   defaultInstrument?: { name: string; program: number } | null;
+  scaleControls?: boolean;
+  onToggleScale?: () => void;
 }
 
 // Common MIDI instruments
@@ -82,6 +85,8 @@ const AlphaTabControls = ({
   onOpenFile,
   tracks = [],
   defaultInstrument,
+  scaleControls = false,
+  onToggleScale,
 }: AlphaTabControlsProps) => {
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [zoom, setZoom] = useState(100);
@@ -433,6 +438,18 @@ const AlphaTabControls = ({
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
+          {onToggleScale && (
+            <Button
+              onClick={onToggleScale}
+              variant="ghost"
+              size="icon"
+              title={scaleControls ? "Unlink controls width from tab" : "Link controls width to tab"}
+              className={scaleControls ? "bg-accent" : ""}
+            >
+              <Maximize2 className="h-4 w-4" />
+            </Button>
+          )}
+
           <Button
             onClick={toggleCountIn}
             variant="ghost"

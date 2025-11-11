@@ -28,8 +28,9 @@ const AlphaTabPlayer = ({ fileUrl, file, title, onReset, defaultInstrument }: Al
   const [error, setError] = useState<string | null>(null);
   const [alphaTabLoaded, setAlphaTabLoaded] = useState<boolean>(!!window.alphaTab);
   const [containerWidth, setContainerWidth] = useState(100); // percentage
-  const [containerHeight, setContainerHeight] = useState(600); // pixels
+  const [containerHeight, setContainerHeight] = useState(800); // pixels (increased from 600)
   const [isHovered, setIsHovered] = useState(false);
+  const [scaleControls, setScaleControls] = useState(false);
 
   // Handle wheel events to enable scrolling on hover
   useEffect(() => {
@@ -363,16 +364,31 @@ const AlphaTabPlayer = ({ fileUrl, file, title, onReset, defaultInstrument }: Al
 
       {/* Professional Player Controls */}
       {!isLoading && !error && apiRef.current && (
-        <AlphaTabControls
-          api={apiRef.current}
-          isPlaying={isPlaying}
-          title={title}
-          artist="Unknown Artist"
-          fileUrl={fileUrl}
-          onOpenFile={onReset}
-          tracks={tracks}
-          defaultInstrument={defaultInstrument}
-        />
+        <div className="relative w-full flex justify-center mt-6">
+          <div 
+            className="transition-all duration-200"
+            style={{ 
+              width: scaleControls 
+                ? (containerWidth > 100 ? `${containerWidth}vw` : `${containerWidth}%`)
+                : '100%',
+              maxWidth: scaleControls ? 'none' : '1400px',
+              minWidth: '400px'
+            }}
+          >
+            <AlphaTabControls
+              api={apiRef.current}
+              isPlaying={isPlaying}
+              title={title}
+              artist="Unknown Artist"
+              fileUrl={fileUrl}
+              onOpenFile={onReset}
+              tracks={tracks}
+              defaultInstrument={defaultInstrument}
+              scaleControls={scaleControls}
+              onToggleScale={() => setScaleControls(!scaleControls)}
+            />
+          </div>
+        </div>
       )}
     </>
   );

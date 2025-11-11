@@ -158,13 +158,15 @@ const GuitarDetail = () => {
               </div>
             )}
             
-            <div className={`container mx-auto px-4 ${widthClasses[containerWidth]} mt-6`}>
-              <Card className="p-6 bg-card/50 backdrop-blur">
-                <CommentSection
-                  contentType="guitar_embed"
-                  contentId={embed.id}
-                />
-              </Card>
+            <div className="relative w-full flex justify-center mt-6 px-4">
+              <div className="w-full max-w-[1400px]">
+                <Card className="p-6 bg-card/50 backdrop-blur">
+                  <CommentSection
+                    contentType="guitar_embed"
+                    contentId={embed.id}
+                  />
+                </Card>
+              </div>
             </div>
           </>
         )}
