@@ -29,6 +29,22 @@ const AlphaTabPlayer = ({ fileUrl, file, title, onReset, defaultInstrument }: Al
   const [alphaTabLoaded, setAlphaTabLoaded] = useState<boolean>(!!window.alphaTab);
   const [containerWidth, setContainerWidth] = useState(100); // percentage
   const [containerHeight, setContainerHeight] = useState(600); // pixels
+  const [isHovered, setIsHovered] = useState(false);
+
+  // Handle wheel events to enable scrolling on hover
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      if (isHovered) {
+        e.stopPropagation();
+      }
+    };
+
+    container.addEventListener('wheel', handleWheel, { passive: false });
+    return () => container.removeEventListener('wheel', handleWheel);
+  }, [isHovered]);
 
   // Load AlphaTab script from CDN
   useEffect(() => {
@@ -317,14 +333,8 @@ const AlphaTabPlayer = ({ fileUrl, file, title, onReset, defaultInstrument }: Al
           <Card 
             className="relative p-4 bg-card border-2 border-border/50 group-hover:border-primary/50 transition-colors overflow-auto" 
             style={{ height: `${containerHeight}px` }}
-            onMouseEnter={(e) => {
-              // Prevent page scrolling when mouse is over the card
-              e.currentTarget.style.overflowY = 'auto';
-            }}
-            onMouseLeave={(e) => {
-              // Re-enable page scrolling when mouse leaves
-              e.currentTarget.style.overflowY = 'auto';
-            }}
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
           >
             {error && (
               <div className="bg-destructive/10 border border-destructive/50 rounded-lg p-4 mb-4">

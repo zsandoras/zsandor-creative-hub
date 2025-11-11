@@ -55,114 +55,118 @@ const GuitarDetail = () => {
   });
 
   return (
-    <main className="min-h-screen bg-background pt-24 pb-16 overflow-x-auto">
-      <div className={`container mx-auto px-4 ${widthClasses[containerWidth]}`}>
-        <div className="flex items-center justify-between mb-6">
-          <Link to="/guitar">
-            <Button variant="ghost">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Guitar Pro
-            </Button>
-          </Link>
-          
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-2">
-                <Maximize2 className="h-4 w-4" />
-                <span className="hidden sm:inline">Width: {containerWidth}</span>
+    <main className="min-h-screen bg-background pt-24 pb-16">
+      <div className="w-full">
+        <div className={`container mx-auto px-4 ${widthClasses[containerWidth]}`}>
+          <div className="flex items-center justify-between mb-6">
+            <Link to="/guitar">
+              <Button variant="ghost">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Guitar Pro
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => setContainerWidth("narrow")}>
-                Narrow
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setContainerWidth("normal")}>
-                Normal
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setContainerWidth("wide")}>
-                Wide
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setContainerWidth("full")}>
-                Full Width
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+            </Link>
+            
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2">
+                  <Maximize2 className="h-4 w-4" />
+                  <span className="hidden sm:inline">Width: {containerWidth}</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setContainerWidth("narrow")}>
+                  Narrow
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setContainerWidth("normal")}>
+                  Normal
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setContainerWidth("wide")}>
+                  Wide
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setContainerWidth("full")}>
+                  Full Width
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+
+          {isLoading ? (
+            <Card className="p-6">
+              <Skeleton className="h-10 w-3/4 mb-4" />
+              <Skeleton className="h-4 w-full mb-6" />
+              <Skeleton className="h-[600px] w-full" />
+            </Card>
+          ) : embed ? (
+            <>
+              <Card className="p-6 mb-6 bg-card/50 backdrop-blur">
+                <EditableItemText
+                  table="guitar_embeds"
+                  itemId={embed.id}
+                  field="title"
+                  value={embed.title}
+                  className="text-3xl font-bold mb-2"
+                  as="h1"
+                  queryKey={["guitar-embed", id]}
+                />
+                <EditableItemText
+                  table="guitar_embeds"
+                  itemId={embed.id}
+                  field="description"
+                  value={embed.description}
+                  className="text-muted-foreground"
+                  as="p"
+                  queryKey={["guitar-embed", id]}
+                />
+              </Card>
+            </>
+          ) : (
+            <Card className="p-12 text-center bg-card/50 backdrop-blur">
+              <p className="text-lg text-muted-foreground">
+                Guitar tab not found.
+              </p>
+            </Card>
+          )}
         </div>
 
-        {isLoading ? (
-          <Card className="p-6">
-            <Skeleton className="h-10 w-3/4 mb-4" />
-            <Skeleton className="h-4 w-full mb-6" />
-            <Skeleton className="h-[600px] w-full" />
-          </Card>
-        ) : embed ? (
-          <div>
-            <Card className="p-6 mb-6 bg-card/50 backdrop-blur">
-              <EditableItemText
-                table="guitar_embeds"
-                itemId={embed.id}
-                field="title"
-                value={embed.title}
-                className="text-3xl font-bold mb-2"
-                as="h1"
-                queryKey={["guitar-embed", id]}
-              />
-              <EditableItemText
-                table="guitar_embeds"
-                itemId={embed.id}
-                field="description"
-                value={embed.description}
-                className="text-muted-foreground"
-                as="p"
-                queryKey={["guitar-embed", id]}
-              />
-            </Card>
-            
+        {/* AlphaTabPlayer outside container to allow full width expansion */}
+        {!isLoading && embed && (
+          <>
             {embed.file_url ? (
-              <>
-                <div className="space-y-6">
-                  <AlphaTabPlayer 
-                    fileUrl={embed.file_url} 
-                    title={embed.title}
-                    defaultInstrument={embed.default_instrument}
-                  />
-                </div>
-                <Card className="p-6 mt-6 bg-card/50 backdrop-blur">
-                  <CommentSection
-                    contentType="guitar_embed"
-                    contentId={embed.id}
-                  />
-                </Card>
-              </>
+              <div className="space-y-6 px-4">
+                <AlphaTabPlayer 
+                  fileUrl={embed.file_url} 
+                  title={embed.title}
+                  defaultInstrument={embed.default_instrument}
+                />
+              </div>
             ) : embed.embed_code ? (
-              <>
+              <div className={`container mx-auto px-4 ${widthClasses[containerWidth]}`}>
                 <Card className="p-6 bg-card/50 backdrop-blur">
                   <div 
                     className="w-full min-h-[600px] rounded-lg overflow-hidden border border-border"
                     dangerouslySetInnerHTML={{ __html: embed.embed_code }}
                   />
                 </Card>
-                <Card className="p-6 mt-6 bg-card/50 backdrop-blur">
-                  <CommentSection
-                    contentType="guitar_embed"
-                    contentId={embed.id}
-                  />
-                </Card>
-              </>
+              </div>
             ) : (
-              <Card className="p-12 text-center bg-card/50 backdrop-blur">
-                <p className="text-lg text-muted-foreground">
-                  No content available for this tab.
-                </p>
-              </Card>
+              <div className={`container mx-auto px-4 ${widthClasses[containerWidth]}`}>
+                <Card className="p-12 text-center bg-card/50 backdrop-blur">
+                  <p className="text-lg text-muted-foreground">
+                    No content available for this tab.
+                  </p>
+                </Card>
+              </div>
             )}
-          </div>
-        ) : (
-          <Card className="p-12 text-center bg-card/50 backdrop-blur">
-            <p className="text-lg text-muted-foreground">
-              Guitar tab not found.
-            </p>
-          </Card>
+            
+            <div className={`container mx-auto px-4 ${widthClasses[containerWidth]} mt-6`}>
+              <Card className="p-6 bg-card/50 backdrop-blur">
+                <CommentSection
+                  contentType="guitar_embed"
+                  contentId={embed.id}
+                />
+              </Card>
+            </div>
+          </>
         )}
       </div>
     </main>
