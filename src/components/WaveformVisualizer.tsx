@@ -16,6 +16,8 @@ export const WaveformVisualizer = ({
 }: WaveformVisualizerProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [waveformData, setWaveformData] = useState<number[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragPosition, setDragPosition] = useState<number | null>(null);
 
   useEffect(() => {
     if (!audioUrl) {
@@ -109,8 +111,12 @@ export const WaveformVisualizer = ({
       const clampedProgress = Math.max(0, Math.min(1, Number.isFinite(progress as number) ? (progress as number) : 0));
       const progressBars = Math.max(0, Math.min(waveformData.length, Math.floor(clampedProgress * waveformData.length)));
 
+      // Use drag position if dragging, otherwise use actual progress
+      const activePosition = isDragging && dragPosition !== null ? dragPosition : clampedProgress;
+      const activeBars = Math.max(0, Math.min(waveformData.length, Math.floor(activePosition * waveformData.length)));
+
       // Base bars in foreground (white), overlay played in primary (orange)
-      if (index < progressBars) {
+      if (index < activeBars) {
         const primary = getComputedStyle(document.documentElement).getPropertyValue('--primary');
         ctx.fillStyle = primary ? `hsl(${primary})` : 'hsl(var(--primary))';
       } else {
@@ -124,28 +130,73 @@ export const WaveformVisualizer = ({
         barHeight
       );
     });
-  }, [waveformData, progress, isPlaying]);
 
-  const handleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    // Draw scrubber line when dragging
+    if (isDragging && dragPosition !== null) {
+      const scrubberX = dragPosition * rect.width;
+      ctx.strokeStyle = "hsl(var(--primary))";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(scrubberX, 0);
+      ctx.lineTo(scrubberX, rect.height);
+      ctx.stroke();
+    }
+  }, [waveformData, progress, isPlaying, isDragging, dragPosition]);
+
+  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!audioUrl || waveformData.length === 0) return;
+    setIsDragging(true);
+    updateDragPosition(e);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!isDragging) return;
+    updateDragPosition(e);
+  };
+
+  const handleMouseUp = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!isDragging) return;
     
     const canvas = canvasRef.current;
     if (!canvas) return;
     
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
-    const clickProgress = x / rect.width;
+    const seekProgress = Math.max(0, Math.min(1, x / rect.width));
     
     // Dispatch event to seek to this position
     window.dispatchEvent(new CustomEvent('seekToPosition', { 
-      detail: { progress: Math.max(0, Math.min(1, clickProgress)) } 
+      detail: { progress: seekProgress } 
     }));
+    
+    setIsDragging(false);
+    setDragPosition(null);
+  };
+
+  const handleMouseLeave = () => {
+    if (isDragging) {
+      setIsDragging(false);
+      setDragPosition(null);
+    }
+  };
+
+  const updateDragPosition = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const position = Math.max(0, Math.min(1, x / rect.width));
+    setDragPosition(position);
   };
 
   return (
     <canvas
       ref={canvasRef}
-      onClick={handleClick}
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseLeave}
       className={cn("w-full h-full cursor-pointer", className)}
       style={{ width: "100%", height: "100%" }}
     />
