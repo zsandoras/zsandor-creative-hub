@@ -229,6 +229,9 @@ const AlphaTabControls = ({
           masterBar.tempoAutomation.value = newBPM;
         }
       }
+      
+      // Re-render to update the displayed BPM in the tablature
+      api.render();
     }
     
     // Update playback speed based on BPM ratio
@@ -236,14 +239,9 @@ const AlphaTabControls = ({
     setPlaybackSpeed(speed);
     api.playbackSpeed = speed;
     
-    // Regenerate MIDI with new tempo
+    // Regenerate MIDI with new tempo (without stopping playback)
     if (typeof api.loadMidiForScore === "function") {
-      const wasPlaying = isPlaying;
-      if (wasPlaying) api.stop();
       api.loadMidiForScore();
-      if (wasPlaying) {
-        setTimeout(() => api.play(), 100);
-      }
     }
   };
 
