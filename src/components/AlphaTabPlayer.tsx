@@ -307,7 +307,12 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
         )}
 
         {/* AlphaTab Container - always rendered for DOM availability */}
-        <div id="alphaTab" ref={atContainer} className="at-wrap" style={{ display: api ? 'block' : 'none' }}>
+        <div 
+          id="alphaTab" 
+          ref={atContainer} 
+          className="at-wrap" 
+          style={{ visibility: api ? 'visible' : 'hidden', height: api ? 'auto' : 0 }}
+        >
           <div className="at-content">
             <div className="at-viewport"></div>
           </div>
