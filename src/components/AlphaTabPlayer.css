@@ -64,3 +64,29 @@
   fill: #00bf8f !important;
   stroke: #00bf8f !important;
 }
+
+/* Print styles - only show tablature */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  
+  .alphatab-container,
+  .alphatab-container * {
+    visibility: visible;
+  }
+  
+  .alphatab-container {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    box-shadow: none;
+  }
+  
+  /* Hide scrollbars in print */
+  .alphatab-container .at-viewport {
+    overflow: visible !important;
+    max-height: none !important;
+  }
+}

@@ -75,6 +75,7 @@ const AlphaTabPlayer = ({ fileUrl, file, title, onReset, defaultInstrument }: Al
           enablePlayer: true,
           soundFont: "https://cdn.jsdelivr.net/npm/@coderline/alphatab@latest/dist/soundfont/sonivox.sf2",
           enableCursor: true,
+          scrollMode: window.alphaTab.ScrollMode.Off,
         },
       });
 

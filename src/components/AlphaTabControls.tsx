@@ -14,6 +14,8 @@ import {
   ChevronUp,
   ChevronDown,
   FileDown,
+  Music,
+  ScrollText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -92,6 +94,7 @@ const AlphaTabControls = ({
   const [currentInstrument, setCurrentInstrument] = useState(INSTRUMENTS[0]);
   const [volume, setVolume] = useState(80);
   const [transpose, setTranspose] = useState(0);
+  const [autoScroll, setAutoScroll] = useState(false);
 
   useEffect(() => {
     // Load default instrument from prop or fallback to settings
@@ -283,6 +286,24 @@ const AlphaTabControls = ({
     }
   };
 
+  const handleSeek = (value: number[]) => {
+    if (api) {
+      api.timePosition = value[0];
+    }
+  };
+
+  const toggleAutoScroll = () => {
+    const newAutoScroll = !autoScroll;
+    setAutoScroll(newAutoScroll);
+    if (api && (api as any).settings) {
+      const ScrollMode = (window as any).alphaTab?.ScrollMode;
+      if (ScrollMode) {
+        (api as any).settings.player.scrollMode = newAutoScroll ? ScrollMode.Continuous : ScrollMode.Off;
+        api.updateSettings();
+      }
+    }
+  };
+
   const formatTime = (milliseconds: number) => {
     const seconds = Math.floor(milliseconds / 1000);
     const mins = Math.floor(seconds / 60);
@@ -327,8 +348,20 @@ const AlphaTabControls = ({
             <span className="font-semibold text-foreground">{title}</span>
           </div>
 
-          <div className="text-sm text-muted-foreground px-2">
-            {formatTime(currentTime)} / {formatTime(duration)}
+          <div className="flex items-center gap-2 flex-1 min-w-[200px] max-w-md">
+            <span className="text-sm text-muted-foreground whitespace-nowrap">
+              {formatTime(currentTime)}
+            </span>
+            <Slider
+              value={[currentTime]}
+              onValueChange={handleSeek}
+              max={duration}
+              step={100}
+              className="flex-1"
+            />
+            <span className="text-sm text-muted-foreground whitespace-nowrap">
+              {formatTime(duration)}
+            </span>
           </div>
         </div>
 
@@ -350,7 +383,7 @@ const AlphaTabControls = ({
             title="Metronome"
             className={metronome ? "bg-accent" : ""}
           >
-            <Timer className="h-4 w-4" />
+            <Music className="h-4 w-4" />
           </Button>
 
           <Button
@@ -361,6 +394,16 @@ const AlphaTabControls = ({
             className={loop ? "bg-accent" : ""}
           >
             <Repeat className="h-4 w-4" />
+          </Button>
+
+          <Button
+            onClick={toggleAutoScroll}
+            variant="ghost"
+            size="icon"
+            title="Auto-scroll (Page follows playback)"
+            className={autoScroll ? "bg-accent" : ""}
+          >
+            <ScrollText className="h-4 w-4" />
           </Button>
 
           <Button onClick={handleDownload} variant="ghost" size="icon" title="Download">
