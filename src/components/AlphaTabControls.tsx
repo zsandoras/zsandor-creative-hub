@@ -487,9 +487,9 @@ const AlphaTabControls = ({
   return (
     <div className="rounded-lg border text-card-foreground shadow-sm p-0 bg-card border-border overflow-hidden">
       {/* Main control bar */}
-      <div className={`flex items-center ${spacing} ${padding} bg-muted/30`}>
+      <div className={`flex flex-wrap items-center ${spacing} ${padding} bg-muted/30`}>
         {/* Left Section: Playback Controls + BPM + Title */}
-        <div className={`flex items-center ${spacing} flex-shrink-0`}>
+        <div className={`flex items-center ${spacing}`}>
           {/* Playback buttons */}
           <div className={`flex items-center gap-0.5`}>
             <Button onClick={stop} variant="ghost" size={buttonSize} title="Stop" disabled={!api}>
@@ -560,7 +560,7 @@ const AlphaTabControls = ({
         </div>
 
         {/* Middle Section: Playback Options */}
-        <div className={`flex items-center ${spacing} ${scaleControls ? 'px-2 mx-1' : 'px-1 mx-0.5'} border-l flex-shrink-0`}>
+        <div className={`flex items-center ${spacing} ${scaleControls ? 'px-2 mx-1' : 'px-1 mx-0.5'} border-l`}>
           <Button
             onClick={toggleCountIn}
             variant="ghost"
@@ -600,7 +600,7 @@ const AlphaTabControls = ({
         </div>
 
         {/* Music Controls Section: Transpose + Instruments */}
-        <div className={`flex items-center ${spacing} ${scaleControls ? 'px-2 mx-1' : 'px-1 mx-0.5'} border-l flex-shrink-0`}>
+        <div className={`flex items-center ${spacing} ${scaleControls ? 'px-2 mx-1' : 'px-1 mx-0.5'} border-l`}>
           {/* Transpose */}
           <div className={`flex items-center gap-0.5`}>
             <Button
@@ -632,7 +632,7 @@ const AlphaTabControls = ({
                 <span className={`hidden lg:inline ${scaleControls ? '' : 'text-xs'}`}>{currentInstrument.name}</span>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="max-h-80 overflow-y-auto z-50">
+            <DropdownMenuContent className="max-h-80 overflow-y-auto z-50 bg-popover">
               {INSTRUMENTS.map((instrument) => (
                 <DropdownMenuItem
                   key={instrument.program}
@@ -654,7 +654,7 @@ const AlphaTabControls = ({
                   <span className={`hidden lg:inline ${scaleControls ? '' : 'text-xs'}`}>Track</span>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="z-50">
+              <DropdownMenuContent className="z-50 bg-popover">
                 {tracks.map((track, index) => (
                   <DropdownMenuItem
                     key={index}
@@ -669,10 +669,10 @@ const AlphaTabControls = ({
           )}
         </div>
 
-        {/* Right Section: View Controls + Actions */}
-        <div className={`flex items-center ${spacing} flex-1 justify-end`}>
+        {/* Zoom & Volume Section */}
+        <div className={`flex items-center ${spacing} flex-1 min-w-[200px]`}>
           {/* Zoom */}
-          <div className={`hidden xl:flex items-center ${spacing} ${scaleControls ? 'px-3' : 'px-2'} border-l flex-1 max-w-[200px]`}>
+          <div className={`flex items-center ${spacing} ${scaleControls ? 'px-3' : 'px-2'} border-l flex-1 min-w-[120px]`}>
             <ZoomIn className={`${iconSize} text-muted-foreground flex-shrink-0`} />
             <Slider
               value={[zoom]}
@@ -686,7 +686,7 @@ const AlphaTabControls = ({
           </div>
 
           {/* Volume */}
-          <div className={`hidden xl:flex items-center ${spacing} ${scaleControls ? 'px-3' : 'px-2'} border-l flex-1 max-w-[200px]`}>
+          <div className={`flex items-center ${spacing} ${scaleControls ? 'px-3' : 'px-2'} border-l flex-1 min-w-[120px]`}>
             <Volume2 className={`${iconSize} text-muted-foreground flex-shrink-0`} />
             <Slider
               value={[volume]}
@@ -697,27 +697,27 @@ const AlphaTabControls = ({
             />
             <span className={`${scaleControls ? 'text-xs' : 'text-[10px]'} text-muted-foreground min-w-[3ch]`}>{volume}%</span>
           </div>
+        </div>
 
-          {/* File actions */}
-          <div className={`flex items-center gap-0.5 ${scaleControls ? 'px-2 ml-1' : 'px-1 ml-0.5'} border-l`}>
-            <Button onClick={handleDownload} variant="ghost" size={buttonSize} title="Download">
-              <Download className={iconSize} />
+        {/* File actions */}
+        <div className={`flex items-center gap-0.5 ${scaleControls ? 'px-2 ml-1' : 'px-1 ml-0.5'} border-l`}>
+          <Button onClick={handleDownload} variant="ghost" size={buttonSize} title="Download">
+            <Download className={iconSize} />
+          </Button>
+          <Button onClick={handleExportPDF} variant="ghost" size={buttonSize} title="Export PDF">
+            <FileDown className={iconSize} />
+          </Button>
+          {onToggleScale && (
+            <Button
+              onClick={onToggleScale}
+              variant="ghost"
+              size={buttonSize}
+              title={scaleControls ? "Fixed width" : "Auto scale"}
+              className={scaleControls ? "bg-accent" : ""}
+            >
+              <Maximize2 className={iconSize} />
             </Button>
-            <Button onClick={handleExportPDF} variant="ghost" size={buttonSize} title="Export PDF">
-              <FileDown className={iconSize} />
-            </Button>
-            {onToggleScale && (
-              <Button
-                onClick={onToggleScale}
-                variant="ghost"
-                size={buttonSize}
-                title={scaleControls ? "Fixed width" : "Auto scale"}
-                className={scaleControls ? "bg-accent" : ""}
-              >
-                <Maximize2 className={iconSize} />
-              </Button>
-            )}
-          </div>
+          )}
         </div>
       </div>
 
