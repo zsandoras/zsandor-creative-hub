@@ -264,7 +264,8 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
         )}
         <div 
           ref={containerRef} 
-          className="rounded-lg border border-border overflow-hidden"
+          className="rounded-lg border border-border overflow-hidden min-h-[600px]"
+          style={{ height: '600px' }}
           data-alphatab
         />
       </Card>
