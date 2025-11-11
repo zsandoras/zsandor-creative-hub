@@ -216,7 +216,7 @@ const AlphaTabPlayer = ({ fileUrl, file, title, onReset, defaultInstrument }: Al
         newWidth = startWidth + (deltaPercent * 2); // Add for right
       }
       
-      setContainerWidth(Math.max(50, Math.min(300, newWidth))); // Allow up to 300%
+      setContainerWidth(Math.max(50, Math.min(500, newWidth))); // Allow up to 500%
     };
     
     const handleMouseUp = () => {
@@ -314,7 +314,18 @@ const AlphaTabPlayer = ({ fileUrl, file, title, onReset, defaultInstrument }: Al
             </div>
           </div>
 
-          <Card className="relative p-4 bg-card border-2 border-border/50 group-hover:border-primary/50 transition-colors" style={{ height: `${containerHeight}px` }}>
+          <Card 
+            className="relative p-4 bg-card border-2 border-border/50 group-hover:border-primary/50 transition-colors overflow-auto" 
+            style={{ height: `${containerHeight}px` }}
+            onMouseEnter={(e) => {
+              // Prevent page scrolling when mouse is over the card
+              e.currentTarget.style.overflowY = 'auto';
+            }}
+            onMouseLeave={(e) => {
+              // Re-enable page scrolling when mouse leaves
+              e.currentTarget.style.overflowY = 'auto';
+            }}
+          >
             {error && (
               <div className="bg-destructive/10 border border-destructive/50 rounded-lg p-4 mb-4">
                 <p className="font-semibold text-destructive">Error Loading Tablature</p>
