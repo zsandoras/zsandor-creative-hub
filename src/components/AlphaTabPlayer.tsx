@@ -30,7 +30,6 @@ interface DebugState {
 
 const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const viewportRef = useRef<HTMLDivElement>(null);
   const apiRef = useRef<alphaTab.AlphaTabApi | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isPlayerReady, setIsPlayerReady] = useState(false);
@@ -615,13 +614,8 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
         </Card>
       )}
 
-      <div className="relative rounded-lg border border-border bg-background/95 backdrop-blur">
-        <div className="at-viewport" ref={viewportRef}>
-          <div
-            ref={containerRef}
-            className="w-full min-h-[600px]"
-          />
-        </div>
+      <div className="relative rounded-lg border border-border bg-background/95 backdrop-blur" ref={containerRef}>
+        <div className="at-viewport w-full min-h-[600px]" />
       </div>
     </div>
   );
