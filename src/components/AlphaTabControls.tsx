@@ -13,6 +13,8 @@ import {
   Volume2,
   ChevronUp,
   ChevronDown,
+  ChevronsUp,
+  ChevronsDown,
   FileDown,
   ScrollText,
   CircleDot,
@@ -214,16 +216,35 @@ const AlphaTabControls = ({
     if (api) api.stop();
   };
 
-  const handleBPMChange = (direction: "up" | "down") => {
-    if (!originalBPM || !currentBPM) return;
+  const handleBPMChange = (change: number) => {
+    if (!originalBPM || !currentBPM || !api) return;
     
-    const newBPM = direction === "up" ? currentBPM + 5 : Math.max(20, currentBPM - 5);
+    const newBPM = Math.max(20, Math.min(300, currentBPM + change));
     setCurrentBPM(newBPM);
     
-    // Calculate playback speed based on BPM ratio
+    // Actually modify the tempo in the score
+    if (api.score && api.score.masterBars) {
+      for (const masterBar of api.score.masterBars) {
+        if (masterBar.tempoAutomation) {
+          masterBar.tempoAutomation.value = newBPM;
+        }
+      }
+    }
+    
+    // Update playback speed based on BPM ratio
     const speed = newBPM / originalBPM;
     setPlaybackSpeed(speed);
-    if (api) api.playbackSpeed = speed;
+    api.playbackSpeed = speed;
+    
+    // Regenerate MIDI with new tempo
+    if (typeof api.loadMidiForScore === "function") {
+      const wasPlaying = isPlaying;
+      if (wasPlaying) api.stop();
+      api.loadMidiForScore();
+      if (wasPlaying) {
+        setTimeout(() => api.play(), 100);
+      }
+    }
   };
 
   const handleZoomChange = (zoomLevel: number) => {
@@ -460,27 +481,49 @@ const AlphaTabControls = ({
             {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
           </Button>
 
-          <div className="flex items-center gap-1 border-r pr-2">
+          <div className="flex items-center gap-0.5 border-r pr-2">
             <Button
-              onClick={() => handleBPMChange("down")}
+              onClick={() => handleBPMChange(-5)}
               variant="ghost"
               size="icon"
-              title="Decrease BPM"
+              title="Decrease BPM by 5"
               disabled={!api || !currentBPM}
+              className="h-8 w-8"
+            >
+              <ChevronsDown className="h-4 w-4" />
+            </Button>
+            <Button
+              onClick={() => handleBPMChange(-1)}
+              variant="ghost"
+              size="icon"
+              title="Decrease BPM by 1"
+              disabled={!api || !currentBPM}
+              className="h-8 w-8"
             >
               <ChevronDown className="h-4 w-4" />
             </Button>
-            <span className="text-xs text-muted-foreground min-w-[4ch] text-center font-mono">
+            <span className="text-xs text-muted-foreground min-w-[3ch] text-center font-mono px-1">
               {currentBPM ? Math.round(currentBPM) : "---"}
             </span>
             <Button
-              onClick={() => handleBPMChange("up")}
+              onClick={() => handleBPMChange(1)}
               variant="ghost"
               size="icon"
-              title="Increase BPM"
+              title="Increase BPM by 1"
               disabled={!api || !currentBPM}
+              className="h-8 w-8"
             >
               <ChevronUp className="h-4 w-4" />
+            </Button>
+            <Button
+              onClick={() => handleBPMChange(5)}
+              variant="ghost"
+              size="icon"
+              title="Increase BPM by 5"
+              disabled={!api || !currentBPM}
+              className="h-8 w-8"
+            >
+              <ChevronsUp className="h-4 w-4" />
             </Button>
           </div>
 
