@@ -66,7 +66,7 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       settings.core.fontDirectory = "/font/";
       settings.core.useWorkers = false;
       settings.display.layoutMode = alphaTab.LayoutMode.Page;
-      settings.player.enablePlayer = true;
+      settings.player.playerMode = alphaTab.PlayerMode.EnabledSynthesizer;
       settings.player.enableCursor = true;
       settings.player.enableAnimatedBeatCursor = true;
       settings.player.soundFont = window.location.origin + "/soundfont/sonivox.sf2";
@@ -81,12 +81,36 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       const api = new alphaTab.AlphaTabApi(containerRef.current, settings);
       apiRef.current = api;
       log('AlphaTabApi created');
+      try {
+        const mode = api.actualPlayerMode;
+        const modeName = (alphaTab as any).PlayerMode?.[mode] ?? String(mode);
+        log(`Player actual mode: ${mode} (${modeName})`);
+      } catch {}
+      
+      try {
+        api.load(fileUrl as any);
+        log('api.load(fileUrl) called');
+      } catch (e: any) {
+        log(`api.load failed: ${e?.message || e}`);
+      }
 
       const timeoutId = window.setTimeout(() => {
         log('Render timeout after 15s');
         setIsLoading(false);
         setError((prev) => prev ?? 'Render timeout: AlphaTab did not finish rendering.');
       }, 15000);
+
+      // Score load events
+      api.scoreLoaded.on(() => {
+        const score = api.score;
+        if (score) {
+          const tracks = score.tracks.map((t: any, i: number) => ({ index: i, name: t.name }));
+          setPlayerState((prev) => ({ ...prev, tracks, selectedTracks: [0] }));
+          log(`scoreLoaded: ${tracks.length} tracks`);
+        } else {
+          log('scoreLoaded but no score available');
+        }
+      });
 
       // Render events
       api.renderFinished.on(() => {
@@ -124,10 +148,20 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
         setIsPlayerReady(true);
       });
 
+      // MIDI loading events
+      api.midiLoad.on(() => {
+        log('🎼 MIDI loading started');
+      });
+
+      api.midiLoaded.on(() => {
+        log('🎼 MIDI loaded');
+      });
+
       api.playerReady.on(() => {
-        log('✓ Player ready - controls enabled');
+        log(`✓ Player ready - controls enabled (ready=${String(api.isReadyForPlayback)})`);
         setIsPlayerReady(true);
         setLoadProgress(100);
+        setUiEnabled(true);
       });
 
       api.error.on((e: any) => {
@@ -361,7 +395,6 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
           <div
             ref={containerRef}
             className="w-full min-h-[600px]"
-            style={{ visibility: isLoading ? "hidden" : "visible" }}
           />
         </div>
       </div>
