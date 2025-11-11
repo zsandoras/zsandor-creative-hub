@@ -93,8 +93,8 @@ const AlphaTabControls = ({
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [originalBPM, setOriginalBPM] = useState<number | null>(null);
   const [currentBPM, setCurrentBPM] = useState<number | null>(null);
-  const [timeOffset, setTimeOffset] = useState(0);
   const lastTimeRef = useRef(0);
+  const ignoreBackwardOnPauseRef = useRef(false);
   const [zoom, setZoom] = useState(100);
   const [countIn, setCountIn] = useState(false);
   const [metronome, setMetronome] = useState(false);
@@ -150,10 +150,9 @@ const AlphaTabControls = ({
           const isProgramChange = MidiEventType
             ? ev.type === MidiEventType.ProgramChange || ev.command === MidiEventType.ProgramChange
             : ev.command === 0xC0;
-          if (isProgramChange && ev.channel !== 9) {
-            if (typeof ev.program === "number") ev.program = program;
-            if (typeof ev.data1 === "number") ev.data1 = program;
-          }
+            if (isProgramChange && ev.channel !== 9) {
+              if (typeof ev.program === "number") ev.program = program;
+            }
         }
       } catch (err) {
         console.warn("Failed to rewrite MIDI program changes:", err);
@@ -178,16 +177,16 @@ const AlphaTabControls = ({
 
     // Listen to player position changes for time tracking
     const positionHandler = (e: any) => {
+      // Ignore a single backward jump that can occur immediately after pausing
+      if (!isPlaying && ignoreBackwardOnPauseRef.current && typeof e.currentTime === 'number' && e.currentTime < lastTimeRef.current) {
+        ignoreBackwardOnPauseRef.current = false;
+        return;
+      }
       // Freeze scrubber updates when paused (unless it's a manual seek)
       if (!isPlaying && !(e && e.isSeek)) {
         return;
       }
       if (typeof e.currentTime === 'number') {
-        // Only detect repeats when playing to avoid false positives during pause
-        if (isPlaying && lastTimeRef.current > 0 && e.currentTime < lastTimeRef.current - 1000) {
-          // Add the last time to offset to make scrubber monotonic
-          setTimeOffset(prev => prev + lastTimeRef.current);
-        }
         lastTimeRef.current = e.currentTime;
         setCurrentTime(e.currentTime);
       }
@@ -220,6 +219,9 @@ const AlphaTabControls = ({
       // If starting playback, notify MP3 player to stop
       if (!isPlaying) {
         window.dispatchEvent(new CustomEvent('alphaTabPlay'));
+      } else {
+        // We're about to pause; ignore the backward jump emitted by repeats
+        ignoreBackwardOnPauseRef.current = true;
       }
       api.playPause();
     }
@@ -363,7 +365,6 @@ const AlphaTabControls = ({
               : ev.command === 0xC0;
             if (isProgramChange && ev.channel !== 9) {
               if (typeof ev.program === "number") ev.program = program;
-              if (typeof ev.data1 === "number") ev.data1 = program;
             }
           }
         } catch (err) {
@@ -432,11 +433,8 @@ const AlphaTabControls = ({
 
   const handleSeek = (value: number[]) => {
     if (api) {
-      const seekTime = value[0] - timeOffset;
-      api.timePosition = Math.max(0, seekTime);
-      // Reset offset on manual seek
-      setTimeOffset(0);
-      lastTimeRef.current = seekTime;
+      api.timePosition = value[0];
+      lastTimeRef.current = value[0];
     }
   };
 
@@ -685,12 +683,12 @@ const AlphaTabControls = ({
       {/* Bottom row: Full-width scrubber */}
       <div className="flex items-center gap-2 px-4 py-3 bg-muted/20 border-t border-border">
         <span className="text-sm text-muted-foreground whitespace-nowrap">
-          {formatTime(currentTime + timeOffset)}
+          {formatTime(currentTime)}
         </span>
         <Slider
-          value={[currentTime + timeOffset]}
-          onValueCommit={handleSeek}
-          max={Math.max(duration, currentTime + timeOffset)}
+          value={[currentTime]}
+          onValueChange={handleSeek}
+          max={duration}
           step={100}
           className="flex-1"
         />
