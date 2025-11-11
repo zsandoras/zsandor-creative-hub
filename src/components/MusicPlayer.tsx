@@ -1,11 +1,18 @@
 import { useState, useRef, useEffect } from "react";
-import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX } from "lucide-react";
+import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Repeat, RotateCcw } from "lucide-react";
 import { Button } from "./ui/button";
 import { Slider } from "./ui/slider";
 import { Card } from "./ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface Track {
   id: string;
@@ -22,6 +29,10 @@ export const MusicPlayer = () => {
   const [isMuted, setIsMuted] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [playbackRate, setPlaybackRate] = useState(1);
+  const [loopMode, setLoopMode] = useState<"none" | "one" | "all">("none");
+  const [loopStart, setLoopStart] = useState<number | null>(null);
+  const [loopEnd, setLoopEnd] = useState<number | null>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
 
   const { data: tracks = [] } = useQuery({
@@ -42,15 +53,40 @@ export const MusicPlayer = () => {
   useEffect(() => {
     if (audioRef.current) {
       audioRef.current.volume = volume / 100;
+      audioRef.current.playbackRate = playbackRate;
     }
-  }, [volume]);
+  }, [volume, playbackRate]);
 
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
+    // Keyboard shortcuts
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      
+      if (e.code === "Space") {
+        e.preventDefault();
+        togglePlay();
+      } else if (e.code === "ArrowLeft") {
+        if (audio) audio.currentTime = Math.max(0, audio.currentTime - 5);
+      } else if (e.code === "ArrowRight") {
+        if (audio) audio.currentTime = Math.min(audio.duration, audio.currentTime + 5);
+      } else if (e.code === "KeyM") {
+        toggleMute();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyPress);
+
     const updateTime = () => {
       setCurrentTime(audio.currentTime);
+      
+      // A-B Loop logic
+      if (loopStart !== null && loopEnd !== null && audio.currentTime >= loopEnd) {
+        audio.currentTime = loopStart;
+      }
+      
       // Dispatch progress event for Recordings page
       if (currentTrack) {
         const progress = audio.duration ? audio.currentTime / audio.duration : 0;
@@ -93,7 +129,16 @@ export const MusicPlayer = () => {
 
     audio.addEventListener("timeupdate", updateTime);
     audio.addEventListener("loadedmetadata", updateDuration);
-    audio.addEventListener("ended", handleNext);
+    audio.addEventListener("ended", () => {
+      if (loopMode === "one") {
+        audio.currentTime = 0;
+        audio.play();
+      } else if (loopMode === "all") {
+        handleNext();
+      } else {
+        handleNext();
+      }
+    });
     audio.addEventListener("play", () => {
       if (currentTrack) {
         window.dispatchEvent(new CustomEvent('playingStateChange', {
@@ -116,12 +161,12 @@ export const MusicPlayer = () => {
     return () => {
       audio.removeEventListener("timeupdate", updateTime);
       audio.removeEventListener("loadedmetadata", updateDuration);
-      audio.removeEventListener("ended", handleNext);
       window.removeEventListener("playTrack", handleTrackChange as EventListener);
       window.removeEventListener("togglePlayback", handleTogglePlayback);
       window.removeEventListener("seekToPosition", handleSeekToPosition as EventListener);
+      document.removeEventListener("keydown", handleKeyPress);
     };
-  }, [currentTrackIndex, tracks, currentTrack, isPlaying]);
+  }, [currentTrackIndex, tracks, currentTrack, isPlaying, loopMode, loopStart, loopEnd]);
 
   const togglePlay = () => {
     if (audioRef.current) {
@@ -159,6 +204,23 @@ export const MusicPlayer = () => {
     if (audioRef.current) {
       audioRef.current.muted = !isMuted;
       setIsMuted(!isMuted);
+    }
+  };
+
+  const toggleLoopMode = () => {
+    const modes: Array<"none" | "one" | "all"> = ["none", "one", "all"];
+    const currentIndex = modes.indexOf(loopMode);
+    setLoopMode(modes[(currentIndex + 1) % modes.length]);
+  };
+
+  const setABLoop = () => {
+    if (loopStart === null) {
+      setLoopStart(currentTime);
+    } else if (loopEnd === null && currentTime > loopStart) {
+      setLoopEnd(currentTime);
+    } else {
+      setLoopStart(null);
+      setLoopEnd(null);
     }
   };
 
@@ -213,7 +275,6 @@ export const MusicPlayer = () => {
               </div>
             </div>
 
-            {/* Track list */}
             {tracks.length > 1 && (
               <div className="max-h-48 overflow-y-auto space-y-1 scrollbar-thin">
                 {tracks.map((track, index) => (
@@ -237,6 +298,27 @@ export const MusicPlayer = () => {
               </div>
             )}
 
+            {/* Playback speed control */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">Speed:</span>
+              <Select
+                value={playbackRate.toString()}
+                onValueChange={(value) => setPlaybackRate(parseFloat(value))}
+              >
+                <SelectTrigger className="h-7 text-xs w-[80px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="0.5">0.5x</SelectItem>
+                  <SelectItem value="0.75">0.75x</SelectItem>
+                  <SelectItem value="1">1x</SelectItem>
+                  <SelectItem value="1.25">1.25x</SelectItem>
+                  <SelectItem value="1.5">1.5x</SelectItem>
+                  <SelectItem value="2">2x</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             {/* Controls */}
             <div className="flex items-center justify-between gap-2">
               <Button
@@ -257,6 +339,26 @@ export const MusicPlayer = () => {
                 disabled={tracks.length <= 1}
               >
                 <SkipForward className="h-3 w-3" />
+              </Button>
+
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-8 w-8"
+                onClick={toggleLoopMode}
+                title={loopMode === "none" ? "No loop" : loopMode === "one" ? "Loop one" : "Loop all"}
+              >
+                <Repeat className={cn("h-3 w-3", loopMode !== "none" && "text-primary")} />
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={setABLoop}
+                title={loopStart === null ? "Set A" : loopEnd === null ? "Set B" : "Clear A-B"}
+              >
+                <RotateCcw className={cn("h-3 w-3", loopStart !== null && "text-primary")} />
               </Button>
 
               <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleMute}>

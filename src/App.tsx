@@ -12,6 +12,7 @@ import GuitarPro from "./pages/GuitarPro";
 import GuitarDetail from "./pages/GuitarDetail";
 import Recordings from "./pages/Recordings";
 import FoodGallery from "./pages/FoodGallery";
+import GuestBook from "./pages/GuestBook";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/admin/Dashboard";
 import MusicManager from "./pages/admin/MusicManager";
@@ -40,6 +41,7 @@ const App = () => (
                 <Route path="/guitar/:id" element={<GuitarDetail />} />
                 <Route path="/recordings" element={<Recordings />} />
                 <Route path="/food" element={<FoodGallery />} />
+                <Route path="/guestbook" element={<GuestBook />} />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/admin" element={<Dashboard />} />
                 <Route path="/admin/music" element={<MusicManager />} />

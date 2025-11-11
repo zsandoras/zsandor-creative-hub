@@ -68,6 +68,33 @@ export type Database = {
         }
         Relationships: []
       }
+      guest_book: {
+        Row: {
+          approved: boolean
+          created_at: string
+          id: string
+          message: string
+          name: string
+          user_id: string | null
+        }
+        Insert: {
+          approved?: boolean
+          created_at?: string
+          id?: string
+          message: string
+          name: string
+          user_id?: string | null
+        }
+        Update: {
+          approved?: boolean
+          created_at?: string
+          id?: string
+          message?: string
+          name?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       guitar_embeds: {
         Row: {
           created_at: string | null

@@ -8,8 +8,24 @@ const Home = () => {
   return (
     <main className="min-h-screen bg-background">
       <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-background via-background/50 to-background" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,hsl(var(--primary)/0.1),transparent_50%)]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-background via-background/50 to-background animate-in fade-in duration-2000" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,hsl(var(--primary)/0.2),transparent_50%)] animate-pulse" />
+        
+        {/* Floating particles effect */}
+        <div className="absolute inset-0 overflow-hidden">
+          {[...Array(20)].map((_, i) => (
+            <div
+              key={i}
+              className="absolute h-2 w-2 rounded-full bg-primary/20 animate-float"
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+                animationDelay: `${Math.random() * 5}s`,
+                animationDuration: `${5 + Math.random() * 10}s`,
+              }}
+            />
+          ))}
+        </div>
         
         <div className="relative z-10 container mx-auto px-4 text-center">
           <div className="inline-block mb-6 animate-in fade-in slide-in-from-bottom-4 duration-1000">

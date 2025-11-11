@@ -2,13 +2,13 @@ import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Play, Pause } from "lucide-react";
 import { EditableText } from "@/components/EditableText";
 import { EditableItemText } from "@/components/EditableItemText";
 import { useAuth } from "@/hooks/useAuth";
 import { WaveformVisualizer } from "@/components/WaveformVisualizer";
+import { RecordingSkeleton } from "@/components/LoadingSkeleton";
 import { cn } from "@/lib/utils";
 
 interface Recording {
@@ -112,15 +112,7 @@ const Recordings = () => {
         {isLoading ? (
           <div className="space-y-4">
             {[1, 2, 3].map((i) => (
-              <Card key={i} className="p-4">
-                <div className="flex gap-4">
-                  <Skeleton className="w-32 h-32 shrink-0" />
-                  <div className="flex-1 space-y-3">
-                    <Skeleton className="h-6 w-1/3" />
-                    <Skeleton className="h-20 w-full" />
-                  </div>
-                </div>
-              </Card>
+              <RecordingSkeleton key={i} />
             ))}
           </div>
         ) : recordings && recordings.length > 0 ? (

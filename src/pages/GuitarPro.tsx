@@ -1,11 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "react-router-dom";
 import { ChevronRight } from "lucide-react";
 import { EditableText } from "@/components/EditableText";
 import { EditableItemText } from "@/components/EditableItemText";
+import { GuitarSkeleton } from "@/components/LoadingSkeleton";
 
 interface GuitarEmbed {
   id: string;
@@ -52,10 +52,7 @@ const GuitarPro = () => {
         {isLoading ? (
           <div className="grid gap-4 max-w-2xl mx-auto">
             {[1, 2, 3].map((i) => (
-              <Card key={i} className="p-6">
-                <Skeleton className="h-8 w-3/4 mb-2" />
-                <Skeleton className="h-4 w-full" />
-              </Card>
+              <GuitarSkeleton key={i} />
             ))}
           </div>
         ) : embeds && embeds.length > 0 ? (

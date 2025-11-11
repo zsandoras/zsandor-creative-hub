@@ -2,13 +2,13 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { EditableText } from "@/components/EditableText";
 import { EditableItemText } from "@/components/EditableItemText";
 import { useAuth } from "@/hooks/useAuth";
+import { FoodSkeleton } from "@/components/LoadingSkeleton";
 
 interface FoodItem {
   id: string;
@@ -69,13 +69,7 @@ const FoodGallery = () => {
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[1, 2, 3, 4, 5, 6].map((i) => (
-              <Card key={i} className="overflow-hidden">
-                <Skeleton className="h-64 w-full" />
-                <div className="p-4">
-                  <Skeleton className="h-6 w-3/4 mb-2" />
-                  <Skeleton className="h-4 w-full" />
-                </div>
-              </Card>
+              <FoodSkeleton key={i} />
             ))}
           </div>
         ) : foodItems && foodItems.length > 0 ? (

@@ -11,6 +11,9 @@ import {
   Music2,
   Guitar,
   Volume2,
+  ChevronUp,
+  ChevronDown,
+  FileDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -88,6 +91,7 @@ const AlphaTabControls = ({
   const [selectedInstrument, setSelectedInstrument] = useState(0);
   const [currentInstrument, setCurrentInstrument] = useState(INSTRUMENTS[0]);
   const [volume, setVolume] = useState(80);
+  const [transpose, setTranspose] = useState(0);
 
   useEffect(() => {
     // Load default instrument from prop or fallback to settings
@@ -252,6 +256,33 @@ const AlphaTabControls = ({
     }
   };
 
+  const handleTranspose = (direction: "up" | "down") => {
+    const newTranspose = direction === "up" ? transpose + 1 : transpose - 1;
+    setTranspose(newTranspose);
+    
+    if (api && (api as any).score) {
+      const wasPlaying = isPlaying;
+      if (wasPlaying) api.stop();
+      
+      // Transpose all tracks
+      for (const track of (api as any).score.tracks) {
+        for (const staff of track.staves) {
+          staff.displayTranspositionPitch = newTranspose;
+        }
+      }
+      
+      api.render();
+      if (wasPlaying) setTimeout(() => api.play(), 300);
+    }
+  };
+
+  const handleExportPDF = () => {
+    if (api) {
+      // Use browser print functionality for PDF export
+      window.print();
+    }
+  };
+
   const formatTime = (milliseconds: number) => {
     const seconds = Math.floor(milliseconds / 1000);
     const mins = Math.floor(seconds / 60);
@@ -335,6 +366,32 @@ const AlphaTabControls = ({
           <Button onClick={handleDownload} variant="ghost" size="icon" title="Download">
             <Download className="h-4 w-4" />
           </Button>
+
+          <Button onClick={handleExportPDF} variant="ghost" size="icon" title="Export as PDF">
+            <FileDown className="h-4 w-4" />
+          </Button>
+
+          <div className="flex items-center gap-1 border-l pl-2">
+            <Button
+              onClick={() => handleTranspose("down")}
+              variant="ghost"
+              size="icon"
+              title="Transpose down"
+            >
+              <ChevronDown className="h-4 w-4" />
+            </Button>
+            <span className="text-xs text-muted-foreground min-w-[3ch] text-center">
+              {transpose > 0 ? `+${transpose}` : transpose}
+            </span>
+            <Button
+              onClick={() => handleTranspose("up")}
+              variant="ghost"
+              size="icon"
+              title="Transpose up"
+            >
+              <ChevronUp className="h-4 w-4" />
+            </Button>
+          </div>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

@@ -97,3 +97,34 @@ All colors MUST be HSL.
     background-position: 100% 50%;
   }
 }
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0) translateX(0);
+    opacity: 0.3;
+  }
+  50% {
+    transform: translateY(-20px) translateX(10px);
+    opacity: 0.6;
+  }
+}
+
+.animate-float {
+  animation: float linear infinite;
+}
+
+/* Print styles for PDF export */
+@media print {
+  nav, .music-player, button {
+    display: none !important;
+  }
+  
+  .alphatab-container {
+    page-break-inside: avoid;
+  }
+  
+  body {
+    background: white !important;
+    color: black !important;
+  }
+}
