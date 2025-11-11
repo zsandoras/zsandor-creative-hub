@@ -67,65 +67,94 @@
 
 /* Print styles - only show tablature */
 @media print {
-  /* Hide everything on the page first */
-  body * {
-    visibility: hidden;
-    position: static;
+  /* Hide all page elements */
+  body > * {
+    display: none !important;
   }
   
-  /* Show only the alphatab container and its contents */
-  .alphatab-container,
-  .alphatab-container * {
-    visibility: visible;
+  /* Only show the root and main container */
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
   }
   
-  /* Position the container for print */
+  #root {
+    display: block !important;
+  }
+  
+  /* Show only alphatab container */
+  main {
+    display: block !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    min-height: auto !important;
+  }
+  
+  main > * {
+    display: none !important;
+  }
+  
   .alphatab-container {
-    position: absolute;
-    left: 0;
-    top: 0;
+    display: block !important;
+    visibility: visible !important;
+    position: relative !important;
+    left: 0 !important;
+    top: 0 !important;
     width: 100% !important;
     max-width: 100% !important;
     margin: 0 !important;
-    padding: 20px !important;
+    padding: 0 !important;
     box-shadow: none !important;
     border: none !important;
-    page-break-inside: avoid;
+    border-radius: 0 !important;
+    background: white !important;
   }
   
-  /* Ensure the surface fills the page properly */
+  /* Hide the control card completely in print */
+  .alphatab-container + * {
+    display: none !important;
+  }
+  
+  /* Show tablature content */
   .alphatab-container .at-surface {
+    display: block !important;
     padding: 0 !important;
     background: white !important;
     width: 100% !important;
   }
   
-  /* Remove scrollbars and expand viewport for print */
+  /* Expand viewport for print */
   .alphatab-container .at-viewport {
     overflow: visible !important;
     max-height: none !important;
     height: auto !important;
     width: 100% !important;
-  }
-  
-  /* Ensure SVG content is centered and properly sized */
-  .alphatab-container svg {
-    max-width: 100% !important;
-    height: auto !important;
-    margin: 0 auto !important;
     display: block !important;
   }
   
-  /* Remove any score info styling for cleaner print */
-  .alphatab-container .at-score-info {
-    padding: 10px 0 !important;
-    background: white !important;
-    border: none !important;
+  /* Ensure SVG renders properly */
+  .alphatab-container svg {
+    max-width: 100% !important;
+    height: auto !important;
+    margin: 0 !important;
+    display: block !important;
+    page-break-inside: avoid;
   }
   
-  /* Ensure page breaks work properly for multi-page scores */
+  /* Hide score info section */
+  .alphatab-container .at-score-info {
+    display: none !important;
+  }
+  
+  /* Page setup */
   @page {
     margin: 0.5in;
     size: letter portrait;
+  }
+  
+  /* Ensure page breaks between measures if needed */
+  .at-measure-group {
+    page-break-inside: avoid;
   }
 }
