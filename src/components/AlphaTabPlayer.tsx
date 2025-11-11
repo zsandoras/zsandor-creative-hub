@@ -19,8 +19,6 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
   const apiRef = useRef<alphaTab.AlphaTabApi | null>(null);
-  const soundFontRequestedRef = useRef(false);
-  const autoPlayOnceRef = useRef(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isPlayerReady, setIsPlayerReady] = useState(false);
   const [loadProgress, setLoadProgress] = useState(0);
@@ -150,16 +148,6 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
         setIsPlayerReady(true);
         setLoadProgress(100);
         setUiEnabled(true);
-        if (autoPlayOnceRef.current) {
-          try {
-            api.playPause();
-            log('▶️ Auto-play on playerReady');
-          } catch (e: any) {
-            log(`❌ Auto-play failed: ${e?.message || e}`);
-          } finally {
-            autoPlayOnceRef.current = false;
-          }
-        }
       });
 
       api.error.on((e: any) => {
@@ -171,9 +159,19 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
         setIsLoading(false);
       });
 
-      // Temporarily disable player state/position subscriptions to avoid noisy init issues
-      // api.playerStateChanged.on((e: any) => { ... });
-      // api.playerPositionChanged.on((e: any) => { ... });
+      // Player state listeners for UI updates
+      api.playerStateChanged.on((e: any) => {
+        setPlayerState(prev => ({ ...prev, isPlaying: e.state === 1 }));
+        log(`Player state: ${e.state === 1 ? 'playing' : 'paused'}`);
+      });
+
+      api.playerPositionChanged.on((e: any) => {
+        setPlayerState(prev => ({
+          ...prev,
+          currentTime: e.currentTime,
+          duration: e.endTime
+        }));
+      });
     } catch (e: any) {
       const message = e?.message || e?.toString?.() || 'Unknown init error';
       log(`Init failed: ${message}`);
@@ -205,24 +203,6 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
         if (ac && ac.state === 'suspended') {
           await ac.resume();
           log('🔓 AudioContext resumed (global user gesture)');
-        }
-        if (api && !soundFontRequestedRef.current) {
-          soundFontRequestedRef.current = true;
-          const soundFontUrl = window.location.origin + '/soundfont/sonivox.sf2';
-          log(`🎵 Global gesture: loading soundfont once: ${soundFontUrl}`);
-          try {
-            const resp = await fetch(soundFontUrl);
-            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-            const buf = await resp.arrayBuffer();
-            const bytes = new Uint8Array(buf);
-            api.resetSoundFonts?.();
-            const ok = api.loadSoundFont(bytes, false);
-            log(`🎵 loadSoundFont(raw) (append=false) ok=${String(ok)}; rebuilding MIDI...`);
-            api.loadMidiForScore?.();
-            log('🎼 loadMidiForScore() called');
-          } catch (e: any) {
-            log(`❌ Global soundfont load failed: ${e?.message || e}`);
-          }
         }
       } catch (e) {
         // ignore
