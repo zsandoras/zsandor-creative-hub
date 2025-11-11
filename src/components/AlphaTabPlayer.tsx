@@ -174,7 +174,8 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
 
       // Require a valid Note object per AlphaTab docs
       const score = api.score;
-      const note = score?.tracks?.[0]?.staves?.[0]?.bars?.[0]?.voices?.[0]?.beats?.[0]?.notes?.[0];
+      const beat = score?.tracks?.[0]?.staves?.[0]?.bars?.[0]?.voices?.[0]?.beats?.[0];
+      const note = beat?.notes?.[0];
       if (!note) {
         addDebugEvent("Test Beep", "No note found in score to play");
         return;
@@ -184,15 +185,17 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
         api.playNote(note);
         addDebugEvent("Test Beep", `api.playNote(note) called - Note: ${note.fret} on string ${note.string}`);
         
-        // Log when note should finish (note duration is typically in ticks, we'll just log that play was called)
         setTimeout(() => {
           addDebugEvent("Test Beep", "Note playback should be complete");
         }, 1000);
+      } else if (typeof (api as any).playBeat === "function" && beat) {
+        (api as any).playBeat(beat);
+        addDebugEvent("Test Beep", "Fallback: api.playBeat(beat) called");
       } else if (typeof player?.playNote === "function") {
         player.playNote(note);
         addDebugEvent("Test Beep", `player.playNote(note) called - Note: ${note.fret} on string ${note.string}`);
       } else {
-        addDebugEvent("Test Beep", "No playNote method on API or player");
+        addDebugEvent("Test Beep", "No playNote/playBeat method on API or player");
       }
     } catch (e: any) {
       addDebugEvent("Test Beep error", e.message);
@@ -360,6 +363,10 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
         const api = new alphaTab.AlphaTabApi(containerRef.current, settings);
         apiRef.current = api;
         addDebugEvent("API creation successful", "Instance created");
+        addDebugEvent("Player mode", `actualPlayerMode=${(api as any).actualPlayerMode}`);
+        (api as any).masterVolume = playerState.volume / 100;
+        addDebugEvent("Volume", `Master volume set to ${(playerState.volume / 100).toFixed(2)}`);
+
 
         // Event listeners - minimal set with player enabled
         api.scoreLoaded.on((score: any) => {
@@ -414,6 +421,15 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
         });
 
         addDebugEvent("Event listeners registered", "Minimal player events subscribed");
+
+        // Manually trigger SoundFont load to ensure synth readiness
+        if (typeof (api as any).loadSoundFont === "function") {
+          const started = (api as any).loadSoundFont(soundFontUrl);
+          addDebugEvent("Manual SoundFont load", `loadSoundFont() returned ${started}`);
+        } else {
+          addDebugEvent("Manual SoundFont load", "loadSoundFont() not available on API");
+        }
+
 
       } catch (e: any) {
         const message = e?.message || e?.toString?.() || "Unknown error";
