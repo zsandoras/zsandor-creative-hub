@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   SkipBack,
   Play,
@@ -176,7 +176,10 @@ const AlphaTabControls = ({
 
     // Listen to player position changes for time tracking
     const positionHandler = (e: any) => {
-      // Trust event times to avoid repeat-section aliasing issues
+      // Freeze scrubber when not playing to avoid repeat aliasing on pause
+      if (!isPlaying && !e.isSeek) {
+        return;
+      }
       if (typeof e.currentTime === 'number') {
         setCurrentTime(e.currentTime);
       }
@@ -202,7 +205,7 @@ const AlphaTabControls = ({
         api.playerPositionChanged.off(positionHandler);
       }
     };
-  }, [api]);
+  }, [api, isPlaying]);
 
   const togglePlayPause = () => {
     if (api) {
@@ -235,7 +238,7 @@ const AlphaTabControls = ({
           masterBar.tempoAutomation.value = newBPM;
         }
       }
-      // Re-render to update the displayed BPM in the tablature without resetting playback
+      // Re-render to update the displayed BPM in the tablature without resetting playback UI
       api.render();
     }
     
@@ -246,16 +249,14 @@ const AlphaTabControls = ({
 
     // Regenerate MIDI with new tempo and restore time without restart
     if (typeof api.loadMidiForScore === "function") {
-      const restore = () => {
+      api.loadMidiForScore();
+      // Restore position shortly after MIDI is regenerated
+      window.setTimeout(() => {
         try {
           api.timePosition = savedTime;
           if (wasPlaying) api.play();
-        } finally {
-          api.midiLoad.off(restore);
-        }
-      };
-      api.midiLoad.on(restore);
-      api.loadMidiForScore();
+        } catch {}
+      }, 80);
     } else {
       // Fallback
       api.timePosition = savedTime;
