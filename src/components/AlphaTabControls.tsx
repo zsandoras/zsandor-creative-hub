@@ -16,7 +16,6 @@ import {
   FileDown,
   ScrollText,
   CircleDot,
-  Maximize2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -96,7 +95,6 @@ const AlphaTabControls = ({
   const [volume, setVolume] = useState(80);
   const [transpose, setTranspose] = useState(0);
   const [autoScroll, setAutoScroll] = useState(false);
-  const [tabWidth, setTabWidth] = useState(100);
 
   useEffect(() => {
     // Load default instrument from prop or fallback to settings
@@ -370,17 +368,6 @@ const AlphaTabControls = ({
     }
   };
 
-  const handleTabWidthChange = (value: number[]) => {
-    const newWidth = value[0];
-    setTabWidth(newWidth);
-    if (api && (api as any).settings) {
-      // Adjust stretchForce: higher = more stretched/wider bars
-      (api as any).settings.display.stretchForce = newWidth / 100;
-      api.updateSettings();
-      api.render();
-    }
-  };
-
   const formatTime = (milliseconds: number) => {
     const seconds = Math.floor(milliseconds / 1000);
     const mins = Math.floor(seconds / 60);
@@ -588,20 +575,6 @@ const AlphaTabControls = ({
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-
-          <div className="hidden lg:flex items-center gap-2 px-2 border-l">
-            <Maximize2 className="h-4 w-4 text-muted-foreground" />
-            <Slider
-              value={[tabWidth]}
-              onValueChange={handleTabWidthChange}
-              min={50}
-              max={150}
-              step={5}
-              className="w-24"
-              title="Tab Width"
-            />
-            <span className="text-xs text-muted-foreground min-w-[3ch]">{tabWidth}%</span>
-          </div>
 
           <div className="hidden lg:flex items-center gap-2 px-2 border-l">
             <Volume2 className="h-4 w-4 text-muted-foreground" />
