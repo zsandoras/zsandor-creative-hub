@@ -1,74 +1,66 @@
+/* AlphaTab styling for better rendering */
 .alphatab-container {
-  position: relative;
-  min-height: 480px;
-  background: transparent; /* keep app background, don't darken the score */
-  border-radius: var(--radius);
+  background: #ffffff;
+  border-radius: 0.75rem;
   overflow: hidden;
-  padding: 8px;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  min-height: 480px;
 }
 
-/* Ensure AlphaTab internal containers render correctly */
-.alphatab-container .at-wrap {
-  width: 100%;
-  min-height: 600px;
-  position: relative;
-}
-
-.alphatab-container .at-content {
-  width: 100%;
-  height: 100%;
+.alphatab-container .at-surface {
+  background: #ffffff !important;
+  padding: 2rem;
 }
 
 .alphatab-container .at-viewport {
+  overflow: auto;
   max-height: 80vh;
-  overflow-y: auto;
-  background: #ffffff; /* White page background */
-  border-radius: var(--radius);
 }
 
-/* Actual page surfaces must be white to avoid dark-on-dark */
-.alphatab-container .at-page {
-  background: #ffffff !important;
-  margin: 16px auto;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+/* Improve notation visibility */
+.alphatab-container svg {
+  max-width: 100%;
+  height: auto;
 }
 
-/* Custom scrollbar */
+/* Score info styling */
+.alphatab-container .at-score-info {
+  padding: 1.5rem;
+  background: linear-gradient(to bottom, #f8fafc, #ffffff);
+  border-bottom: 1px solid #e2e8f0;
+}
+
+/* Better scrollbar styling */
 .alphatab-container .at-viewport::-webkit-scrollbar {
-  width: 10px;
+  width: 12px;
+  height: 12px;
 }
 
 .alphatab-container .at-viewport::-webkit-scrollbar-track {
-  background: hsl(var(--muted));
-  border-radius: var(--radius);
+  background: #f1f5f9;
+  border-radius: 6px;
 }
 
 .alphatab-container .at-viewport::-webkit-scrollbar-thumb {
-  background: hsl(var(--primary));
-  border-radius: var(--radius);
+  background: #cbd5e1;
+  border-radius: 6px;
 }
 
 .alphatab-container .at-viewport::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--primary) / 0.8);
+  background: #94a3b8;
 }
 
-/* Green cursor highlighting */
-.alphatab-container .at-cursor-bar {
-  background: rgba(34, 197, 94, 0.3) !important;
-}
-
+/* Music cursor styles */
 .alphatab-container .at-cursor-beat {
-  background: rgba(34, 197, 94, 0.5) !important;
+  background: rgba(0, 191, 143, 0.3) !important;
 }
 
-/* Loading overlay */
-.alphatab-container .loading-overlay {
-  position: absolute;
-  inset: 0;
-  background: hsl(var(--background) / 0.8);
-  backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 10;
+.alphatab-container .at-cursor-bar {
+  background: rgba(0, 191, 143, 0.1) !important;
+}
+
+/* Selection highlight */
+.alphatab-container .at-highlight * {
+  fill: #00bf8f !important;
+  stroke: #00bf8f !important;
 }

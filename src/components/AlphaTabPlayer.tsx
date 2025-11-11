@@ -21,7 +21,7 @@ interface AlphaTabPlayerProps {
 const AlphaTabPlayer = ({ fileUrl, file, title, onReset }: AlphaTabPlayerProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const apiRef = useRef<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [tracks, setTracks] = useState<any[]>([]);
   const [selectedTrackIndex, setSelectedTrackIndex] = useState(0);
@@ -90,7 +90,6 @@ const [error, setError] = useState<string | null>(null);
 
       api.scoreLoaded.on((score: any) => {
         setTracks(score.tracks);
-        setIsLoading(false);
       });
 
       api.renderFinished.on(() => {
@@ -125,6 +124,7 @@ const [error, setError] = useState<string | null>(null);
 
   const loadFile = async (api: any) => {
     try {
+      setIsLoading(true);
       if (file) {
         // Load from File object
         const arrayBuffer = await file.arrayBuffer();
@@ -201,16 +201,15 @@ const [error, setError] = useState<string | null>(null);
           </div>
         )}
 
-        {isLoading && (
-          <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-10">
-            <div className="text-center">
-              <Music className="h-12 w-12 text-primary animate-pulse mx-auto mb-4" />
-              <p className="text-lg font-semibold">Loading {title || "tablature"}...</p>
+        <div className="relative">
+          <div ref={containerRef} className="alphatab-container" />
+          {isLoading && (
+            <div className="absolute inset-0 flex items-center justify-center bg-card/60 backdrop-blur-sm">
+              <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+              <span className="ml-3 text-muted-foreground">Loading score...</span>
             </div>
-          </div>
-        )}
-
-        <div ref={containerRef} className="alphatab-container" />
+          )}
+        </div>
       </Card>
 
       {/* Player Controls */}
