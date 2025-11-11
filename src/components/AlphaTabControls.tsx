@@ -268,9 +268,10 @@ const AlphaTabControls = ({
       if (wasPlaying) api.stop();
       
       // Transpose all tracks - need to set both transpositionPitch (audio) and displayTranspositionPitch (visual)
+      // Note: transpositionPitch is negated because AlphaTab's internal direction is opposite to UI expectation
       for (const track of (api as any).score.tracks) {
         for (const staff of track.staves) {
-          staff.transpositionPitch = newTranspose;
+          staff.transpositionPitch = -newTranspose;
           staff.displayTranspositionPitch = newTranspose;
         }
       }
@@ -354,7 +355,10 @@ const AlphaTabControls = ({
             <span className="font-semibold text-foreground">{title}</span>
           </div>
 
-          <div className="flex items-center gap-2 flex-1 min-w-[200px] max-w-md">
+          {/* Audio scrubbing slider - Note: This controls AlphaTab's MIDI synthesis only.
+              It cannot sync with the separate MP3 player (MusicPlayer component) because they use
+              different audio sources and AlphaTab unmounts when navigating away from this page. */}
+          <div className="flex items-center gap-2 flex-1 min-w-[200px] max-w-2xl">
             <span className="text-sm text-muted-foreground whitespace-nowrap">
               {formatTime(currentTime)}
             </span>
@@ -376,7 +380,7 @@ const AlphaTabControls = ({
             onClick={toggleCountIn}
             variant="ghost"
             size="icon"
-            title="Count-In (plays count before starting)"
+            title="Count-In (plays 1-2-3-4 before playback starts)"
             className={countIn ? "bg-accent" : ""}
           >
             <CircleDot className="h-4 w-4" />
