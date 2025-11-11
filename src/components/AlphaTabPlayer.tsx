@@ -100,13 +100,12 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       settings.player.enablePlayer = true;
       settings.player.enableUserInteraction = true;
       settings.player.playerMode = alphaTab.PlayerMode.EnabledSynthesizer;
-      settings.player.soundFont =
-        "https://cdn.jsdelivr.net/npm/@coderline/alphatab@1.6.3/dist/soundfont/sonivox.sf2";
+      settings.player.soundFont = "/soundfont/sonivox.sf2";
       settings.display.layoutMode = alphaTab.LayoutMode.Page;
       settings.display.scale = 1.0;
       settings.notation.notationMode = alphaTab.NotationMode.GuitarPro;
       settings.core.fontDirectory = "/font/";
-      settings.core.useWorkers = false;
+      settings.core.useWorkers = true;
 
       const newApi = new alphaTab.AlphaTabApi(atContainer.current as HTMLElement, settings);
       (newApi as any).masterVolume = playerState.volume / 100;
