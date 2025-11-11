@@ -31,6 +31,7 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
     tracks: [],
     selectedTracks: [],
   });
+  const [uiEnabled, setUiEnabled] = useState(false);
   const log = (msg: string) => setLogs((prev) => [...prev, `[${new Date().toLocaleTimeString()}] ${msg}`]);
   useEffect(() => {
     if (!containerRef.current) {
@@ -103,6 +104,7 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
         log('renderFinished event received');
         window.clearTimeout(timeoutId);
         setIsLoading(false);
+        setUiEnabled(true);
 
         // Extract track info
         const score = api.score;
@@ -131,7 +133,8 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
               })
               .then(arrayBuffer => {
                 log(`🎵 SoundFont downloaded (${arrayBuffer.byteLength} bytes), loading into player...`);
-                api.loadSoundFont(new Uint8Array(arrayBuffer), false);
+                const ok = api.loadSoundFont(new Uint8Array(arrayBuffer), false);
+                log(`🎵 SoundFont load triggered: ${ok}`);
               })
               .catch(err => {
                 log(`❌ SoundFont load failed: ${err.message}`);
@@ -220,20 +223,30 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       console.warn('API not ready');
       return;
     }
-    if (!isPlayerReady) {
-      console.warn('Player not ready yet');
-      return;
-    }
     log(`User clicked ${playerState.isPlaying ? 'Pause' : 'Play'}`);
     apiRef.current.playPause();
   };
 
   const stop = () => {
-    if (!apiRef.current || !isPlayerReady) return;
+    if (!apiRef.current) return;
     log('User clicked Stop');
     apiRef.current.stop();
   };
 
+  const unlockAudio = async () => {
+    try {
+      const player: any = (apiRef.current as any)?.player;
+      const ac: AudioContext | undefined = player?.audioContext || player?.context;
+      if (ac && ac.state === 'suspended') {
+        await ac.resume();
+        log('🔓 AudioContext resumed');
+      }
+      // poke the player
+      apiRef.current?.playPause();
+    } catch (e: any) {
+      log(`❌ Audio unlock failed: ${e?.message || e}`);
+    }
+  };
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
@@ -279,7 +292,7 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
             <div className="flex items-center gap-2">
               <button
                 onClick={stop}
-                disabled={!isPlayerReady}
+                disabled={!uiEnabled}
                 className="px-3 py-2 bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 title="Stop"
               >
@@ -290,7 +303,7 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
               </button>
               <button
                 onClick={togglePlayPause}
-                disabled={!isPlayerReady}
+                disabled={!uiEnabled}
                 className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 {playerState.isPlaying ? (
@@ -310,10 +323,14 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
                   </>
                 )}
               </button>
-              {!isPlayerReady && loadProgress < 100 && (
-                <span className="text-sm text-muted-foreground">
-                  Loading player... {loadProgress}%
-                </span>
+              {!isPlayerReady && (
+                <button
+                  onClick={unlockAudio}
+                  className="px-3 py-2 bg-accent text-accent-foreground rounded-md hover:bg-accent/90 transition-colors"
+                  title="Initialize Audio"
+                >
+                  Initialize Audio
+                </button>
               )}
             </div>
 
