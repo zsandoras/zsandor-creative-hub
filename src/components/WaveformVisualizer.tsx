@@ -120,7 +120,9 @@ export const WaveformVisualizer = ({
         const primary = getComputedStyle(document.documentElement).getPropertyValue('--primary');
         ctx.fillStyle = primary ? `hsl(${primary})` : 'hsl(var(--primary))';
       } else {
-        ctx.fillStyle = "hsl(var(--foreground) / 0.85)";
+        const styles = getComputedStyle(document.documentElement);
+        const fg = styles.getPropertyValue('--foreground').trim();
+        ctx.fillStyle = fg ? `hsl(${fg} / 0.85)` : 'rgba(255,255,255,0.85)';
       }
 
       ctx.fillRect(
