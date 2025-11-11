@@ -94,7 +94,7 @@ const FoodGallery = () => {
                     <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>
                   {(item.title || item.description) && (
-                    <div className="p-4" onClick={(e) => e.stopPropagation()}>
+                    <div className="p-4">
                       <EditableItemText
                         table="food_gallery"
                         itemId={item.id}

@@ -37,13 +37,16 @@ export const EditableItemText = ({
   }, [value]);
 
   const handleClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (isAdmin && isEditMode && !isEditing) {
-      setIsEditing(true);
-      setTimeout(() => {
-        inputRef.current?.focus();
-        inputRef.current?.select();
-      }, 0);
+    if (isAdmin && isEditMode) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!isEditing) {
+        setIsEditing(true);
+        setTimeout(() => {
+          inputRef.current?.focus();
+          inputRef.current?.select();
+        }, 0);
+      }
     }
   };
 

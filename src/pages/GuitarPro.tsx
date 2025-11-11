@@ -64,7 +64,7 @@ const GuitarPro = () => {
               <Link key={embed.id} to={`/guitar/${embed.id}`}>
                 <Card className="p-6 bg-card/50 backdrop-blur hover:shadow-xl transition-all hover:-translate-y-1 group">
                   <div className="flex items-center justify-between">
-                    <div className="flex-1" onClick={(e) => e.preventDefault()}>
+                    <div className="flex-1">
                       <EditableItemText
                         table="guitar_embeds"
                         itemId={embed.id}
