@@ -71,6 +71,7 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       settings.player.enablePlayer = true;
       settings.player.enableCursor = true;
       settings.player.enableAnimatedBeatCursor = true;
+      settings.player.outputMode = alphaTab.PlayerOutputMode.WebAudioScriptProcessor;
       settings.player.soundFont = window.location.origin + "/soundfont/sonivox.sf2";
       if (viewportRef.current) {
         (settings.player as any).scrollElement = viewportRef.current;
@@ -151,6 +152,8 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
 
       api.soundFontLoaded.on(() => {
         log('🎵 SoundFont fully loaded');
+        setLoadProgress(100);
+        setIsPlayerReady(true);
       });
 
       api.playerReady.on(() => {
