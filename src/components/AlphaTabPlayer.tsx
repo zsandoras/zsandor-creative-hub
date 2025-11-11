@@ -41,17 +41,7 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
   const [trackCount, setTrackCount] = useState(0);
   const [debugEvents, setDebugEvents] = useState<DebugEvent[]>([]);
   const [needsUserGesture, setNeedsUserGesture] = useState(true);
-  const [diagnostics, setDiagnostics] = useState<any>({
-    audioContext: null,
-    environment: {
-      userAgent: navigator.userAgent,
-      origin: window.location.origin,
-    },
-  });
-  const loadProgressRef = useRef(0);
   const initializingRef = useRef(false);
-  const watchdogTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const isPlayingRef = useRef(false);
 
   const addDebugEvent = (event: string, details?: string) => {
     const timestamp = new Date().toLocaleTimeString();
@@ -61,42 +51,6 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
 
   const logState = (state: string, details?: string) => {
     addDebugEvent(`STATE: ${state}`, details);
-  };
-
-  // Watchdog: auto-retry if playerReady doesn't fire within 10s of renderFinished
-  const startWatchdog = () => {
-    if (watchdogTimerRef.current) clearTimeout(watchdogTimerRef.current);
-    
-    watchdogTimerRef.current = setTimeout(() => {
-      if (isRenderFinished && !isPlayerReady && apiRef.current) {
-        logState("WATCHDOG", "PlayerReady timeout - retrying SoundFont load");
-        const api: any = apiRef.current;
-        
-        // Fetch and load SoundFont with proper headers
-        const sfUrl = "https://cdn.jsdelivr.net/npm/@coderline/alphatab@1.6.3/dist/soundfont/sonivox.sf2";
-        fetch(sfUrl)
-          .then(res => {
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            return res.arrayBuffer();
-          })
-          .then(bytes => {
-            if (api.loadSoundFont) {
-              api.loadSoundFont(bytes, false);
-              logState("WATCHDOG", "SoundFont re-loaded from ArrayBuffer");
-            }
-          })
-          .catch(err => {
-            logState("WATCHDOG", `SoundFont fetch failed: ${err.message}`);
-          });
-      }
-    }, 10000);
-  };
-
-  const clearWatchdog = () => {
-    if (watchdogTimerRef.current) {
-      clearTimeout(watchdogTimerRef.current);
-      watchdogTimerRef.current = null;
-    }
   };
 
   const initAlphaTab = async () => {
@@ -122,14 +76,13 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       setIsSoundFontLoaded(false);
       setIsRenderFinished(false);
       setDebugEvents([]);
-      clearWatchdog();
 
-      // Create Settings with single automatic SoundFont load
+      // Create Settings - SIMPLIFIED
       const settings = new alphaTab.Settings();
       settings.player.enablePlayer = true;
+      settings.player.enableUserInteraction = true; // Allow clicking notation to play
       settings.player.playerMode = alphaTab.PlayerMode.EnabledSynthesizer;
       settings.player.soundFont = "https://cdn.jsdelivr.net/npm/@coderline/alphatab@1.6.3/dist/soundfont/sonivox.sf2";
-      // Ensure cursor scrolling uses the correct viewport
       settings.player.scrollElement = (container.querySelector('.at-viewport') as HTMLElement) || undefined;
       settings.display.layoutMode = alphaTab.LayoutMode.Page;
       settings.display.scale = 1.0;
@@ -151,17 +104,9 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       if (ctx) {
         if (ctx.state === "suspended") {
           await ctx.resume();
-          logState("LOADING", `AudioContext resumed from suspended state`);
+          logState("LOADING", `AudioContext resumed from suspended`);
         }
         logState("LOADING", `AudioContext state: ${ctx.state}`);
-        setDiagnostics((prev: any) => ({
-          ...prev,
-          audioContext: {
-            state: ctx.state,
-            sampleRate: ctx.sampleRate,
-            baseLatency: ctx.baseLatency,
-          },
-        }));
       }
 
       // Event Listeners
@@ -171,62 +116,34 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       });
 
       api.renderFinished.on(() => {
-        logState("RENDER_FINISHED", "Tablature rendered successfully");
+        logState("RENDER_FINISHED", "Tablature rendered - try clicking the notation to play");
         setIsLoading(false);
         setIsRenderFinished(true);
-        startWatchdog(); // Start watchdog timer
       });
 
       api.soundFontLoad.on((e: any) => {
         const pct = e.total > 0 ? Math.floor((e.loaded / e.total) * 100) : null;
         setLoadProgress(pct ?? 0);
-        loadProgressRef.current = pct ?? 0;
-        logState(
-          "LOADING",
-          pct !== null
-            ? `SoundFont: ${pct}% (${e.loaded}/${e.total} bytes)`
-            : `SoundFont: ${e.loaded} bytes (total unknown)`
-        );
+        if (pct !== null) {
+          logState("LOADING", `SoundFont: ${pct}%`);
+        }
       });
 
       api.soundFontLoaded.on(() => {
-        console.log("✅ SoundFont loaded");
-        logState("SOUNDFONT_LOADED", "SoundFont ready for playback");
+        logState("SOUNDFONT_LOADED", "SoundFont ready");
         setLoadProgress(100);
-        loadProgressRef.current = 100;
         setIsSoundFontLoaded(true);
-        clearWatchdog(); // Cancel watchdog if SoundFont loads
       });
 
       api.playerReady.on(() => {
-        console.log("✅ Player ready");
-        const playerObj: any = (api as any).player;
-        const actx = playerObj?.audioContext || playerObj?.context;
-        const ctxInfo = actx ? `AudioContext: ${actx.state}` : "No AudioContext";
-        logState("PLAYER_READY", ctxInfo);
+        logState("PLAYER_READY", "Player ready for playback");
         setIsPlayerReady(true);
-        clearWatchdog(); // Cancel watchdog if player is ready
-        
-        if (actx) {
-          setDiagnostics((prev: any) => ({
-            ...prev,
-            audioContext: {
-              state: actx.state,
-              sampleRate: actx.sampleRate,
-              baseLatency: actx.baseLatency,
-            },
-          }));
-        }
       });
 
       api.playerStateChanged.on((e: any) => {
         setPlayerState((prev) => ({ ...prev, isPlaying: e.state === 1 }));
-        isPlayingRef.current = e.state === 1;
-        if (e.state === 1) {
-          logState("PLAYBACK_STARTED", "Playback active");
-        } else if (e.state === 0) {
-          logState("PLAYBACK_STOPPED", "Playback stopped");
-        }
+        const stateMsg = e.state === 1 ? "Playing" : "Stopped";
+        logState("PLAYER_STATE", stateMsg);
       });
 
       api.error.on((error: any) => {
@@ -250,129 +167,10 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
     }
   };
 
-  const reloadPlayer = () => {
-    logState("RELOAD", "User triggered manual reload");
-    clearWatchdog();
-    if (apiRef.current) {
-      try {
-        apiRef.current.destroy();
-        apiRef.current = null;
-        logState("RELOAD", "Destroyed API instance");
-      } catch (e: any) {
-        logState("RELOAD", `Error: ${e.message}`);
-      }
-    }
-    window.location.reload();
-  };
-
-  // Wait for both SoundFont and Player readiness with a timeout
-  const waitForReady = async (timeoutMs = 5000) => {
-    const start = Date.now();
-    return new Promise<void>((resolve, reject) => {
-      const tick = () => {
-        if (isSoundFontLoaded && isPlayerReady) {
-          resolve();
-          return;
-        }
-        if (Date.now() - start > timeoutMs) {
-          reject(new Error("Timeout waiting for synth readiness"));
-          return;
-        }
-        requestAnimationFrame(tick);
-      };
-      tick();
-    });
-  };
-
-  const testBeep = async () => {
-    logState("TEST_BEEP", "Attempting to play note");
-    const api: any = apiRef.current;
-    if (!api) {
-      logState("TEST_BEEP", "No API instance");
-      return;
-    }
-
-    // Wait for readiness
-    if (!isSoundFontLoaded || !isPlayerReady) {
-      logState("TEST_BEEP", "Waiting for synth readiness...");
-      try {
-        await waitForReady(5000);
-        logState("TEST_BEEP", "Synth ready");
-      } catch {
-        logState("TEST_BEEP", "Timeout - synth not ready");
-        return;
-      }
-    }
-
-    try {
-      // Ensure AudioContext is resumed
-      const player = api.player;
-      const ctx = player?.audioContext || player?.context;
-      if (ctx && ctx.state === "suspended") {
-        await ctx.resume();
-        logState("TEST_BEEP", `AudioContext resumed from suspended`);
-      }
-      if (ctx) {
-        logState("TEST_BEEP", `AudioContext state: ${ctx.state}`);
-      }
-
-      // Get note to play
-      const score = api.score;
-      const beat = score?.tracks?.[0]?.staves?.[0]?.bars?.[0]?.voices?.[0]?.beats?.[0];
-      const note = beat?.notes?.[0];
-      if (!note) {
-        logState("TEST_BEEP", "No note found in score");
-        return;
-      }
-
-      if (typeof api.playNote === "function") {
-        api.playNote(note);
-        logState("TEST_BEEP", `✅ playNote() called - fret ${note.fret} on string ${note.string}`);
-      } else if (typeof (api as any).playBeat === "function" && beat) {
-        (api as any).playBeat(beat);
-        logState("TEST_BEEP", "✅ playBeat() called (fallback)");
-      } else {
-        logState("TEST_BEEP", "No playNote/playBeat method available");
-      }
-    } catch (e: any) {
-      logState("TEST_BEEP", `Error: ${e.message}`);
-    }
-  };
-
-  const dumpState = () => {
-    const api: any = apiRef.current;
-    const player = api?.player;
-    const ctx = player?.audioContext || player?.context;
-    
-    const state = {
-      isPlayerReady,
-      isSoundFontLoaded,
-      isRenderFinished,
-      loadProgress: loadProgressRef.current,
-      isReadyForPlayback: api?.isReadyForPlayback,
-      containerExists: !!document.getElementById("alphaTab"),
-      hasApiRef: !!apiRef.current,
-      hasPlayer: !!player,
-      audioContext: ctx ? {
-        state: ctx.state,
-        sampleRate: ctx.sampleRate,
-        baseLatency: ctx.baseLatency,
-        currentTime: ctx.currentTime,
-      } : null,
-      masterVolume: api?.masterVolume,
-      playerState,
-      trackCount,
-      tracks: api?.score?.tracks?.length,
-    };
-    
-    logState("STATE_DUMP", JSON.stringify(state, null, 2));
-    console.log("[AlphaTab] State dump:", state);
-  };
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      clearWatchdog();
       if (apiRef.current) {
         try {
           apiRef.current.destroy();
@@ -390,30 +188,18 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
     try {
       const api: any = apiRef.current;
       const audioContext = api?.player?.audioContext || api?.player?.context;
+      
+      // Resume AudioContext if suspended
       if (audioContext && audioContext.state === "suspended") {
         await audioContext.resume();
-        logState("PLAY_PAUSE", `AudioContext resumed from ${audioContext.state}`);
+        logState("PLAY_PAUSE", "AudioContext resumed");
       }
 
+      // Simple direct call - no retry logic
       apiRef.current.playPause();
       logState("PLAY_PAUSE", "playPause() called");
-
-      // Fallback nudge: if synth is ready but not playing after a short delay, try play() once
-      window.setTimeout(() => {
-        const ready = isSoundFontLoaded && isPlayerReady;
-        if (!apiRef.current || !ready) return;
-        if (!isPlayingRef.current && typeof (apiRef.current as any).player?.play === "function") {
-          try {
-            (apiRef.current as any).player.play();
-            logState("NUDGE", "Retrying play() once after readiness");
-          } catch (err: any) {
-            logState("NUDGE", `Retry play() error: ${err?.message || err}`);
-          }
-        }
-      }, 1200);
     } catch (e: any) {
-      logState("PLAY_PAUSE", `Error: ${e?.message}`);
-      console.error("Play/Pause error:", e?.message);
+      logState("PLAY_PAUSE", `Error: ${e?.message || e}`);
     }
   };
 
@@ -457,7 +243,10 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
               Load Tablature & Initialize Player
             </Button>
             <p className="text-sm text-muted-foreground mt-4">
-              Click to load the music sheet and initialize audio
+              Click to load the music sheet and initialize audio playback
+            </p>
+            <p className="text-xs text-muted-foreground mt-2">
+              Tip: Once loaded, you can click directly on the notation to play
             </p>
           </div>
         )}
@@ -487,6 +276,12 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       {/* Custom Controls */}
       <Card className="p-6 bg-card/50 backdrop-blur">
         <h3 className="text-lg font-semibold mb-4">Playback Controls</h3>
+        
+        {isRenderFinished && (
+          <p className="text-sm text-muted-foreground mb-4">
+            💡 Try clicking directly on the rendered tablature to start playback
+          </p>
+        )}
         
         <div className="flex flex-wrap items-center gap-4 mb-6">
           <Button
@@ -545,14 +340,14 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
         </div>
       </Card>
 
-      {/* Diagnostics */}
+      {/* Diagnostics - Simplified */}
       <Card className="p-6 bg-card/50 backdrop-blur">
         <details>
           <summary className="text-lg font-semibold mb-4 cursor-pointer">
-            Diagnostics & Debug Controls
+            Diagnostics
           </summary>
           
-          <div className="space-y-6 mt-4">
+          <div className="space-y-4 mt-4">
             <div>
               <h4 className="text-sm font-semibold mb-2">Readiness Status</h4>
               <div className="bg-muted/40 p-3 rounded-md text-xs space-y-1">
@@ -562,36 +357,6 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
                 <div className="font-semibold mt-2">
                   {isSoundFontLoaded && isPlayerReady ? "✅ Ready to play" : "⏳ Initializing..."}
                 </div>
-              </div>
-            </div>
-
-            <div>
-              <h4 className="text-sm font-semibold mb-2">AudioContext</h4>
-              <div className="bg-muted/40 p-3 rounded-md text-xs font-mono space-y-1">
-                {diagnostics.audioContext ? (
-                  <>
-                    <div>State: {diagnostics.audioContext.state}</div>
-                    <div>SampleRate: {diagnostics.audioContext.sampleRate}Hz</div>
-                    <div>BaseLatency: {diagnostics.audioContext.baseLatency ?? "n/a"}</div>
-                  </>
-                ) : (
-                  <div>No AudioContext info yet</div>
-                )}
-              </div>
-            </div>
-
-            <div>
-              <h4 className="text-sm font-semibold mb-2">Debug Controls</h4>
-              <div className="flex flex-wrap gap-2">
-                <Button onClick={testBeep} size="sm" variant="outline">
-                  Test Beep
-                </Button>
-                <Button onClick={reloadPlayer} size="sm" variant="outline">
-                  Reload Player
-                </Button>
-                <Button onClick={dumpState} size="sm" variant="outline">
-                  Dump State
-                </Button>
               </div>
             </div>
           </div>
