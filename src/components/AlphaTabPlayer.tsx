@@ -69,27 +69,30 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
     addDebugEvent("Initializing AlphaTab", `File: ${fileUrl}`);
 
     try {
-      // Configure AlphaTab settings following official pattern
-      const settings = new alphaTab.Settings();
-      settings.core.fontDirectory = "/font/";
-      settings.core.useWorkers = false;
-      settings.display.layoutMode = alphaTab.LayoutMode.Page;
-      settings.display.scale = 1.0;
+      // Configure AlphaTab settings following official vite-react example pattern
+      // CRITICAL: Use plain object, not new Settings() instance
+      const settings = {
+        core: {
+          file: fileUrl,
+          fontDirectory: "/font/",
+          useWorkers: false
+        },
+        display: {
+          layoutMode: alphaTab.LayoutMode.Page,
+          scale: 1.0
+        },
+        player: {
+          enablePlayer: true,
+          enableCursor: true,
+          enableAnimatedBeatCursor: true,
+          enableUserInteraction: true,
+          soundFont: "/soundfont/sonivox.sf2"
+        }
+      };
       
-      // Player configuration - CRITICAL: Must be configured BEFORE API creation
-      settings.player.enablePlayer = true;
-      settings.player.enableCursor = true;
-      settings.player.enableAnimatedBeatCursor = true;
-      settings.player.enableUserInteraction = true;
-      settings.player.soundFont = "/soundfont/sonivox.sf2";
-      settings.player.scrollElement = containerRef.current;
-      
-      // CRITICAL: Set player mode to synthesizer (required for soundfont playback)
-      settings.player.playerMode = alphaTab.PlayerMode?.EnabledSynthesizer ?? 2;
-      
-      addDebugEvent("Settings configured", `Player mode: ${settings.player.playerMode}, SoundFont: sonivox.sf2`);
+      addDebugEvent("Settings configured", `File: ${fileUrl}, SoundFont: /soundfont/sonivox.sf2`);
 
-      // Create AlphaTab API
+      // Create AlphaTab API with settings (file loads automatically)
       const api = new alphaTab.AlphaTabApi(containerRef.current, settings);
       apiRef.current = api;
 
@@ -149,10 +152,6 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
         setError(`Failed to load tablature: ${message}`);
         setIsLoading(false);
       });
-
-      // Load the file
-      addDebugEvent("Loading file...");
-      api.load(fileUrl);
 
     } catch (e: any) {
       const message = e?.message || e?.toString?.() || "Unknown error";
