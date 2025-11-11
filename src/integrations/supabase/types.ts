@@ -38,6 +38,36 @@ export type Database = {
         }
         Relationships: []
       }
+      comments: {
+        Row: {
+          content_id: string
+          content_type: string
+          created_at: string
+          id: string
+          message: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content_id: string
+          content_type: string
+          created_at?: string
+          id?: string
+          message: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content_id?: string
+          content_type?: string
+          created_at?: string
+          id?: string
+          message?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       food_gallery: {
         Row: {
           created_at: string | null
@@ -75,7 +105,7 @@ export type Database = {
           id: string
           message: string
           name: string
-          user_id: string | null
+          user_id: string
         }
         Insert: {
           approved?: boolean
@@ -83,7 +113,7 @@ export type Database = {
           id?: string
           message: string
           name: string
-          user_id?: string | null
+          user_id: string
         }
         Update: {
           approved?: boolean
@@ -91,7 +121,7 @@ export type Database = {
           id?: string
           message?: string
           name?: string
-          user_id?: string | null
+          user_id?: string
         }
         Relationships: []
       }
