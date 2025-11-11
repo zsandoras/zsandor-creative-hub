@@ -141,8 +141,8 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       
       // Validate and set playerMode with fallback
       log(`PlayerMode enum available: ${JSON.stringify(Object.keys(alphaTab.PlayerMode || {}))}`);
-      const desiredMode = alphaTab.PlayerMode?.EnabledAutomatic ?? alphaTab.PlayerMode?.EnabledSynthesizer ?? 1;
-      log(`Setting playerMode to: ${desiredMode} (desired: EnabledAutomatic)`);
+      const desiredMode = alphaTab.PlayerMode?.EnabledSynthesizer ?? 2;
+      log(`Setting playerMode to: ${desiredMode} (EnabledSynthesizer - mode 2)`);
       settings.player.playerMode = desiredMode;
       
       settings.player.enableCursor = true;
@@ -163,16 +163,18 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
         const modeName = (alphaTab as any).PlayerMode?.[mode] ?? String(mode);
         log(`Player actual mode: ${mode} (${modeName})`);
         
-        if (mode === 0) {
-          log('⚠️ WARNING: Player is DISABLED (mode 0)! Audio will not work. This will prevent soundFont loading and playback.');
+        if (mode !== 2) {
+          log(`⚠️ WARNING: Player mode is ${mode} instead of 2 (EnabledSynthesizer)!`);
           // Attempt to manually enable if possible
           try {
-            const modeOverride = 1; // EnabledAutomatic numeric value
+            const modeOverride = 2; // EnabledSynthesizer numeric value
             (api as any).settings.player.playerMode = modeOverride;
-            log(`🔧 Attempted to override playerMode to ${modeOverride}`);
+            log(`🔧 Attempted to override playerMode to ${modeOverride} (EnabledSynthesizer)`);
           } catch (e2: any) {
             log(`❌ Failed to override playerMode: ${e2?.message || e2}`);
           }
+        } else {
+          log(`✅ Player mode correctly set to 2 (EnabledSynthesizer)`);
         }
       } catch (e: any) {
         log(`⚠️ Could not verify player mode: ${e?.message || e}`);
