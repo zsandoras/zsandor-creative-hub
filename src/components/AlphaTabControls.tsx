@@ -367,7 +367,8 @@ const AlphaTabControls = ({
     if (api && (api as any).settings) {
       const ScrollMode = (window as any).alphaTab?.ScrollMode;
       if (ScrollMode) {
-        (api as any).settings.player.scrollMode = newAutoScroll ? ScrollMode.Continuous : ScrollMode.Off;
+        // Use OffScreen mode instead of Continuous to keep scrolling within container
+        (api as any).settings.player.scrollMode = newAutoScroll ? ScrollMode.OffScreen : ScrollMode.Off;
         api.updateSettings();
       }
     }
@@ -420,7 +421,7 @@ const AlphaTabControls = ({
           {/* Audio scrubbing slider - Note: This controls AlphaTab's MIDI synthesis only.
               It cannot sync with the separate MP3 player (MusicPlayer component) because they use
               different audio sources and AlphaTab unmounts when navigating away from this page. */}
-          <div className="flex items-center gap-2 flex-1 min-w-[200px] max-w-2xl">
+          <div className="flex items-center gap-2 flex-1 min-w-[200px]">
             <span className="text-sm text-muted-foreground whitespace-nowrap">
               {formatTime(currentTime)}
             </span>
@@ -578,18 +579,6 @@ const AlphaTabControls = ({
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <div className="hidden lg:flex items-center gap-2 px-2 border-l">
-            <Volume2 className="h-4 w-4 text-muted-foreground" />
-            <Slider
-              value={[volume]}
-              onValueChange={handleVolumeChange}
-              max={100}
-              step={1}
-              className="w-24"
-            />
-            <span className="text-xs text-muted-foreground min-w-[3ch]">{volume}%</span>
-          </div>
-
           {onToggleScale && (
             <Button
               onClick={onToggleScale}
@@ -601,6 +590,18 @@ const AlphaTabControls = ({
               <Maximize2 className="h-4 w-4" />
             </Button>
           )}
+
+          <div className="hidden lg:flex items-center gap-2 px-2 border-l">
+            <Volume2 className="h-4 w-4 text-muted-foreground" />
+            <Slider
+              value={[volume]}
+              onValueChange={handleVolumeChange}
+              max={100}
+              step={1}
+              className="w-24"
+            />
+            <span className="text-xs text-muted-foreground min-w-[3ch]">{volume}%</span>
+          </div>
         </div>
       </div>
 
