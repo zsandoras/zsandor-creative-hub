@@ -549,8 +549,8 @@ const AlphaTabControls = ({
             </Button>
           </div>
 
-          <div className={`hidden md:flex items-center ${scaleControls ? 'text-sm' : 'text-xs'} ${scaleControls ? 'ml-2' : 'ml-1'}`}>
-            <span className="font-semibold text-foreground truncate max-w-[120px]">{title}</span>
+          <div className="hidden md:flex items-center">
+            <span className={`font-semibold text-foreground truncate ${scaleControls ? 'text-sm max-w-[150px]' : 'text-xs max-w-[120px]'}`}>{title}</span>
           </div>
         </div>
 

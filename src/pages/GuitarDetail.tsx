@@ -73,30 +73,7 @@ const GuitarDetail = () => {
               <Skeleton className="h-4 w-full mb-6" />
               <Skeleton className="h-[600px] w-full" />
             </Card>
-          ) : embed ? (
-            <>
-              <Card className="p-6 mb-6 bg-card/50 backdrop-blur">
-                <EditableItemText
-                  table="guitar_embeds"
-                  itemId={embed.id}
-                  field="title"
-                  value={embed.title}
-                  className="text-3xl font-bold mb-2"
-                  as="h1"
-                  queryKey={["guitar-embed", id]}
-                />
-                <EditableItemText
-                  table="guitar_embeds"
-                  itemId={embed.id}
-                  field="description"
-                  value={embed.description}
-                  className="text-muted-foreground"
-                  as="p"
-                  queryKey={["guitar-embed", id]}
-                />
-              </Card>
-            </>
-          ) : (
+          ) : !embed && (
             <Card className="p-12 text-center bg-card/50 backdrop-blur">
               <p className="text-lg text-muted-foreground">
                 Guitar tab not found.
