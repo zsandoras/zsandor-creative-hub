@@ -86,11 +86,22 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       return;
     }
 
-    // Wait for CDN alphaTab to load
-    if (typeof window !== 'undefined' && !(window as any).alphaTab) {
-      logState("ERROR", "AlphaTab CDN not loaded yet");
-      setError("AlphaTab library not loaded. Please refresh the page.");
-      return;
+    // Wait for CDN alphaTab to load and check structure
+    if (typeof window !== 'undefined') {
+      console.log("Window keys containing 'alpha':", Object.keys(window).filter(k => k.toLowerCase().includes('alpha')));
+      console.log("window.alphaTab exists:", !!(window as any).alphaTab);
+      console.log("window.alphaTab type:", typeof (window as any).alphaTab);
+      if ((window as any).alphaTab) {
+        console.log("alphaTab keys:", Object.keys((window as any).alphaTab));
+        console.log("alphaTab.Settings:", (window as any).alphaTab.Settings);
+        console.log("alphaTab.AlphaTabApi:", (window as any).alphaTab.AlphaTabApi);
+      }
+      
+      if (!(window as any).alphaTab) {
+        logState("ERROR", "AlphaTab CDN not loaded yet");
+        setError("AlphaTab library not loaded. Please refresh the page.");
+        return;
+      }
     }
 
     const container = document.getElementById("alphaTab");
