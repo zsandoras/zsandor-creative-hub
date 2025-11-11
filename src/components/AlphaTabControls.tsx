@@ -14,8 +14,8 @@ import {
   ChevronUp,
   ChevronDown,
   FileDown,
-  Music,
   ScrollText,
+  CircleDot,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -267,14 +267,20 @@ const AlphaTabControls = ({
       const wasPlaying = isPlaying;
       if (wasPlaying) api.stop();
       
-      // Transpose all tracks
+      // Transpose all tracks - need to set both transpositionPitch (audio) and displayTranspositionPitch (visual)
       for (const track of (api as any).score.tracks) {
         for (const staff of track.staves) {
+          staff.transpositionPitch = newTranspose;
           staff.displayTranspositionPitch = newTranspose;
         }
       }
       
+      // Regenerate MIDI with new transposition
       api.render();
+      if (typeof api.loadMidiForScore === "function") {
+        api.loadMidiForScore();
+      }
+      
       if (wasPlaying) setTimeout(() => api.play(), 300);
     }
   };
@@ -370,10 +376,10 @@ const AlphaTabControls = ({
             onClick={toggleCountIn}
             variant="ghost"
             size="icon"
-            title="Count-In"
+            title="Count-In (plays count before starting)"
             className={countIn ? "bg-accent" : ""}
           >
-            <Timer className="h-4 w-4" />
+            <CircleDot className="h-4 w-4" />
           </Button>
 
           <Button
@@ -383,7 +389,7 @@ const AlphaTabControls = ({
             title="Metronome"
             className={metronome ? "bg-accent" : ""}
           >
-            <Music className="h-4 w-4" />
+            <Timer className="h-4 w-4" />
           </Button>
 
           <Button
