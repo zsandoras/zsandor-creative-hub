@@ -28,6 +28,7 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const apiRef = useRef<alphaTab.AlphaTabApi | null>(null);
   const watchdogTimerRef = useRef<number | null>(null);
+  const sampleTimerRef = useRef<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [loadProgress, setLoadProgress] = useState(0);
@@ -39,6 +40,8 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
   });
   const [debugEvents, setDebugEvents] = useState<DebugEvent[]>([]);
   const [isPlayerReady, setIsPlayerReady] = useState(false);
+  const [isScoreLoaded, setIsScoreLoaded] = useState(false);
+  const renderFinishedRef = useRef(false);
 
   const addDebugEvent = (event: string, details?: string) => {
     const timestamp = new Date().toLocaleTimeString();
@@ -63,6 +66,9 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
     setIsLoading(true);
     setError(null);
     setDebugEvents([]);
+    setIsPlayerReady(false);
+    setIsScoreLoaded(false);
+    renderFinishedRef.current = false;
     addDebugEvent("Initializing AlphaTab", `File: ${fileUrl}`);
 
     // Safety check: ensure container has valid dimensions
@@ -80,15 +86,16 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       settings.core.fontDirectory = "/font/";
       settings.core.useWorkers = false; // Disable workers to avoid loading issues
       settings.display.layoutMode = alphaTab.LayoutMode.Page;
+      settings.display.scale = 1.1; // Improve readability
       settings.core.engine = "svg";
-      
+
       // Enable player with synthesizer mode
       settings.player.enablePlayer = true;
       settings.player.enableCursor = true;
       settings.player.enableAnimatedBeatCursor = true;
       settings.player.soundFont = "https://cdn.jsdelivr.net/npm/@coderline/alphatab@1.6.3/dist/soundfont/sonivox.sf2";
       settings.player.playerMode = alphaTab.PlayerMode?.EnabledSynthesizer ?? 2;
-      
+
       addDebugEvent("Settings configured", `SoundFont: ${settings.player.soundFont}`);
 
       // Create AlphaTab API
@@ -97,147 +104,130 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       const actualMode = (api as any).settings?.player?.playerMode ?? 'unknown';
       addDebugEvent("AlphaTab API created", `Player mode: ${actualMode}`);
 
-      // Render started event
-      api.renderStarted.on(() => {
-        addDebugEvent("Render started");
-      });
+      // Helper to attach all event handlers consistently
+      const attachHandlers = (instance: alphaTab.AlphaTabApi) => {
+        instance.renderStarted.on(() => {
+          addDebugEvent("Render started");
+        });
 
-      // Score loaded event
-      api.scoreLoaded.on(() => {
-        addDebugEvent("Score loaded", `Tracks: ${api.score?.tracks.length || 0}`);
-        addDebugEvent("Triggering render");
-        api.render();
-      });
+        instance.scoreLoaded.on(() => {
+          addDebugEvent("Score loaded", `Tracks: ${instance.score?.tracks.length || 0}`);
+          setIsScoreLoaded(true);
+          addDebugEvent("Triggering render");
+          instance.render();
+        });
 
-      // Render finished event
-      api.renderFinished.on(() => {
-        addDebugEvent("Render finished");
-        setIsLoading(false);
-        // Clear watchdog on successful render
-        if (watchdogTimerRef.current) {
-          clearTimeout(watchdogTimerRef.current);
-          watchdogTimerRef.current = null;
+        instance.renderFinished.on(() => {
+          addDebugEvent("Render finished");
+          setIsLoading(false);
+          renderFinishedRef.current = true;
+          if (watchdogTimerRef.current) {
+            clearTimeout(watchdogTimerRef.current);
+            watchdogTimerRef.current = null;
+          }
+        });
+
+        instance.soundFontLoad.on((e: any) => {
+          const percentage = Math.floor((e.loaded / e.total) * 100);
+          setLoadProgress(percentage);
+          addDebugEvent("SoundFont loading", `${percentage}%`);
+        });
+
+        instance.soundFontLoaded.on(() => {
+          addDebugEvent("SoundFont loaded");
+          setLoadProgress(100);
+        });
+
+        instance.playerReady.on(() => {
+          addDebugEvent("Player ready", "Ready for playback");
+          setIsPlayerReady(true);
+        });
+
+        instance.playerStateChanged.on((e: any) => {
+          const isPlaying = e.state === 1; // 1 = Playing
+          setPlayerState((prev) => ({ ...prev, isPlaying }));
+          addDebugEvent("Player state changed", isPlaying ? "Playing" : "Paused");
+        });
+
+        instance.playerPositionChanged.on((e: any) => {
+          setPlayerState((prev) => ({
+            ...prev,
+            currentTime: e.currentTime / 1000,
+            duration: e.endTime / 1000,
+          }));
+        });
+
+        instance.error.on((e: any) => {
+          const message = e?.message || e?.toString?.() || "Unknown error";
+          addDebugEvent("Error", message);
+          setError(`AlphaTab error: ${message}`);
+          setIsLoading(false);
+          if (watchdogTimerRef.current) {
+            clearTimeout(watchdogTimerRef.current);
+            watchdogTimerRef.current = null;
+          }
+        });
+      };
+
+      // Helper to fetch as ArrayBuffer and load
+      const loadFromUrl = async (instance: alphaTab.AlphaTabApi, url: string) => {
+        addDebugEvent("Fetching file", url);
+        try {
+          const res = await fetch(url, { mode: "cors", cache: "no-store" });
+          addDebugEvent("Fetch status", `${res.status} ${res.statusText}`);
+          const contentType = res.headers.get("content-type") || "unknown";
+          addDebugEvent("Content-Type", contentType);
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const buf = await res.arrayBuffer();
+          addDebugEvent("File fetched", `${buf.byteLength} bytes`);
+          instance.load(buf);
+        } catch (err: any) {
+          addDebugEvent("Fetch error", err?.message || String(err));
+          throw err;
         }
-      });
+      };
 
-      // SoundFont loading progress
-      api.soundFontLoad.on((e: any) => {
-        const percentage = Math.floor((e.loaded / e.total) * 100);
-        setLoadProgress(percentage);
-        addDebugEvent("SoundFont loading", `${percentage}%`);
-      });
+      // Attach handlers
+      attachHandlers(api);
 
-      // SoundFont loaded event
-      api.soundFontLoaded.on(() => {
-        addDebugEvent("SoundFont loaded");
-        setLoadProgress(100);
-      });
-
-      // Player ready event
-      api.playerReady.on(() => {
-        addDebugEvent("Player ready", "Ready for playback");
-        setIsPlayerReady(true);
-      });
-
-      // Player state changed
-      api.playerStateChanged.on((e: any) => {
-        const isPlaying = e.state === 1; // 1 = Playing
-        setPlayerState((prev) => ({ ...prev, isPlaying }));
-        addDebugEvent("Player state changed", isPlaying ? "Playing" : "Paused");
-      });
-
-      // Player position changed
-      api.playerPositionChanged.on((e: any) => {
-        setPlayerState((prev) => ({
-          ...prev,
-          currentTime: e.currentTime / 1000,
-          duration: e.endTime / 1000,
-        }));
-      });
-
-      // Error handling
-      api.error.on((e: any) => {
-        const message = e?.message || e?.toString?.() || "Unknown error";
-        addDebugEvent("Error", message);
-        setError(`AlphaTab error: ${message}`);
-        setIsLoading(false);
-        // Clear watchdog on error
-        if (watchdogTimerRef.current) {
-          clearTimeout(watchdogTimerRef.current);
-          watchdogTimerRef.current = null;
-        }
-      });
-
-      // Set up watchdog timer - fallback to canvas if SVG doesn't render
-      watchdogTimerRef.current = window.setTimeout(() => {
-        if (isLoading && apiRef.current && containerRef.current) {
+      // Watchdog: fallback to canvas if no render finished fires in time
+      watchdogTimerRef.current = window.setTimeout(async () => {
+        if (!renderFinishedRef.current && containerRef.current) {
           addDebugEvent("Render watchdog timeout", "Falling back to canvas engine");
-          
-          // Destroy current API
-          apiRef.current.destroy();
-          
-          // Recreate with canvas engine
+          try {
+            apiRef.current?.destroy();
+          } catch (e) {
+            // ignore
+          }
+
           const fallbackSettings = new alphaTab.Settings();
           fallbackSettings.core.fontDirectory = "/font/";
           fallbackSettings.core.useWorkers = false;
           fallbackSettings.display.layoutMode = alphaTab.LayoutMode.Page;
+          fallbackSettings.display.scale = 1.1;
           fallbackSettings.core.engine = "canvas"; // Switch to canvas
-          
+
           fallbackSettings.player.enablePlayer = true;
           fallbackSettings.player.enableCursor = true;
           fallbackSettings.player.enableAnimatedBeatCursor = true;
           fallbackSettings.player.soundFont = "https://cdn.jsdelivr.net/npm/@coderline/alphatab@1.6.3/dist/soundfont/sonivox.sf2";
           fallbackSettings.player.playerMode = alphaTab.PlayerMode?.EnabledSynthesizer ?? 2;
-          
+
           addDebugEvent("Recreating with canvas engine");
           const fallbackApi = new alphaTab.AlphaTabApi(containerRef.current, fallbackSettings);
           apiRef.current = fallbackApi;
-          
-          // Re-attach essential events
-          fallbackApi.renderStarted.on(() => {
-            addDebugEvent("Render started (canvas)");
-          });
-          
-          fallbackApi.renderFinished.on(() => {
-            addDebugEvent("Render finished (canvas)");
-            setIsLoading(false);
-          });
-          
-          fallbackApi.error.on((e: any) => {
-            const message = e?.message || e?.toString?.() || "Unknown error";
-            addDebugEvent("Error (canvas)", message);
-            setError(`AlphaTab error: ${message}`);
-            setIsLoading(false);
-          });
-          
-          fallbackApi.playerReady.on(() => {
-            addDebugEvent("Player ready (canvas)");
-            setIsPlayerReady(true);
-          });
-          
-          fallbackApi.playerStateChanged.on((e: any) => {
-            const isPlaying = e.state === 1;
-            setPlayerState((prev) => ({ ...prev, isPlaying }));
-            addDebugEvent("Player state changed (canvas)", isPlaying ? "Playing" : "Paused");
-          });
-          
-          fallbackApi.playerPositionChanged.on((e: any) => {
-            setPlayerState((prev) => ({
-              ...prev,
-              currentTime: e.currentTime / 1000,
-              duration: e.endTime / 1000,
-            }));
-          });
-          
-          // Load the file again
-          addDebugEvent("Loading tablature file (canvas)");
-          fallbackApi.load(fileUrl);
-        }
-      }, 4000); // 4 second timeout
+          attachHandlers(fallbackApi);
 
-      // Load the tablature file
-      addDebugEvent("Loading tablature file");
-      api.load(fileUrl);
+          try {
+            await loadFromUrl(fallbackApi, fileUrl);
+          } catch (e: any) {
+            addDebugEvent("Fallback load error", e?.message || String(e));
+          }
+        }
+      }, 5000);
+
+      // Initial load
+      loadFromUrl(api, fileUrl);
     } catch (e: any) {
       const message = e?.message || e?.toString?.() || "Unknown error";
       addDebugEvent("Initialization error", message);
@@ -380,7 +370,7 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
         <div className="flex flex-wrap items-center gap-4 mb-6">
           <Button
             onClick={togglePlayPause}
-            disabled={!isPlayerReady}
+            disabled={!isScoreLoaded}
             size="lg"
             className="gap-2"
           >
@@ -399,7 +389,7 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
           
           <Button
             onClick={stop}
-            disabled={!isPlayerReady}
+            disabled={!isPlayerReady && !isScoreLoaded}
             variant="secondary"
             size="lg"
             className="gap-2"
