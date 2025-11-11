@@ -179,8 +179,8 @@ const AlphaTabControls = ({
     // Listen to player position changes for time tracking
     const positionHandler = (e: any) => {
       if (typeof e.currentTime === 'number') {
-        // Detect repeat/loop: if time decreased significantly, we looped back
-        if (lastTimeRef.current > 0 && e.currentTime < lastTimeRef.current - 1000) {
+        // Only detect repeats when playing to avoid false positives during pause
+        if (isPlaying && lastTimeRef.current > 0 && e.currentTime < lastTimeRef.current - 1000) {
           // Add the last time to offset to make scrubber monotonic
           setTimeOffset(prev => prev + lastTimeRef.current);
         }
@@ -209,7 +209,7 @@ const AlphaTabControls = ({
         api.playerPositionChanged.off(positionHandler);
       }
     };
-  }, [api]);
+  }, [api, isPlaying]);
 
   const togglePlayPause = () => {
     if (api) {
@@ -686,12 +686,12 @@ const AlphaTabControls = ({
         <Slider
           value={[currentTime + timeOffset]}
           onValueChange={handleSeek}
-          max={duration + timeOffset}
+          max={duration}
           step={100}
           className="flex-1"
         />
         <span className="text-sm text-muted-foreground whitespace-nowrap">
-          {formatTime(duration + timeOffset)}
+          {formatTime(duration)}
         </span>
       </div>
 
