@@ -116,6 +116,29 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
             selectedTracks: [0], // Select first track by default
           }));
           log(`Loaded ${tracks.length} tracks`);
+          
+          // Manually trigger soundfont load after render
+          try {
+            log('🎵 Manually triggering soundFont load...');
+            const soundFontUrl = window.location.origin + "/soundfont/sonivox.sf2";
+            fetch(soundFontUrl)
+              .then(response => {
+                if (!response.ok) {
+                  throw new Error(`Failed to fetch soundfont: ${response.status}`);
+                }
+                return response.arrayBuffer();
+              })
+              .then(arrayBuffer => {
+                log(`🎵 SoundFont downloaded (${arrayBuffer.byteLength} bytes), loading into player...`);
+                api.loadSoundFont(new Uint8Array(arrayBuffer), false);
+              })
+              .catch(err => {
+                log(`❌ SoundFont load failed: ${err.message}`);
+                setError(`Failed to load soundfont: ${err.message}`);
+              });
+          } catch (e: any) {
+            log(`❌ SoundFont fetch error: ${e.message}`);
+          }
         }
       });
 
