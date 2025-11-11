@@ -107,10 +107,10 @@ export const WaveformVisualizer = ({
       const barHeight = value * rect.height * 0.8;
       const x = index * barWidth;
       const clampedProgress = Math.max(0, Math.min(1, Number.isFinite(progress as number) ? (progress as number) : 0));
-      const progressPosition = Math.floor(clampedProgress * waveformData.length);
+      const progressBars = Math.max(0, Math.min(waveformData.length, Math.floor(clampedProgress * waveformData.length)));
 
       // Base bars in foreground (white), overlay played in primary (orange)
-      if (index < progressPosition) {
+      if (index < progressBars) {
         const primary = getComputedStyle(document.documentElement).getPropertyValue('--primary');
         ctx.fillStyle = primary ? `hsl(${primary})` : 'hsl(var(--primary))';
       } else {
