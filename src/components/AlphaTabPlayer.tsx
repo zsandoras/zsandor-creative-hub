@@ -31,10 +31,22 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
     setError(null);
     setLogs([`Init with fileUrl: ${fileUrl}`]);
 
+    // Basic file type guard: .gp (Guitar Pro 7/8) is not supported by alphaTab
+    const lowerUrl = (fileUrl || '').toLowerCase();
+    if (lowerUrl.endsWith('.gp')) {
+      const fmtMsg = 'Unsupported format: .gp (Guitar Pro 7/8). Please upload .gpx (GP6) or .gp3/.gp4/.gp5.';
+      log(fmtMsg);
+      setError(fmtMsg);
+      setIsLoading(false);
+      return;
+    }
+
     try {
       const settings = new alphaTab.Settings();
       // Fonts served locally from /public
       settings.core.fontDirectory = "/font/";
+      // Disable workers for simpler bundler setup
+      settings.core.useWorkers = false;
       // Minimal display just to render something reliable
       settings.display.layoutMode = alphaTab.LayoutMode.Page;
       // Basic player disabled to reduce moving parts for now
