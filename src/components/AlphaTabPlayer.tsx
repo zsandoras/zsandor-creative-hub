@@ -125,15 +125,26 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       apiRef.current = api;
       logState("LOADING", "AlphaTabApi created");
 
-      // Resume AudioContext on user gesture
+      // Resume AudioContext on user gesture and check player state
       const player: any = (api as any).player;
-      const ctx = player?.audioContext || player?.context;
-      if (ctx) {
-        if (ctx.state === "suspended") {
-          await ctx.resume();
-          logState("LOADING", `AudioContext resumed from suspended`);
+      logState("LOADING", `Player object exists: ${!!player}`);
+      
+      if (player) {
+        logState("LOADING", `Player ready state: ${player.ready || player.isReady || 'unknown'}`);
+        logState("LOADING", `Player state: ${player.state || 'unknown'}`);
+        
+        const ctx = player.audioContext || player.context;
+        if (ctx) {
+          if (ctx.state === "suspended") {
+            await ctx.resume();
+            logState("LOADING", `AudioContext resumed from suspended`);
+          }
+          logState("LOADING", `AudioContext state: ${ctx.state}`);
+        } else {
+          logState("LOADING", `No AudioContext found on player`);
         }
-        logState("LOADING", `AudioContext state: ${ctx.state}`);
+      } else {
+        logState("LOADING", `No player object - this means synth not initialized!`);
       }
 
       // Event Listeners
@@ -184,6 +195,16 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       // Load file
       logState("LOADING", `Loading file: ${fileUrl}`);
       api.load(fileUrl);
+      
+      // Check if player is initializing after load
+      setTimeout(() => {
+        const playerCheck: any = (api as any).player;
+        logState("DEBUG", `Player check after load - exists: ${!!playerCheck}`);
+        if (playerCheck) {
+          logState("DEBUG", `Player isReady: ${playerCheck.isReady}, ready: ${playerCheck.ready}`);
+          logState("DEBUG", `Player soundFontLoaded: ${playerCheck.soundFontLoaded}`);
+        }
+      }, 2000);
 
     } catch (e: any) {
       const message = e?.message || e?.toString?.() || "Unknown error";
