@@ -81,7 +81,7 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       settings.player.enableCursor = true;
       settings.player.enableAnimatedBeatCursor = true;
       settings.player.enableUserInteraction = true;
-      settings.player.soundFont = "https://cdn.jsdelivr.net/npm/@coderline/alphatab@1.6.3/dist/soundfont/sonivox.sf2";
+      settings.player.soundFont = "/soundfont/sonivox.sf2";
       settings.player.scrollElement = containerRef.current;
       
       // CRITICAL: Set player mode to synthesizer (required for soundfont playback)
