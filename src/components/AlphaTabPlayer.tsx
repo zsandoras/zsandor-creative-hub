@@ -129,18 +129,37 @@ const [error, setError] = useState<string | null>(null);
         // Load from File object
         const arrayBuffer = await file.arrayBuffer();
         const uint8Array = new Uint8Array(arrayBuffer);
+        console.log("[AlphaTab] Loading from File, bytes:", uint8Array.byteLength);
         api.load(uint8Array);
-      } else if (fileUrl) {
-        // Load from URL
+        return;
+      }
+
+      if (fileUrl) {
+        console.log("[AlphaTab] Fetching URL:", fileUrl);
         const response = await fetch(fileUrl);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status} when fetching file`);
+        }
         const arrayBuffer = await response.arrayBuffer();
         const uint8Array = new Uint8Array(arrayBuffer);
+        console.log("[AlphaTab] Loaded bytes:", uint8Array.byteLength);
         api.load(uint8Array);
+        return;
       }
+
+      throw new Error("No file or fileUrl provided");
     } catch (e: any) {
-      console.error("Failed to load file:", e);
-      setError(e?.message || "Failed to load file");
-      setIsLoading(false);
+      console.warn("[AlphaTab] Typed-array load failed, trying direct URL...", e);
+      try {
+        if (fileUrl) {
+          api.load(fileUrl); // fallback: let AlphaTab fetch the URL itself
+          return;
+        }
+      } catch (inner: any) {
+        console.error("Failed to load file (both methods):", inner);
+        setError(inner?.message || e?.message || "Failed to load file");
+        setIsLoading(false);
+      }
     }
   };
 
