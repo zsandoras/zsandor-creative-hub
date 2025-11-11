@@ -15,6 +15,19 @@ interface PlayerState {
   selectedTracks: number[];
 }
 
+interface DebugState {
+  soundFontLoadStarted: boolean;
+  soundFontLoadProgress: number;
+  soundFontLoaded: boolean;
+  playerReady: boolean;
+  playerState: number | null;
+  playerStateName: string;
+  audioContextState: string;
+  synthReady: boolean | null;
+  isReadyForPlayback: boolean;
+  lastEventTime: string;
+}
+
 const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -32,7 +45,69 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
     selectedTracks: [],
   });
   const [uiEnabled, setUiEnabled] = useState(false);
+  const [debugState, setDebugState] = useState<DebugState>({
+    soundFontLoadStarted: false,
+    soundFontLoadProgress: 0,
+    soundFontLoaded: false,
+    playerReady: false,
+    playerState: null,
+    playerStateName: 'unknown',
+    audioContextState: 'unknown',
+    synthReady: null,
+    isReadyForPlayback: false,
+    lastEventTime: '',
+  });
+  
   const log = (msg: string) => setLogs((prev) => [...prev, `[${new Date().toLocaleTimeString()}] ${msg}`]);
+
+  const getPlayerStateName = (state: number): string => {
+    const PlayerState = (alphaTab as any).PlayerState;
+    if (!PlayerState) return `State ${state}`;
+    const names: Record<number, string> = {
+      0: 'Paused',
+      1: 'Playing',
+      2: 'Stopped',
+    };
+    return names[state] || `Unknown(${state})`;
+  };
+
+  const inspectSynthStatus = () => {
+    if (!apiRef.current) return;
+    try {
+      const api: any = apiRef.current as any;
+      const player: any = api.player;
+      const synth: any = player?.synthesizer || player?.synth;
+      const audioContext: AudioContext | undefined = player?.audioContext || player?.context;
+      
+      const status = {
+        apiPlayerState: api.playerState ?? 'undefined',
+        isReadyForPlayback: api.isReadyForPlayback ?? false,
+        audioContextState: audioContext?.state ?? 'unknown',
+        synthExists: !!synth,
+        synthReady: synth?.ready ?? synth?.isReady ?? null,
+        synthLoaded: synth?.loaded ?? null,
+        masterVolume: api.masterVolume ?? player?.volume ?? 'unknown',
+      };
+      
+      log(`🔍 Synth Status: ${JSON.stringify(status, null, 2)}`);
+      console.log('🔍 AlphaTab Deep Inspection:', {
+        api: apiRef.current,
+        player,
+        synth,
+        audioContext,
+        status,
+      });
+      
+      setDebugState(prev => ({ 
+        ...prev,
+        audioContextState: status.audioContextState,
+        synthReady: status.synthReady,
+        isReadyForPlayback: status.isReadyForPlayback,
+      }));
+    } catch (e: any) {
+      log(`❌ Failed to inspect synth: ${e?.message || e}`);
+    }
+  };
   useEffect(() => {
     if (!containerRef.current) {
       log('No container element available');
@@ -130,23 +205,44 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       api.soundFontLoad.on((e: any) => {
         const percentage = Math.floor((e.loaded / e.total) * 100);
         setLoadProgress(percentage);
-        log(`🎵 SoundFont loading: ${percentage}% (${e.loaded}/${e.total} bytes)`);
+        
+        if (!debugState.soundFontLoadStarted) {
+          log('🎵 ▶️ SoundFont loading STARTED');
+          setDebugState(prev => ({ ...prev, soundFontLoadStarted: true, lastEventTime: new Date().toISOString() }));
+        }
+        
+        log(`🎵 📊 SoundFont loading: ${percentage}% (${e.loaded}/${e.total} bytes)`);
+        setDebugState(prev => ({ ...prev, soundFontLoadProgress: percentage }));
+        
         if (percentage === 100) {
-          log('🎵 SoundFont download 100%, waiting for soundFontLoaded event...');
+          log('🎵 ✅ SoundFont download COMPLETE (100%), waiting for soundFontLoaded event...');
         }
       });
 
       api.soundFontLoaded.on(() => {
-        log('🎵 ✓ SoundFont fully loaded - player should be ready');
+        log('🎵 ✓ soundFontLoaded EVENT FIRED - Synth should be connecting');
         setLoadProgress(100);
         setIsPlayerReady(true);
+        setDebugState(prev => ({ 
+          ...prev, 
+          soundFontLoaded: true,
+          lastEventTime: new Date().toISOString()
+        }));
+        inspectSynthStatus();
       });
 
       api.playerReady.on(() => {
-        log(`✓ Player ready (isReadyForPlayback=${String(api.isReadyForPlayback)})`);
+        log(`✅ playerReady EVENT FIRED (isReadyForPlayback=${String(api.isReadyForPlayback)})`);
         setIsPlayerReady(true);
         setLoadProgress(100);
         setUiEnabled(true);
+        setDebugState(prev => ({ 
+          ...prev, 
+          playerReady: true,
+          isReadyForPlayback: api.isReadyForPlayback,
+          lastEventTime: new Date().toISOString()
+        }));
+        inspectSynthStatus();
       });
 
       api.error.on((e: any) => {
@@ -160,8 +256,16 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
 
       // Player state listeners for UI updates
       api.playerStateChanged.on((e: any) => {
-        setPlayerState(prev => ({ ...prev, isPlaying: e.state === 1 }));
-        log(`Player state: ${e.state === 1 ? 'playing' : 'paused'}`);
+        const stateNum = e.state;
+        const stateName = getPlayerStateName(stateNum);
+        setPlayerState(prev => ({ ...prev, isPlaying: stateNum === 1 }));
+        log(`🎮 playerStateChanged: ${stateNum} (${stateName})`);
+        setDebugState(prev => ({ 
+          ...prev, 
+          playerState: stateNum,
+          playerStateName: stateName,
+          lastEventTime: new Date().toISOString()
+        }));
       });
 
       api.playerPositionChanged.on((e: any) => {
@@ -171,6 +275,28 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
           duration: e.endTime
         }));
       });
+
+      // Check for additional events (may not exist in all alphaTab versions)
+      if ('midiLoad' in api) {
+        (api as any).midiLoad.on((e: any) => {
+          log(`🎹 MIDI loading: ${e?.loaded || 0}/${e?.total || 0}`);
+        });
+      }
+
+      if ('midiLoaded' in api) {
+        (api as any).midiLoaded.on(() => {
+          log('🎹 ✓ midiLoaded EVENT FIRED');
+          inspectSynthStatus();
+        });
+      }
+
+      if ('audioReady' in api) {
+        (api as any).audioReady.on(() => {
+          log('🔊 ✓ audioReady EVENT FIRED');
+          setDebugState(prev => ({ ...prev, lastEventTime: new Date().toISOString() }));
+          inspectSynthStatus();
+        });
+      }
 
       // Start loading score after all listeners are attached
       log(`Init order OK. SoundFont=${settings.player.soundFont}. Loading: ${fileUrl}`);
@@ -195,6 +321,17 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       }
     };
   }, [fileUrl]);
+
+  // Periodic synth status polling during loading
+  useEffect(() => {
+    if (isLoading || !apiRef.current) return;
+    
+    const interval = setInterval(() => {
+      inspectSynthStatus();
+    }, 2000);
+    
+    return () => clearInterval(interval);
+  }, [isLoading]);
 
   // Auto-unlock AudioContext on first user gesture
   useEffect(() => {
@@ -399,11 +536,55 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
             )}
           </div>
           
-          <details className="mt-3 text-xs">
-            <summary className="cursor-pointer text-muted-foreground">Debug logs (click to view)</summary>
-            <pre className="mt-2 text-muted-foreground bg-muted/40 p-3 rounded-md overflow-auto max-h-48">
+          <details className="mt-3 text-xs" open>
+            <summary className="cursor-pointer text-muted-foreground font-semibold mb-2">
+              🔍 Debug Panel (Lifecycle Tracking)
+            </summary>
+            
+            {/* Visual State Timeline */}
+            <div className="mb-3 p-2 bg-muted/60 rounded-md">
+              <div className="font-semibold mb-1">Lifecycle Status:</div>
+              <div className="space-y-1 text-xs">
+                <div className="flex items-center gap-2">
+                  {debugState.soundFontLoadStarted ? '✅' : '⏳'} SoundFont Download Started
+                  {debugState.soundFontLoadStarted && ` (${debugState.soundFontLoadProgress}%)`}
+                </div>
+                <div className="flex items-center gap-2">
+                  {debugState.soundFontLoaded ? '✅' : '⏳'} SoundFont Loaded Event
+                </div>
+                <div className="flex items-center gap-2">
+                  {debugState.playerReady ? '✅' : '⏳'} Player Ready Event
+                </div>
+                <div className="flex items-center gap-2">
+                  {debugState.synthReady === true ? '✅' : debugState.synthReady === false ? '❌' : '⏳'} Synth Ready
+                </div>
+                <div className="flex items-center gap-2">
+                  {debugState.isReadyForPlayback ? '✅' : '❌'} Ready for Playback
+                </div>
+              </div>
+            </div>
+            
+            {/* Live State Values */}
+            <div className="mb-3 p-2 bg-muted/60 rounded-md">
+              <div className="font-semibold mb-1">Current State:</div>
+              <div className="space-y-1 text-xs font-mono">
+                <div>Player State: {debugState.playerStateName} ({debugState.playerState ?? 'null'})</div>
+                <div>AudioContext: {debugState.audioContextState}</div>
+                <div>Synth Ready: {String(debugState.synthReady)}</div>
+                <div>Ready for Playback: {String(debugState.isReadyForPlayback)}</div>
+                <div className="text-muted-foreground text-xs mt-1">
+                  Last Event: {debugState.lastEventTime || 'none'}
+                </div>
+              </div>
+            </div>
+            
+            {/* Event Log */}
+            <div className="p-2 bg-muted/40 rounded-md">
+              <div className="font-semibold mb-1">Event Log:</div>
+              <pre className="text-muted-foreground overflow-auto max-h-64">
 {logs.join('\n') || 'No logs yet'}
-            </pre>
+              </pre>
+            </div>
           </details>
         </Card>
       )}
