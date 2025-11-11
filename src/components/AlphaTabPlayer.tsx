@@ -70,10 +70,8 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       settings.display.layoutMode = alphaTab.LayoutMode.Page;
       // Enable player with synthesizer mode - use absolute URL for soundfont
       settings.player.playerMode = alphaTab.PlayerMode.EnabledSynthesizer;
-      settings.player.enablePlayer = true; // compatibility flag
       settings.player.enableCursor = true;
       settings.player.enableAnimatedBeatCursor = true;
-      settings.player.outputMode = alphaTab.PlayerOutputMode.WebAudioScriptProcessor;
       settings.player.soundFont = window.location.origin + "/soundfont/sonivox.sf2";
       if (viewportRef.current) {
         (settings.player as any).scrollElement = viewportRef.current;
@@ -85,6 +83,11 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       const api = new alphaTab.AlphaTabApi(containerRef.current, settings);
       apiRef.current = api;
       log('AlphaTabApi created');
+      try {
+        const mode = api.actualPlayerMode;
+        const modeName = (alphaTab as any).PlayerMode?.[mode] ?? String(mode);
+        log(`Player actual mode: ${mode} (${modeName})`);
+      } catch {}
 
       // Hook synth/player-level events for deeper diagnostics
       try {
@@ -232,17 +235,69 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
     };
   }, [fileUrl]);
 
-  const togglePlayPause = () => {
+  // Auto-unlock AudioContext on first user gesture
+  useEffect(() => {
+    const handler = async () => {
+      try {
+        const player: any = (apiRef.current as any)?.player;
+        const ac: AudioContext | undefined = player?.audioContext || player?.context;
+        if (ac && ac.state === 'suspended') {
+          await ac.resume();
+          log('🔓 AudioContext resumed (global user gesture)');
+        }
+      } catch (e) {
+        // ignore
+      } finally {
+        window.removeEventListener('pointerdown', handler);
+        window.removeEventListener('keydown', handler);
+        window.removeEventListener('touchstart', handler);
+      }
+    };
+    window.addEventListener('pointerdown', handler, { once: true } as any);
+    window.addEventListener('keydown', handler, { once: true } as any);
+    window.addEventListener('touchstart', handler, { once: true } as any);
+    return () => {
+      window.removeEventListener('pointerdown', handler);
+      window.removeEventListener('keydown', handler);
+      window.removeEventListener('touchstart', handler);
+    };
+  }, []);
+
+  const togglePlayPause = async () => {
     if (!apiRef.current) {
       console.warn('API not ready');
       return;
     }
     const api: any = apiRef.current as any;
+    const synth: any = api.player;
+    const ac: AudioContext | undefined = synth?.audioContext || synth?.context;
+    if (ac && ac.state === 'suspended') {
+      try {
+        await ac.resume();
+        log('🔓 AudioContext resumed (Play)');
+      } catch (e: any) {
+        log(`❌ AudioContext resume failed: ${e?.message || e}`);
+      }
+    }
     const ready = api.isReadyForPlayback;
     const mode = api.actualPlayerMode;
-    const hasPlayer = !!api.player;
-    const result = api.playPause();
-    log(`▶️ playPause() returned ${String(result)} | ready=${String(ready)} | mode=${String(mode)} | hasPlayer=${hasPlayer}`);
+    const modeName = (alphaTab as any).PlayerMode?.[mode] ?? String(mode);
+    let started: any;
+    try {
+      if (synth?.play) {
+        started = synth.play();
+      } else if (api.play) {
+        api.play();
+        started = true;
+      } else if (api.playPause) {
+        api.playPause();
+        started = undefined;
+      }
+    } catch (e: any) {
+      log(`❌ play() error: ${e?.message || e}`);
+    }
+    const acState = ac?.state ?? 'n/a';
+    log(`▶️ play() started=${String(started)} | ready=${String(ready)} | mode=${mode}(${modeName}) | hasPlayer=${!!synth} | ac=${acState}`);
   };
   const stop = () => {
     if (!apiRef.current) return;
@@ -251,15 +306,24 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
   };
 
   const unlockAudio = async () => {
+    log('🔧 Initialize Audio clicked');
     try {
       const player: any = (apiRef.current as any)?.player;
       const ac: AudioContext | undefined = player?.audioContext || player?.context;
       if (ac && ac.state === 'suspended') {
         await ac.resume();
         log('🔓 AudioContext resumed');
+      } else {
+        log(`AudioContext state: ${ac?.state ?? 'n/a'}`);
       }
       // poke the player
-      apiRef.current?.playPause();
+      if (player?.play) {
+        const ok = player.play();
+        log(`▶️ synth.play() returned ${String(ok)}`);
+      } else {
+        (apiRef.current as any)?.playPause?.();
+        log('▶️ api.playPause() called as fallback');
+      }
     } catch (e: any) {
       log(`❌ Audio unlock failed: ${e?.message || e}`);
     }
