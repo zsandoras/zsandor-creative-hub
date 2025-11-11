@@ -548,7 +548,7 @@ const AlphaTabControls = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex flex-wrap items-center gap-2 flex-shrink-0">
           <Button
             onClick={toggleCountIn}
             variant="ghost"
@@ -661,7 +661,7 @@ const AlphaTabControls = ({
             </DropdownMenu>
           )}
 
-          <div className="flex items-center gap-2 px-2 border-l">
+          <div className="hidden lg:flex items-center gap-2 px-2 border-l">
             <ZoomIn className="h-4 w-4 text-muted-foreground flex-shrink-0" />
             <Slider
               value={[zoom]}
@@ -669,12 +669,12 @@ const AlphaTabControls = ({
               min={25}
               max={300}
               step={5}
-              className="w-24"
+              className="w-20"
             />
             <span className="text-xs text-muted-foreground min-w-[4ch] text-right">{zoom}%</span>
           </div>
 
-          <div className="hidden xl:flex items-center gap-2 px-2 border-l">
+          <div className="hidden lg:flex items-center gap-2 px-2 border-l">
             <Volume2 className="h-4 w-4 text-muted-foreground" />
             <Slider
               value={[volume]}
