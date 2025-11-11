@@ -31,3 +31,9 @@
   fill: hsl(var(--primary));
   stroke: hsl(var(--primary));
 }
+
+/* Make notation visible on dark backgrounds */
+.at-page {
+  background: #ffffff !important;
+  box-shadow: 0 0 0 1px hsl(var(--border));
+}

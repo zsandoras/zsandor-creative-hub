@@ -27,6 +27,7 @@ interface DebugEvent {
 const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const apiRef = useRef<alphaTab.AlphaTabApi | null>(null);
+  const watchdogTimerRef = useRef<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [loadProgress, setLoadProgress] = useState(0);
@@ -53,16 +54,31 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       apiRef.current = null;
     }
 
+    // Clear any existing watchdog
+    if (watchdogTimerRef.current) {
+      clearTimeout(watchdogTimerRef.current);
+      watchdogTimerRef.current = null;
+    }
+
     setIsLoading(true);
     setError(null);
     setDebugEvents([]);
     addDebugEvent("Initializing AlphaTab", `File: ${fileUrl}`);
 
+    // Safety check: ensure container has valid dimensions
+    const containerWidth = containerRef.current.clientWidth;
+    const containerHeight = containerRef.current.clientHeight;
+    if (containerWidth === 0 || containerHeight === 0) {
+      addDebugEvent("Warning", `Container size is ${containerWidth}x${containerHeight}`);
+    } else {
+      addDebugEvent("Container size", `${containerWidth}x${containerHeight}`);
+    }
+
     try {
       // Configure AlphaTab settings
       const settings = new alphaTab.Settings();
       settings.core.fontDirectory = "/font/";
-      settings.core.useWorkers = true;
+      settings.core.useWorkers = false; // Disable workers to avoid loading issues
       settings.display.layoutMode = alphaTab.LayoutMode.Page;
       settings.core.engine = "svg";
       
@@ -81,6 +97,11 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       const actualMode = (api as any).settings?.player?.playerMode ?? 'unknown';
       addDebugEvent("AlphaTab API created", `Player mode: ${actualMode}`);
 
+      // Render started event
+      api.renderStarted.on(() => {
+        addDebugEvent("Render started");
+      });
+
       // Score loaded event
       api.scoreLoaded.on(() => {
         addDebugEvent("Score loaded", `Tracks: ${api.score?.tracks.length || 0}`);
@@ -92,6 +113,11 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       api.renderFinished.on(() => {
         addDebugEvent("Render finished");
         setIsLoading(false);
+        // Clear watchdog on successful render
+        if (watchdogTimerRef.current) {
+          clearTimeout(watchdogTimerRef.current);
+          watchdogTimerRef.current = null;
+        }
       });
 
       // SoundFont loading progress
@@ -135,7 +161,79 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
         addDebugEvent("Error", message);
         setError(`AlphaTab error: ${message}`);
         setIsLoading(false);
+        // Clear watchdog on error
+        if (watchdogTimerRef.current) {
+          clearTimeout(watchdogTimerRef.current);
+          watchdogTimerRef.current = null;
+        }
       });
+
+      // Set up watchdog timer - fallback to canvas if SVG doesn't render
+      watchdogTimerRef.current = window.setTimeout(() => {
+        if (isLoading && apiRef.current && containerRef.current) {
+          addDebugEvent("Render watchdog timeout", "Falling back to canvas engine");
+          
+          // Destroy current API
+          apiRef.current.destroy();
+          
+          // Recreate with canvas engine
+          const fallbackSettings = new alphaTab.Settings();
+          fallbackSettings.core.fontDirectory = "/font/";
+          fallbackSettings.core.useWorkers = false;
+          fallbackSettings.display.layoutMode = alphaTab.LayoutMode.Page;
+          fallbackSettings.core.engine = "canvas"; // Switch to canvas
+          
+          fallbackSettings.player.enablePlayer = true;
+          fallbackSettings.player.enableCursor = true;
+          fallbackSettings.player.enableAnimatedBeatCursor = true;
+          fallbackSettings.player.soundFont = "https://cdn.jsdelivr.net/npm/@coderline/alphatab@1.6.3/dist/soundfont/sonivox.sf2";
+          fallbackSettings.player.playerMode = alphaTab.PlayerMode?.EnabledSynthesizer ?? 2;
+          
+          addDebugEvent("Recreating with canvas engine");
+          const fallbackApi = new alphaTab.AlphaTabApi(containerRef.current, fallbackSettings);
+          apiRef.current = fallbackApi;
+          
+          // Re-attach essential events
+          fallbackApi.renderStarted.on(() => {
+            addDebugEvent("Render started (canvas)");
+          });
+          
+          fallbackApi.renderFinished.on(() => {
+            addDebugEvent("Render finished (canvas)");
+            setIsLoading(false);
+          });
+          
+          fallbackApi.error.on((e: any) => {
+            const message = e?.message || e?.toString?.() || "Unknown error";
+            addDebugEvent("Error (canvas)", message);
+            setError(`AlphaTab error: ${message}`);
+            setIsLoading(false);
+          });
+          
+          fallbackApi.playerReady.on(() => {
+            addDebugEvent("Player ready (canvas)");
+            setIsPlayerReady(true);
+          });
+          
+          fallbackApi.playerStateChanged.on((e: any) => {
+            const isPlaying = e.state === 1;
+            setPlayerState((prev) => ({ ...prev, isPlaying }));
+            addDebugEvent("Player state changed (canvas)", isPlaying ? "Playing" : "Paused");
+          });
+          
+          fallbackApi.playerPositionChanged.on((e: any) => {
+            setPlayerState((prev) => ({
+              ...prev,
+              currentTime: e.currentTime / 1000,
+              duration: e.endTime / 1000,
+            }));
+          });
+          
+          // Load the file again
+          addDebugEvent("Loading tablature file (canvas)");
+          fallbackApi.load(fileUrl);
+        }
+      }, 4000); // 4 second timeout
 
       // Load the tablature file
       addDebugEvent("Loading tablature file");
@@ -148,6 +246,11 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
     }
 
     return () => {
+      // Clear watchdog on cleanup
+      if (watchdogTimerRef.current) {
+        clearTimeout(watchdogTimerRef.current);
+        watchdogTimerRef.current = null;
+      }
       if (apiRef.current) {
         apiRef.current.destroy();
         apiRef.current = null;
