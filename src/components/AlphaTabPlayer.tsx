@@ -19,6 +19,8 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const apiRef = useRef<alphaTab.AlphaTabApi | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isPlayerReady, setIsPlayerReady] = useState(false);
+  const [loadProgress, setLoadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [logs, setLogs] = useState<string[]>([]);
   const [playerState, setPlayerState] = useState<PlayerState>({
@@ -112,6 +114,18 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
         }
       });
 
+      // Player loading events
+      api.soundFontLoad.on((e: any) => {
+        const percentage = Math.floor((e.loaded / e.total) * 100);
+        setLoadProgress(percentage);
+        log(`SoundFont loading: ${percentage}%`);
+      });
+
+      api.playerReady.on(() => {
+        log('Player ready');
+        setIsPlayerReady(true);
+      });
+
       api.error.on((e: any) => {
         const message = e?.message || e?.reason || e?.toString?.() || 'Unknown error';
         log(`AlphaTab error: ${message}`);
@@ -121,9 +135,11 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
         setIsLoading(false);
       });
 
-      // Player events
+      // Player events - following alphaTab official pattern
       api.playerStateChanged.on((e: any) => {
-        setPlayerState((prev) => ({ ...prev, isPlaying: e.state === 1 }));
+        const isPlaying = e.state === alphaTab.synth.PlayerState.Playing;
+        setPlayerState((prev) => ({ ...prev, isPlaying }));
+        log(`Player state: ${isPlaying ? 'Playing' : 'Paused'}`);
       });
 
       api.playerPositionChanged.on((e: any) => {
@@ -155,16 +171,12 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
   }, [fileUrl]);
 
   const togglePlayPause = () => {
-    if (!apiRef.current) return;
-    if (playerState.isPlaying) {
-      apiRef.current.pause();
-    } else {
-      apiRef.current.play();
-    }
+    if (!apiRef.current || !isPlayerReady) return;
+    apiRef.current.playPause(); // Use playPause() as per alphaTab official docs
   };
 
   const stop = () => {
-    if (!apiRef.current) return;
+    if (!apiRef.current || !isPlayerReady) return;
     apiRef.current.stop();
   };
 
@@ -204,17 +216,43 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
           <div className="flex items-center gap-4 flex-wrap">
             <div className="flex items-center gap-2">
               <button
-                onClick={togglePlayPause}
-                className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors font-medium"
+                onClick={stop}
+                disabled={!isPlayerReady}
+                className="px-3 py-2 bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Stop"
               >
-                {playerState.isPlaying ? 'Pause' : 'Play'}
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="6" y="4" width="4" height="16"></rect>
+                  <rect x="14" y="4" width="4" height="16"></rect>
+                </svg>
               </button>
               <button
-                onClick={stop}
-                className="px-4 py-2 bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/90 transition-colors"
+                onClick={togglePlayPause}
+                disabled={!isPlayerReady}
+                className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
-                Stop
+                {playerState.isPlaying ? (
+                  <>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="6" y="4" width="4" height="16"></rect>
+                      <rect x="14" y="4" width="4" height="16"></rect>
+                    </svg>
+                    Pause
+                  </>
+                ) : (
+                  <>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                    </svg>
+                    Play
+                  </>
+                )}
               </button>
+              {!isPlayerReady && (
+                <span className="text-sm text-muted-foreground">
+                  Loading player... {loadProgress}%
+                </span>
+              )}
             </div>
 
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
