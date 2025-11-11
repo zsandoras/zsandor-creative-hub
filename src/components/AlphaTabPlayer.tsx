@@ -67,17 +67,17 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       settings.core.useWorkers = false;
       // Display layout
       settings.display.layoutMode = alphaTab.LayoutMode.Page;
-      // Enable player with synthesizer mode
+      // Enable player with synthesizer mode - use absolute URL for soundfont
       settings.player.enablePlayer = true;
       settings.player.enableCursor = true;
       settings.player.enableAnimatedBeatCursor = true;
-      settings.player.soundFont = "/soundfont/sonivox.sf2";
+      settings.player.soundFont = window.location.origin + "/soundfont/sonivox.sf2";
       if (viewportRef.current) {
         (settings.player as any).scrollElement = viewportRef.current;
       }
       // Load file directly
       settings.core.file = fileUrl;
-      log('AlphaTab settings prepared with player and cursor enabled');
+      log(`AlphaTab settings prepared. SoundFont URL: ${settings.player.soundFont}`);
 
       const api = new alphaTab.AlphaTabApi(containerRef.current, settings);
       apiRef.current = api;
@@ -123,7 +123,11 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       api.soundFontLoad.on((e: any) => {
         const percentage = Math.floor((e.loaded / e.total) * 100);
         setLoadProgress(percentage);
-        log(`SoundFont loading: ${percentage}%`);
+        log(`🎵 SoundFont loading: ${percentage}% (${e.loaded}/${e.total} bytes)`);
+      });
+
+      api.soundFontLoaded.on(() => {
+        log('🎵 SoundFont fully loaded');
       });
 
       api.playerReady.on(() => {
