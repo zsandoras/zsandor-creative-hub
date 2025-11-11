@@ -1,26 +1,25 @@
 import { useState, useEffect } from "react";
 import {
-  FolderOpen,
   SkipBack,
   Play,
   Pause,
   Timer,
-  Edit3,
   Repeat,
-  Printer,
   Download,
   ZoomIn,
   LayoutGrid,
   Music2,
   Guitar,
+  Volume2,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import "./AlphaTabControls.css";
+import { Slider } from "@/components/ui/slider";
 
 interface AlphaTabControlsProps {
   api: any;
@@ -68,6 +67,7 @@ const AlphaTabControls = ({
   const [duration, setDuration] = useState(0);
   const [selectedInstrument, setSelectedInstrument] = useState(0);
   const [currentInstrument, setCurrentInstrument] = useState(INSTRUMENTS[0]);
+  const [volume, setVolume] = useState(80);
 
   useEffect(() => {
     if (!api) return;
@@ -168,6 +168,13 @@ const AlphaTabControls = ({
     }
   };
 
+  const handleVolumeChange = (value: number[]) => {
+    setVolume(value[0]);
+    if (api && (api as any).player) {
+      (api as any).masterVolume = value[0] / 100;
+    }
+  };
+
   const formatTime = (ticks: number) => {
     const seconds = Math.floor(ticks / 1000);
     const mins = Math.floor(seconds / 60);
@@ -176,167 +183,173 @@ const AlphaTabControls = ({
   };
 
   return (
-    <div className="alphatab-controls">
-      <div className="alphatab-controls-left">
-        <button
-          onClick={onOpenFile}
-          className="control-btn"
-          title="Open File"
-        >
-          <FolderOpen className="h-4 w-4" />
-        </button>
+    <div className="rounded-lg border text-card-foreground shadow-sm p-0 bg-card border-border overflow-hidden">
+      <div className="flex items-center justify-between gap-4 p-4 bg-muted/30 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button onClick={stop} variant="ghost" size="icon" title="Stop" disabled={!api}>
+            <SkipBack className="h-4 w-4" />
+          </Button>
 
-        <button onClick={stop} className="control-btn" title="Stop">
-          <SkipBack className="h-4 w-4" />
-        </button>
+          <Button
+            onClick={togglePlayPause}
+            variant="default"
+            size="icon"
+            title="Play/Pause"
+            disabled={!api}
+          >
+            {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+          </Button>
 
-        <button
-          onClick={togglePlayPause}
-          className="control-btn control-btn-primary"
-          title="Play/Pause"
-        >
-          {isPlaying ? (
-            <Pause className="h-5 w-5" />
-          ) : (
-            <Play className="h-5 w-5" />
-          )}
-        </button>
-
-        <DropdownMenu>
-          <DropdownMenuTrigger className="control-dropdown-trigger">
-            <span>{playbackSpeed}x</span>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className="control-dropdown-menu">
-            {[0.25, 0.5, 0.75, 0.9, 1, 1.25, 1.5, 2].map((speed) => (
-              <DropdownMenuItem
-                key={speed}
-                onClick={() => handleSpeedChange(speed)}
-              >
-                {speed}x
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        <div className="song-info">
-          <span className="song-title">{title}</span>
-          <span className="song-separator">-</span>
-          <span className="song-artist">{artist}</span>
-        </div>
-
-        <div className="time-position">
-          {formatTime(currentTime)} / {formatTime(duration)}
-        </div>
-      </div>
-
-      <div className="alphatab-controls-right">
-        <button
-          onClick={toggleCountIn}
-          className={`control-btn ${countIn ? "active" : ""}`}
-          title="Count-In"
-        >
-          <Timer className="h-4 w-4" />
-        </button>
-
-        <button
-          onClick={toggleMetronome}
-          className={`control-btn ${metronome ? "active" : ""}`}
-          title="Metronome"
-        >
-          <Edit3 className="h-4 w-4" />
-        </button>
-
-        <button
-          onClick={toggleLoop}
-          className={`control-btn ${loop ? "active" : ""}`}
-          title="Loop"
-        >
-          <Repeat className="h-4 w-4" />
-        </button>
-
-        <button onClick={handlePrint} className="control-btn" title="Print">
-          <Printer className="h-4 w-4" />
-        </button>
-
-        <button
-          onClick={handleDownload}
-          className="control-btn"
-          title="Download"
-        >
-          <Download className="h-4 w-4" />
-        </button>
-
-        <DropdownMenu>
-          <DropdownMenuTrigger className="control-dropdown-trigger">
-            <Guitar className="h-4 w-4 mr-1" />
-            <span>Synth</span>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className="control-dropdown-menu max-h-80 overflow-y-auto">
-            {INSTRUMENTS.map((instrument) => (
-              <DropdownMenuItem
-                key={instrument.program}
-                onClick={() => handleSynthInstrumentChange(instrument)}
-                className={currentInstrument.program === instrument.program ? "bg-primary/20" : ""}
-              >
-                {instrument.name}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        {tracks.length > 1 && (
           <DropdownMenu>
-            <DropdownMenuTrigger className="control-dropdown-trigger">
-              <Music2 className="h-4 w-4 mr-1" />
-              <span>Track</span>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm">
+                {playbackSpeed}x
+              </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="control-dropdown-menu">
-              {tracks.map((track, index) => (
-                <DropdownMenuItem
-                  key={index}
-                  onClick={() => handleInstrumentChange(index)}
-                >
-                  {track.name}
+            <DropdownMenuContent>
+              {[0.25, 0.5, 0.75, 0.9, 1, 1.25, 1.5, 2].map((speed) => (
+                <DropdownMenuItem key={speed} onClick={() => handleSpeedChange(speed)}>
+                  {speed}x
                 </DropdownMenuItem>
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
-        )}
 
-        <DropdownMenu>
-          <DropdownMenuTrigger className="control-dropdown-trigger">
-            <ZoomIn className="h-4 w-4 mr-1" />
-            <span>{zoom}%</span>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className="control-dropdown-menu">
-            {[25, 50, 75, 90, 100, 110, 125, 150, 200].map((zoomLevel) => (
-              <DropdownMenuItem
-                key={zoomLevel}
-                onClick={() => handleZoomChange(zoomLevel)}
-              >
-                {zoomLevel}%
+          <div className="hidden md:flex items-center gap-2 text-sm px-2">
+            <span className="font-semibold text-foreground">{title}</span>
+          </div>
+
+          <div className="text-sm text-muted-foreground px-2">
+            {formatTime(currentTime)} / {formatTime(duration)}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            onClick={toggleCountIn}
+            variant="ghost"
+            size="icon"
+            title="Count-In"
+            className={countIn ? "bg-accent" : ""}
+          >
+            <Timer className="h-4 w-4" />
+          </Button>
+
+          <Button
+            onClick={toggleMetronome}
+            variant="ghost"
+            size="icon"
+            title="Metronome"
+            className={metronome ? "bg-accent" : ""}
+          >
+            <Timer className="h-4 w-4" />
+          </Button>
+
+          <Button
+            onClick={toggleLoop}
+            variant="ghost"
+            size="icon"
+            title="Loop"
+            className={loop ? "bg-accent" : ""}
+          >
+            <Repeat className="h-4 w-4" />
+          </Button>
+
+          <Button onClick={handleDownload} variant="ghost" size="icon" title="Download">
+            <Download className="h-4 w-4" />
+          </Button>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="gap-1">
+                <Guitar className="h-4 w-4" />
+                <span className="hidden sm:inline">Synth</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="max-h-80 overflow-y-auto">
+              {INSTRUMENTS.map((instrument) => (
+                <DropdownMenuItem
+                  key={instrument.program}
+                  onClick={() => handleSynthInstrumentChange(instrument)}
+                  className={currentInstrument.program === instrument.program ? "bg-accent" : ""}
+                >
+                  {instrument.name}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {tracks.length > 1 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="gap-1">
+                  <Music2 className="h-4 w-4" />
+                  <span className="hidden sm:inline">Track</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                {tracks.map((track, index) => (
+                  <DropdownMenuItem
+                    key={index}
+                    onClick={() => handleInstrumentChange(index)}
+                    className={selectedInstrument === index ? "bg-accent" : ""}
+                  >
+                    {track.name}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="gap-1">
+                <ZoomIn className="h-4 w-4" />
+                {zoom}%
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              {[25, 50, 75, 90, 100, 110, 125, 150, 200].map((zoomLevel) => (
+                <DropdownMenuItem key={zoomLevel} onClick={() => handleZoomChange(zoomLevel)}>
+                  {zoomLevel}%
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" title="Layout">
+                <LayoutGrid className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem onClick={() => handleLayoutChange(0)}>Page Layout</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleLayoutChange(1)}>Horizontal</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleLayoutChange(2)}>
+                Horizontal (Bar-Wise)
               </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger className="control-dropdown-trigger">
-            <LayoutGrid className="h-4 w-4 mr-1" />
-            <span>Layout</span>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className="control-dropdown-menu">
-            <DropdownMenuItem onClick={() => handleLayoutChange(0)}>
-              Page Layout
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleLayoutChange(1)}>
-              Horizontal
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleLayoutChange(2)}>
-              Horizontal (Bar-Wise)
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+          <div className="hidden lg:flex items-center gap-2 px-2">
+            <Volume2 className="h-4 w-4 text-muted-foreground" />
+            <Slider
+              value={[volume]}
+              onValueChange={handleVolumeChange}
+              max={100}
+              step={1}
+              className="w-24"
+            />
+            <span className="text-xs text-muted-foreground min-w-[3ch]">{volume}%</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="px-4 py-2 bg-muted/20 border-t border-border">
+        <p className="text-xs text-muted-foreground text-center">
+          💡 Tip: Click directly on the rendered tablature to start playback
+        </p>
       </div>
     </div>
   );
