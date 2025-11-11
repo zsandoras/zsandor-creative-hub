@@ -84,6 +84,13 @@ export const MusicPlayer = () => {
       }
     };
 
+    const handleSeekToPosition = (e: CustomEvent) => {
+      const { progress } = e.detail;
+      if (audio && audio.duration) {
+        audio.currentTime = progress * audio.duration;
+      }
+    };
+
     audio.addEventListener("timeupdate", updateTime);
     audio.addEventListener("loadedmetadata", updateDuration);
     audio.addEventListener("ended", handleNext);
@@ -104,6 +111,7 @@ export const MusicPlayer = () => {
     
     window.addEventListener("playTrack", handleTrackChange as EventListener);
     window.addEventListener("togglePlayback", handleTogglePlayback);
+    window.addEventListener("seekToPosition", handleSeekToPosition as EventListener);
 
     return () => {
       audio.removeEventListener("timeupdate", updateTime);
@@ -111,6 +119,7 @@ export const MusicPlayer = () => {
       audio.removeEventListener("ended", handleNext);
       window.removeEventListener("playTrack", handleTrackChange as EventListener);
       window.removeEventListener("togglePlayback", handleTogglePlayback);
+      window.removeEventListener("seekToPosition", handleSeekToPosition as EventListener);
     };
   }, [currentTrackIndex, tracks, currentTrack, isPlaying]);
 

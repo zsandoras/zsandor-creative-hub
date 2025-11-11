@@ -124,10 +124,27 @@ export const WaveformVisualizer = ({
     });
   }, [waveformData, progress, isPlaying]);
 
+  const handleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!audioUrl || waveformData.length === 0) return;
+    
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const clickProgress = x / rect.width;
+    
+    // Dispatch event to seek to this position
+    window.dispatchEvent(new CustomEvent('seekToPosition', { 
+      detail: { progress: Math.max(0, Math.min(1, clickProgress)) } 
+    }));
+  };
+
   return (
     <canvas
       ref={canvasRef}
-      className={cn("w-full h-full", className)}
+      onClick={handleClick}
+      className={cn("w-full h-full cursor-pointer", className)}
       style={{ width: "100%", height: "100%" }}
     />
   );
