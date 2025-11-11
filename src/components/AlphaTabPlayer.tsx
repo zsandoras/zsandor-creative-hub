@@ -195,9 +195,8 @@ const AlphaTabPlayer = ({ fileUrl, file, title, onReset, defaultInstrument }: Al
   };
 
 
-  return (
-    <div className="space-y-6">
-      {/* Tablature Display */}
+  return {
+    tablature: (
       <Card className="relative p-4 bg-card">
         {error && (
           <div className="bg-destructive/10 border border-destructive/50 rounded-lg p-4 mb-4">
@@ -216,22 +215,20 @@ const AlphaTabPlayer = ({ fileUrl, file, title, onReset, defaultInstrument }: Al
           )}
         </div>
       </Card>
-
-      {/* Professional Player Controls */}
-      {!isLoading && !error && apiRef.current && (
-        <AlphaTabControls
-          api={apiRef.current}
-          isPlaying={isPlaying}
-          title={title}
-          artist="Unknown Artist"
-          fileUrl={fileUrl}
-          onOpenFile={onReset}
-          tracks={tracks}
-          defaultInstrument={defaultInstrument}
-        />
-      )}
-    </div>
-  );
+    ),
+    controls: !isLoading && !error && apiRef.current ? (
+      <AlphaTabControls
+        api={apiRef.current}
+        isPlaying={isPlaying}
+        title={title}
+        artist="Unknown Artist"
+        fileUrl={fileUrl}
+        onOpenFile={onReset}
+        tracks={tracks}
+        defaultInstrument={defaultInstrument}
+      />
+    ) : null,
+  };
 };
 
 export default AlphaTabPlayer;
