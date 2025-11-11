@@ -198,10 +198,18 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
 
       logState("LOADING", "Event listeners registered");
 
+      // Ensure SoundFont loads (explicit trigger)
+      try {
+        logState("LOADING", `Loading SoundFont from URL: ${settings.player.soundFont}`);
+        (api as any).loadSoundFontFromUrl?.(settings.player.soundFont, false);
+      } catch (e: any) {
+        logState("ERROR", `loadSoundFontFromUrl failed: ${e?.message || e}`);
+      }
+
       // Load file
       logState("LOADING", `Loading file: ${fileUrl}`);
       api.load(fileUrl);
-
+      
     } catch (e: any) {
       const message = e?.message || e?.toString?.() || "Unknown error";
       logState("ERROR", `Initialization failed: ${message}`);
@@ -589,7 +597,7 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
               <h4 className="text-sm font-semibold mb-2">Test Audio</h4>
               <Button 
                 onClick={testBeep}
-                disabled={!apiRef.current}
+                disabled={!isPlayerReady || !isSoundFontLoaded}
                 size="sm"
                 className="w-full"
               >
