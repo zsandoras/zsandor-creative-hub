@@ -178,10 +178,15 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       });
 
       api.soundFontLoad.on((e: any) => {
-        const percentage = e.total > 0 ? Math.floor((e.loaded / e.total) * 100) : 0;
-        setLoadProgress(percentage);
-        loadProgressRef.current = percentage;
-        logState("LOADING", `SoundFont: ${percentage}% (${e.loaded}/${e.total} bytes)`);
+        const pct = e.total > 0 ? Math.floor((e.loaded / e.total) * 100) : null;
+        setLoadProgress(pct ?? 0);
+        loadProgressRef.current = pct ?? 0;
+        logState(
+          "LOADING",
+          pct !== null
+            ? `SoundFont: ${pct}% (${e.loaded}/${e.total} bytes)`
+            : `SoundFont: ${e.loaded} bytes (total unknown)`
+        );
       });
 
       api.soundFontLoaded.on(() => {
