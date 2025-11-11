@@ -72,9 +72,7 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       settings.player.soundFont = window.location.origin + "/soundfont/sonivox.sf2";
       settings.core.file = fileUrl;
       
-      if (viewportRef.current) {
-        (settings.player as any).scrollElement = viewportRef.current;
-      }
+      // Note: do not set scrollElement to keep defaults and avoid potential init issues
       
       log(`AlphaTab settings prepared. SoundFont: ${settings.player.soundFont}`);
 
@@ -141,14 +139,7 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
         setIsPlayerReady(true);
       });
 
-      // MIDI loading events
-      api.midiLoad.on(() => {
-        log('🎼 MIDI loading started');
-      });
-
-      api.midiLoaded.on(() => {
-        log('🎼 MIDI loaded');
-      });
+      // Temporarily disable MIDI event logs for stability
 
       api.playerReady.on(() => {
         log(`✓ Player ready - controls enabled (ready=${String(api.isReadyForPlayback)})`);
@@ -166,19 +157,9 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
         setIsLoading(false);
       });
 
-      api.playerStateChanged.on((e: any) => {
-        const isPlaying = e.state === alphaTab.synth.PlayerState.Playing;
-        setPlayerState((prev) => ({ ...prev, isPlaying }));
-        log(`♪ Player state: ${isPlaying ? 'Playing' : 'Paused'}`);
-      });
-
-      api.playerPositionChanged.on((e: any) => {
-        setPlayerState((prev) => ({
-          ...prev,
-          currentTime: e.currentTime / 1000,
-          duration: e.endTime / 1000,
-        }));
-      });
+      // Temporarily disable player state/position subscriptions to avoid noisy init issues
+      // api.playerStateChanged.on((e: any) => { ... });
+      // api.playerPositionChanged.on((e: any) => { ... });
     } catch (e: any) {
       const message = e?.message || e?.toString?.() || 'Unknown init error';
       log(`Init failed: ${message}`);
