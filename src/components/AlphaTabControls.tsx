@@ -667,7 +667,7 @@ const AlphaTabControls = ({
             </DropdownMenu>
           )}
 
-          <div className={`hidden xl:flex items-center ${spacing} ${scaleControls ? 'px-3' : 'px-2'} border-l`}>
+          <div className={`hidden xl:flex items-center ${spacing} ${scaleControls ? 'px-3' : 'px-2'} border-l flex-1`}>
             <ZoomIn className={`${iconSize} text-muted-foreground flex-shrink-0`} />
             <Slider
               value={[zoom]}
@@ -675,19 +675,19 @@ const AlphaTabControls = ({
               min={25}
               max={300}
               step={5}
-              className={scaleControls ? "w-24" : "w-20"}
+              className="flex-1 min-w-[80px]"
             />
             <span className={`${scaleControls ? 'text-xs' : 'text-[10px]'} text-muted-foreground min-w-[4ch] text-right`}>{zoom}%</span>
           </div>
 
-          <div className={`hidden xl:flex items-center ${spacing} ${scaleControls ? 'px-3' : 'px-2'} border-l`}>
+          <div className={`hidden xl:flex items-center ${spacing} ${scaleControls ? 'px-3' : 'px-2'} border-l flex-1`}>
             <Volume2 className={`${iconSize} text-muted-foreground`} />
             <Slider
               value={[volume]}
               onValueChange={handleVolumeChange}
               max={100}
               step={1}
-              className={scaleControls ? "w-24" : "w-20"}
+              className="flex-1 min-w-[80px]"
             />
             <span className={`${scaleControls ? 'text-xs' : 'text-[10px]'} text-muted-foreground min-w-[3ch]`}>{volume}%</span>
           </div>
