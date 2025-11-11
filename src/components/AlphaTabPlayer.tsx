@@ -269,7 +269,10 @@ const AlphaTabPlayer = ({ fileUrl, file, title, onReset, defaultInstrument }: Al
       <div ref={wrapperRef} className="relative w-full flex justify-center overflow-visible">
         <div 
           className="group relative transition-all duration-200" 
-          style={{ width: `${containerWidth}%`, minWidth: '400px' }}
+          style={{ 
+            width: containerWidth > 100 ? `${containerWidth}vw` : `${containerWidth}%`, 
+            minWidth: '400px' 
+          }}
         >
           {/* Top Resize Handle */}
           <div
