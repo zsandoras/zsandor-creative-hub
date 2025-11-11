@@ -3,7 +3,24 @@ import * as alphaTab from "@coderline/alphatab";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { Play, Pause, Square, Volume2 } from "lucide-react";
+import { 
+  Play, 
+  Pause, 
+  SkipBack, 
+  Volume2, 
+  Repeat,
+  Timer,
+  Download,
+  ZoomIn,
+  LayoutGrid,
+  FolderOpen
+} from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import "@/styles/alphatab.css";
 
 interface AlphaTabPlayerProps {
@@ -16,6 +33,11 @@ interface PlayerState {
   currentTime: number;
   duration: number;
   volume: number;
+  playbackSpeed: number;
+  zoom: number;
+  countIn: boolean;
+  metronome: boolean;
+  loop: boolean;
 }
 
 interface DebugEvent {
@@ -34,6 +56,11 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
     currentTime: 0,
     duration: 0,
     volume: 80,
+    playbackSpeed: 1,
+    zoom: 100,
+    countIn: false,
+    metronome: false,
+    loop: false,
   });
   const [isPlayerReady, setIsPlayerReady] = useState(false);
   const [isSoundFontLoaded, setIsSoundFontLoaded] = useState(false);
@@ -218,6 +245,48 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
     }
   };
 
+  const handlePlaybackSpeedChange = (speed: number) => {
+    setPlayerState((prev) => ({ ...prev, playbackSpeed: speed }));
+    if (apiRef.current) {
+      (apiRef.current as any).playbackSpeed = speed;
+    }
+    logState("PLAYBACK_SPEED", `Set to ${speed}x`);
+  };
+
+  const handleZoomChange = (zoom: number) => {
+    setPlayerState((prev) => ({ ...prev, zoom }));
+    if (apiRef.current) {
+      const settings = (apiRef.current as any).settings;
+      if (settings) {
+        settings.display.scale = zoom / 100;
+        apiRef.current.updateSettings();
+        apiRef.current.render();
+      }
+    }
+    logState("ZOOM", `Set to ${zoom}%`);
+  };
+
+  const toggleCountIn = () => {
+    setPlayerState((prev) => ({ ...prev, countIn: !prev.countIn }));
+    if (apiRef.current) {
+      (apiRef.current as any).countInVolume = !playerState.countIn ? 1 : 0;
+    }
+  };
+
+  const toggleMetronome = () => {
+    setPlayerState((prev) => ({ ...prev, metronome: !prev.metronome }));
+    if (apiRef.current) {
+      (apiRef.current as any).metronomeVolume = !playerState.metronome ? 1 : 0;
+    }
+  };
+
+  const toggleLoop = () => {
+    setPlayerState((prev) => ({ ...prev, loop: !prev.loop }));
+    if (apiRef.current) {
+      (apiRef.current as any).isLooping = !playerState.loop;
+    }
+  };
+
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
@@ -273,72 +342,166 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
         </div>
       </Card>
 
-      {/* Custom Controls */}
-      <Card className="p-6 bg-card/50 backdrop-blur">
-        <h3 className="text-lg font-semibold mb-4">Playback Controls</h3>
-        
-        {isRenderFinished && (
-          <p className="text-sm text-muted-foreground mb-4">
-            💡 Try clicking directly on the rendered tablature to start playback
-          </p>
-        )}
-        
-        <div className="flex flex-wrap items-center gap-4 mb-6">
-          <Button
-            onClick={togglePlayPause}
-            disabled={!isSoundFontLoaded || !isPlayerReady}
-            size="lg"
-            className="gap-2"
-          >
-            {playerState.isPlaying ? (
-              <>
-                <Pause className="h-5 w-5" />
-                Pause
-              </>
-            ) : (
-              <>
-                <Play className="h-5 w-5" />
-                Play
-              </>
-            )}
-          </Button>
-          
-          <Button
-            onClick={stop}
-            disabled={!isSoundFontLoaded || !isPlayerReady}
-            variant="secondary"
-            size="lg"
-            className="gap-2"
-          >
-            <Square className="h-5 w-5" />
-            Stop
-          </Button>
+      {/* Professional Player Controls */}
+      {!needsUserGesture && isRenderFinished && (
+        <Card className="p-0 bg-card border-border overflow-hidden">
+          <div className="flex items-center justify-between gap-4 p-4 bg-muted/30">
+            {/* Left Controls */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={stop}
+                disabled={!isPlayerReady}
+                title="Stop"
+              >
+                <SkipBack className="h-4 w-4" />
+              </Button>
+              
+              <Button
+                variant="default"
+                size="icon"
+                onClick={togglePlayPause}
+                disabled={!isPlayerReady}
+                title="Play/Pause"
+              >
+                {playerState.isPlaying ? (
+                  <Pause className="h-4 w-4" />
+                ) : (
+                  <Play className="h-4 w-4" />
+                )}
+              </Button>
 
-          <div className="text-sm text-muted-foreground">
-            {formatTime(playerState.currentTime)} / {formatTime(playerState.duration)}
+              {/* Playback Speed Dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-9 px-3">
+                    {playerState.playbackSpeed}x
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  {[0.25, 0.5, 0.75, 0.9, 1, 1.25, 1.5, 2].map((speed) => (
+                    <DropdownMenuItem
+                      key={speed}
+                      onClick={() => handlePlaybackSpeedChange(speed)}
+                    >
+                      {speed}x
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* Song Info */}
+              <div className="hidden md:flex items-center gap-2 text-sm px-2">
+                <span className="font-semibold text-foreground">{title || "Tablature"}</span>
+              </div>
+
+              {/* Time Display */}
+              <div className="text-sm text-muted-foreground px-2">
+                {formatTime(playerState.currentTime)} / {formatTime(playerState.duration)}
+              </div>
+            </div>
+
+            {/* Right Controls */}
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Count-In Toggle */}
+              <Button
+                variant={playerState.countIn ? "default" : "ghost"}
+                size="icon"
+                onClick={toggleCountIn}
+                title="Count-In"
+              >
+                <Timer className="h-4 w-4" />
+              </Button>
+
+              {/* Metronome Toggle */}
+              <Button
+                variant={playerState.metronome ? "default" : "ghost"}
+                size="icon"
+                onClick={toggleMetronome}
+                title="Metronome"
+              >
+                <Timer className="h-4 w-4" />
+              </Button>
+
+              {/* Loop Toggle */}
+              <Button
+                variant={playerState.loop ? "default" : "ghost"}
+                size="icon"
+                onClick={toggleLoop}
+                title="Loop"
+              >
+                <Repeat className="h-4 w-4" />
+              </Button>
+
+              {/* Download */}
+              <Button
+                variant="ghost"
+                size="icon"
+                title="Download"
+                onClick={() => window.open(fileUrl, '_blank')}
+              >
+                <Download className="h-4 w-4" />
+              </Button>
+
+              {/* Zoom Dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-9 px-3 gap-1">
+                    <ZoomIn className="h-4 w-4" />
+                    {playerState.zoom}%
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  {[25, 50, 75, 90, 100, 110, 125, 150, 200].map((zoom) => (
+                    <DropdownMenuItem
+                      key={zoom}
+                      onClick={() => handleZoomChange(zoom)}
+                    >
+                      {zoom}%
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* Layout Dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" title="Layout">
+                    <LayoutGrid className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuItem>Page Layout</DropdownMenuItem>
+                  <DropdownMenuItem>Horizontal</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* Volume Control */}
+              <div className="hidden lg:flex items-center gap-2 px-2">
+                <Volume2 className="h-4 w-4 text-muted-foreground" />
+                <Slider
+                  value={[playerState.volume]}
+                  onValueChange={handleVolumeChange}
+                  max={100}
+                  step={1}
+                  className="w-24"
+                />
+                <span className="text-xs text-muted-foreground min-w-[3ch]">
+                  {playerState.volume}%
+                </span>
+              </div>
+            </div>
           </div>
 
-          {trackCount > 0 && (
-            <div className="text-sm text-muted-foreground">
-              {trackCount} {trackCount === 1 ? 'track' : 'tracks'}
-            </div>
-          )}
-        </div>
-
-        <div className="flex items-center gap-4">
-          <Volume2 className="h-5 w-5 text-muted-foreground" />
-          <Slider
-            value={[playerState.volume]}
-            onValueChange={handleVolumeChange}
-            max={100}
-            step={1}
-            className="w-32"
-          />
-          <span className="text-sm text-muted-foreground min-w-[3ch]">
-            {playerState.volume}%
-          </span>
-        </div>
-      </Card>
+          {/* Tip for Click-to-Play */}
+          <div className="px-4 py-2 bg-muted/20 border-t border-border">
+            <p className="text-xs text-muted-foreground text-center">
+              💡 Tip: Click directly on the rendered tablature to start playback
+            </p>
+          </div>
+        </Card>
+      )}
 
       {/* Diagnostics - Simplified */}
       <Card className="p-6 bg-card/50 backdrop-blur">
