@@ -1,0 +1,54 @@
+.alphatab-container {
+  position: relative;
+  min-height: 480px;
+  background: hsl(var(--card));
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.alphatab-container .at-viewport {
+  max-height: 80vh;
+  overflow-y: auto;
+  background: white;
+  border-radius: var(--radius);
+}
+
+/* Custom scrollbar */
+.alphatab-container .at-viewport::-webkit-scrollbar {
+  width: 10px;
+}
+
+.alphatab-container .at-viewport::-webkit-scrollbar-track {
+  background: hsl(var(--muted));
+  border-radius: var(--radius);
+}
+
+.alphatab-container .at-viewport::-webkit-scrollbar-thumb {
+  background: hsl(var(--primary));
+  border-radius: var(--radius);
+}
+
+.alphatab-container .at-viewport::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--primary) / 0.8);
+}
+
+/* Green cursor highlighting */
+.alphatab-container .at-cursor-bar {
+  background: rgba(34, 197, 94, 0.3) !important;
+}
+
+.alphatab-container .at-cursor-beat {
+  background: rgba(34, 197, 94, 0.5) !important;
+}
+
+/* Loading overlay */
+.alphatab-container .loading-overlay {
+  position: absolute;
+  inset: 0;
+  background: hsl(var(--background) / 0.8);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
