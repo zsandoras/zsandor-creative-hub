@@ -95,6 +95,7 @@ const AlphaTabControls = ({
   const [currentBPM, setCurrentBPM] = useState<number | null>(null);
   const lastTimeRef = useRef(0);
   const ignoreBackwardOnPauseRef = useRef(false);
+  const resumeGuardRef = useRef(false);
   const [zoom, setZoom] = useState(100);
   const [countIn, setCountIn] = useState(false);
   const [metronome, setMetronome] = useState(false);
@@ -177,6 +178,14 @@ const AlphaTabControls = ({
 
     // Listen to player position changes for time tracking
     const positionHandler = (e: any) => {
+      // Guard against resume jumps across repeats: if first position after resume is backwards, force our last position
+      if (resumeGuardRef.current && isPlaying && typeof e.currentTime === 'number' && e.currentTime < lastTimeRef.current - 500) {
+        try {
+          api.timePosition = lastTimeRef.current;
+        } catch {}
+        resumeGuardRef.current = false;
+        return;
+      }
       // Ignore a single backward jump that can occur immediately after pausing
       if (!isPlaying && ignoreBackwardOnPauseRef.current && typeof e.currentTime === 'number' && e.currentTime < lastTimeRef.current) {
         ignoreBackwardOnPauseRef.current = false;
@@ -189,6 +198,8 @@ const AlphaTabControls = ({
       if (typeof e.currentTime === 'number') {
         lastTimeRef.current = e.currentTime;
         setCurrentTime(e.currentTime);
+        // Clear resume guard once we see a normal forward/same update
+        resumeGuardRef.current = false;
       }
       if (typeof e.endTime === 'number') {
         setDuration(e.endTime);
@@ -216,14 +227,23 @@ const AlphaTabControls = ({
 
   const togglePlayPause = () => {
     if (api) {
-      // If starting playback, notify MP3 player to stop
       if (!isPlaying) {
+        // We're resuming: ensure we start exactly where we paused
+        try {
+          api.timePosition = Math.max(0, lastTimeRef.current);
+        } catch {}
         window.dispatchEvent(new CustomEvent('alphaTabPlay'));
+        resumeGuardRef.current = true;
+        api.playPause();
+        // Enforce the resume position once more right after starting
+        setTimeout(() => {
+          try { api.timePosition = lastTimeRef.current; } catch {}
+        }, 30);
       } else {
         // We're about to pause; ignore the backward jump emitted by repeats
         ignoreBackwardOnPauseRef.current = true;
+        api.playPause();
       }
-      api.playPause();
     }
   };
 
