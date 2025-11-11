@@ -31,13 +31,13 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
         const settings = {
           file: fileUrl,
           core: {
-            fontDirectory: "https://cdn.jsdelivr.net/npm/@coderline/alphatab@latest/dist/font/",
+            fontDirectory: "/font/",
             engine: "html5",
           },
           player: {
             enablePlayer: true,
             enableCursor: true,
-            soundFont: "https://cdn.jsdelivr.net/npm/@coderline/alphatab@latest/dist/soundfont/sonivox.sf2",
+            soundFont: "/soundfont/sonivox.sf2",
           },
           display: {
             layoutMode: "page" as const,
