@@ -242,10 +242,14 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       soundFontRequestedRef.current = true;
       log(`🎵 Loading soundfont on user gesture: ${soundFontUrl}`);
       try {
-        api.loadSoundFontFromUrl(soundFontUrl, true);
-        log('🎵 loadSoundFontFromUrl() called');
+        const resp = await fetch(soundFontUrl);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const buf = await resp.arrayBuffer();
+        const bytes = new Uint8Array(buf);
+        (api as any).loadSoundFont(bytes, true);
+        log(`🎵 loadSoundFont(raw) called, bytes=${bytes.byteLength}`);
       } catch (e: any) {
-        log(`❌ loadSoundFontFromUrl failed: ${e?.message || e}`);
+        log(`❌ loadSoundFont(raw) failed: ${e?.message || e}`);
       }
       // auto play when ready
       autoPlayOnceRef.current = true;
@@ -279,10 +283,14 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
         soundFontRequestedRef.current = true;
         log(`🎵 Loading soundfont on user gesture: ${soundFontUrl}`);
         try {
-          api.loadSoundFontFromUrl(soundFontUrl, true);
-          log('🎵 loadSoundFontFromUrl() called');
+          const resp = await fetch(soundFontUrl);
+          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+          const buf = await resp.arrayBuffer();
+          const bytes = new Uint8Array(buf);
+          (api as any).loadSoundFont(bytes, true);
+          log(`🎵 loadSoundFont(raw) called, bytes=${bytes.byteLength}`);
         } catch (e: any) {
-          log(`❌ loadSoundFontFromUrl failed: ${e?.message || e}`);
+          log(`❌ loadSoundFont(raw) failed: ${e?.message || e}`);
         }
         autoPlayOnceRef.current = true;
       }
