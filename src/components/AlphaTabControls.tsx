@@ -176,11 +176,13 @@ const AlphaTabControls = ({
 
     // Listen to player position changes for time tracking
     const positionHandler = (e: any) => {
-      // Use the actual playback time position for accurate scrubber display
-      if (api.timePosition !== undefined) {
-        setCurrentTime(api.timePosition);
+      // Trust event times to avoid repeat-section aliasing issues
+      if (typeof e.currentTime === 'number') {
+        setCurrentTime(e.currentTime);
       }
-      setDuration(e.endTime);
+      if (typeof e.endTime === 'number') {
+        setDuration(e.endTime);
+      }
     };
 
     api.playerPositionChanged.on(positionHandler);
@@ -221,27 +223,43 @@ const AlphaTabControls = ({
     
     const newBPM = Math.max(20, Math.min(300, currentBPM + change));
     setCurrentBPM(newBPM);
+
+    // Capture current playback state and position
+    const wasPlaying = isPlaying;
+    const savedTime = currentTime;
     
-    // Actually modify the tempo in the score
+    // Modify the tempo in the score (affects rendered BPM text)
     if (api.score && api.score.masterBars) {
       for (const masterBar of api.score.masterBars) {
         if (masterBar.tempoAutomation) {
           masterBar.tempoAutomation.value = newBPM;
         }
       }
-      
-      // Re-render to update the displayed BPM in the tablature
+      // Re-render to update the displayed BPM in the tablature without resetting playback
       api.render();
     }
     
-    // Update playback speed based on BPM ratio
+    // Update playback speed based on BPM ratio (affects audio timing)
     const speed = newBPM / originalBPM;
     setPlaybackSpeed(speed);
     api.playbackSpeed = speed;
-    
-    // Regenerate MIDI with new tempo (without stopping playback)
+
+    // Regenerate MIDI with new tempo and restore time without restart
     if (typeof api.loadMidiForScore === "function") {
+      const restore = () => {
+        try {
+          api.timePosition = savedTime;
+          if (wasPlaying) api.play();
+        } finally {
+          api.midiLoad.off(restore);
+        }
+      };
+      api.midiLoad.on(restore);
       api.loadMidiForScore();
+    } else {
+      // Fallback
+      api.timePosition = savedTime;
+      if (wasPlaying) api.play();
     }
   };
 
