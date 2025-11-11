@@ -487,7 +487,7 @@ const AlphaTabControls = ({
   return (
     <div className="rounded-lg border text-card-foreground shadow-sm p-0 bg-card border-border overflow-hidden">
       {/* Top row: Playback controls, title, and right-side controls */}
-      <div className={`flex items-center justify-between ${spacing} ${padding} bg-muted/30`}>
+      <div className={`flex items-center ${spacing} ${padding} bg-muted/30`}>
         <div className={`flex items-center ${spacing} flex-shrink-0`}>
           <Button onClick={stop} variant="ghost" size={buttonSize} title="Stop" disabled={!api}>
             <SkipBack className={iconSize} />
