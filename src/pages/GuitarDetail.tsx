@@ -58,37 +58,14 @@ const GuitarDetail = () => {
     <main className="min-h-screen bg-background pt-24 pb-16">
       <div className="w-full">
         <div className={`container mx-auto px-4 ${widthClasses[containerWidth]}`}>
-          <div className="flex items-center justify-between mb-6">
-            <Link to="/guitar">
-              <Button variant="ghost">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Guitar Pro
-              </Button>
-            </Link>
-            
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-2">
-                  <Maximize2 className="h-4 w-4" />
-                  <span className="hidden sm:inline">Width: {containerWidth}</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setContainerWidth("narrow")}>
-                  Narrow
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setContainerWidth("normal")}>
-                  Normal
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setContainerWidth("wide")}>
-                  Wide
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setContainerWidth("full")}>
-                  Full Width
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+        <div className="flex items-center justify-between mb-6">
+          <Link to="/guitar">
+            <Button variant="ghost">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Guitar Pro
+            </Button>
+          </Link>
+        </div>
 
           {isLoading ? (
             <Card className="p-6">

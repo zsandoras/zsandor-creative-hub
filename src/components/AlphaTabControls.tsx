@@ -438,18 +438,6 @@ const AlphaTabControls = ({
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          {onToggleScale && (
-            <Button
-              onClick={onToggleScale}
-              variant="ghost"
-              size="icon"
-              title={scaleControls ? "Unlink controls width from tab" : "Link controls width to tab"}
-              className={scaleControls ? "bg-accent" : ""}
-            >
-              <Maximize2 className="h-4 w-4" />
-            </Button>
-          )}
-
           <Button
             onClick={toggleCountIn}
             variant="ghost"
@@ -601,6 +589,18 @@ const AlphaTabControls = ({
             />
             <span className="text-xs text-muted-foreground min-w-[3ch]">{volume}%</span>
           </div>
+
+          {onToggleScale && (
+            <Button
+              onClick={onToggleScale}
+              variant="ghost"
+              size="icon"
+              title={scaleControls ? "Fixed width (1400px)" : "Scale with tab width"}
+              className={scaleControls ? "bg-accent" : ""}
+            >
+              <Maximize2 className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </div>
 
