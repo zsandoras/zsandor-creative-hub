@@ -486,24 +486,28 @@ const AlphaTabControls = ({
 
   return (
     <div className="rounded-lg border text-card-foreground shadow-sm p-0 bg-card border-border overflow-hidden">
-      {/* Top row: Playback controls, title, and right-side controls */}
-      <div className={`flex items-center justify-between ${spacing} ${padding} bg-muted/30`}>
+      {/* Main control bar */}
+      <div className={`flex items-center ${spacing} ${padding} bg-muted/30`}>
+        {/* Left Section: Playback Controls + BPM + Title */}
         <div className={`flex items-center ${spacing} flex-shrink-0`}>
-          <Button onClick={stop} variant="ghost" size={buttonSize} title="Stop" disabled={!api}>
-            <SkipBack className={iconSize} />
-          </Button>
+          {/* Playback buttons */}
+          <div className={`flex items-center gap-0.5`}>
+            <Button onClick={stop} variant="ghost" size={buttonSize} title="Stop" disabled={!api}>
+              <SkipBack className={iconSize} />
+            </Button>
+            <Button
+              onClick={togglePlayPause}
+              variant="default"
+              size={buttonSize}
+              title="Play/Pause"
+              disabled={!api}
+            >
+              {isPlaying ? <Pause className={iconSize} /> : <Play className={iconSize} />}
+            </Button>
+          </div>
 
-          <Button
-            onClick={togglePlayPause}
-            variant="default"
-            size={buttonSize}
-            title="Play/Pause"
-            disabled={!api}
-          >
-            {isPlaying ? <Pause className={iconSize} /> : <Play className={iconSize} />}
-          </Button>
-
-          <div className={`flex items-center gap-0.5 border-r ${scaleControls ? 'pr-2' : 'pr-1'}`}>
+          {/* BPM controls */}
+          <div className={`flex items-center gap-0.5 border-l border-r ${scaleControls ? 'px-2 mx-1' : 'px-1 mx-0.5'}`}>
             <Button
               onClick={() => handleBPMChange(-5)}
               variant="ghost"
@@ -549,22 +553,23 @@ const AlphaTabControls = ({
             </Button>
           </div>
 
-          <div className="hidden md:flex items-center">
-            <span className={`font-semibold text-foreground ${scaleControls ? 'text-sm' : 'text-xs'}`}>{title}</span>
+          {/* Title */}
+          <div className={`hidden md:flex items-center ${scaleControls ? 'px-2' : 'px-1'}`}>
+            <span className={`font-semibold text-foreground whitespace-nowrap ${scaleControls ? 'text-sm' : 'text-xs'}`}>{title}</span>
           </div>
         </div>
 
-        <div className={`flex flex-wrap items-center ${spacing} flex-shrink-0`}>
+        {/* Middle Section: Playback Options */}
+        <div className={`flex items-center ${spacing} ${scaleControls ? 'px-2 mx-1' : 'px-1 mx-0.5'} border-l flex-shrink-0`}>
           <Button
             onClick={toggleCountIn}
             variant="ghost"
             size={buttonSize}
-            title="Count-In (plays 1-2-3-4 before playback starts)"
+            title="Count-In"
             className={countIn ? "bg-accent" : ""}
           >
             <CircleDot className={iconSize} />
           </Button>
-
           <Button
             onClick={toggleMetronome}
             variant="ghost"
@@ -574,7 +579,6 @@ const AlphaTabControls = ({
           >
             <Timer className={iconSize} />
           </Button>
-
           <Button
             onClick={toggleLoop}
             variant="ghost"
@@ -584,26 +588,21 @@ const AlphaTabControls = ({
           >
             <Repeat className={iconSize} />
           </Button>
-
           <Button
             onClick={toggleAutoScroll}
             variant="ghost"
             size={buttonSize}
-            title="Auto-scroll (Page follows playback)"
+            title="Auto-scroll"
             className={autoScroll ? "bg-accent" : ""}
           >
             <ScrollText className={iconSize} />
           </Button>
+        </div>
 
-          <Button onClick={handleDownload} variant="ghost" size={buttonSize} title="Download">
-            <Download className={iconSize} />
-          </Button>
-
-          <Button onClick={handleExportPDF} variant="ghost" size={buttonSize} title="Export as PDF">
-            <FileDown className={iconSize} />
-          </Button>
-
-          <div className={`flex items-center gap-1 border-l ${scaleControls ? 'pl-2' : 'pl-1'}`}>
+        {/* Music Controls Section: Transpose + Instruments */}
+        <div className={`flex items-center ${spacing} ${scaleControls ? 'px-2 mx-1' : 'px-1 mx-0.5'} border-l flex-shrink-0`}>
+          {/* Transpose */}
+          <div className={`flex items-center gap-0.5`}>
             <Button
               onClick={() => handleTranspose("down")}
               variant="ghost"
@@ -625,14 +624,15 @@ const AlphaTabControls = ({
             </Button>
           </div>
 
+          {/* Synth Instrument */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size={buttonSize} className="gap-1">
+              <Button variant="ghost" size={buttonSize} className={`gap-1 ${scaleControls ? 'ml-1' : 'ml-0.5'}`}>
                 <Guitar className={`${iconSize} flex-shrink-0`} />
-                <span className={`hidden sm:inline ${scaleControls ? '' : 'text-xs'}`}>{currentInstrument.name}</span>
+                <span className={`hidden lg:inline ${scaleControls ? '' : 'text-xs'}`}>{currentInstrument.name}</span>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="max-h-80 overflow-y-auto">
+            <DropdownMenuContent className="max-h-80 overflow-y-auto z-50">
               {INSTRUMENTS.map((instrument) => (
                 <DropdownMenuItem
                   key={instrument.program}
@@ -645,15 +645,16 @@ const AlphaTabControls = ({
             </DropdownMenuContent>
           </DropdownMenu>
 
+          {/* Track selector */}
           {tracks.length > 1 && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size={buttonSize} className="gap-1">
                   <Music2 className={iconSize} />
-                  <span className={`hidden sm:inline ${scaleControls ? '' : 'text-xs'}`}>Track</span>
+                  <span className={`hidden lg:inline ${scaleControls ? '' : 'text-xs'}`}>Track</span>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent>
+              <DropdownMenuContent className="z-50">
                 {tracks.map((track, index) => (
                   <DropdownMenuItem
                     key={index}
@@ -666,8 +667,12 @@ const AlphaTabControls = ({
               </DropdownMenuContent>
             </DropdownMenu>
           )}
+        </div>
 
-          <div className={`hidden xl:flex items-center ${spacing} ${scaleControls ? 'px-3' : 'px-2'} border-l flex-1`}>
+        {/* Right Section: View Controls + Actions */}
+        <div className={`flex items-center ${spacing} flex-1 justify-end`}>
+          {/* Zoom */}
+          <div className={`hidden xl:flex items-center ${spacing} ${scaleControls ? 'px-3' : 'px-2'} border-l flex-1 max-w-[200px]`}>
             <ZoomIn className={`${iconSize} text-muted-foreground flex-shrink-0`} />
             <Slider
               value={[zoom]}
@@ -675,34 +680,44 @@ const AlphaTabControls = ({
               min={25}
               max={300}
               step={5}
-              className="flex-1 min-w-[80px]"
+              className="flex-1 min-w-[60px]"
             />
             <span className={`${scaleControls ? 'text-xs' : 'text-[10px]'} text-muted-foreground min-w-[4ch] text-right`}>{zoom}%</span>
           </div>
 
-          <div className={`hidden xl:flex items-center ${spacing} ${scaleControls ? 'px-3' : 'px-2'} border-l flex-1`}>
-            <Volume2 className={`${iconSize} text-muted-foreground`} />
+          {/* Volume */}
+          <div className={`hidden xl:flex items-center ${spacing} ${scaleControls ? 'px-3' : 'px-2'} border-l flex-1 max-w-[200px]`}>
+            <Volume2 className={`${iconSize} text-muted-foreground flex-shrink-0`} />
             <Slider
               value={[volume]}
               onValueChange={handleVolumeChange}
               max={100}
               step={1}
-              className="flex-1 min-w-[80px]"
+              className="flex-1 min-w-[60px]"
             />
             <span className={`${scaleControls ? 'text-xs' : 'text-[10px]'} text-muted-foreground min-w-[3ch]`}>{volume}%</span>
           </div>
 
-          {onToggleScale && (
-            <Button
-              onClick={onToggleScale}
-              variant="ghost"
-              size={buttonSize}
-              title={scaleControls ? "Fixed width (1400px)" : "Scale with tab width"}
-              className={scaleControls ? "bg-accent" : ""}
-            >
-              <Maximize2 className={iconSize} />
+          {/* File actions */}
+          <div className={`flex items-center gap-0.5 ${scaleControls ? 'px-2 ml-1' : 'px-1 ml-0.5'} border-l`}>
+            <Button onClick={handleDownload} variant="ghost" size={buttonSize} title="Download">
+              <Download className={iconSize} />
             </Button>
-          )}
+            <Button onClick={handleExportPDF} variant="ghost" size={buttonSize} title="Export PDF">
+              <FileDown className={iconSize} />
+            </Button>
+            {onToggleScale && (
+              <Button
+                onClick={onToggleScale}
+                variant="ghost"
+                size={buttonSize}
+                title={scaleControls ? "Fixed width" : "Auto scale"}
+                className={scaleControls ? "bg-accent" : ""}
+              >
+                <Maximize2 className={iconSize} />
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
