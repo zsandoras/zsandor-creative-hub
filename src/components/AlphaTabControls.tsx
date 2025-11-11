@@ -367,7 +367,7 @@ const AlphaTabControls = ({
     if (api && (api as any).settings) {
       const ScrollMode = (window as any).alphaTab?.ScrollMode;
       if (ScrollMode) {
-        // Use OffScreen mode instead of Continuous to keep scrolling within container
+        // OffScreen mode keeps scrolling within the scrollElement (the tab container)
         (api as any).settings.player.scrollMode = newAutoScroll ? ScrollMode.OffScreen : ScrollMode.Off;
         api.updateSettings();
       }
