@@ -65,22 +65,31 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       // Fonts served locally from /public
       settings.core.fontDirectory = "/font/";
       // Disable workers for simpler bundler setup
-      settings.core.useWorkers = false;
+      settings.core.useWorkers = true;
       // Display layout
       settings.display.layoutMode = alphaTab.LayoutMode.Page;
       // Enable player with synthesizer mode - use absolute URL for soundfont
       settings.player.playerMode = alphaTab.PlayerMode.EnabledSynthesizer;
       settings.player.enableCursor = true;
       settings.player.enableAnimatedBeatCursor = true;
+      settings.player.outputMode = alphaTab.PlayerOutputMode.WebAudioAudioWorklets;
       settings.player.soundFont = window.location.origin + "/soundfont/sonivox.sf2";
       if (viewportRef.current) {
         (settings.player as any).scrollElement = viewportRef.current;
       }
       // Load file directly
       settings.core.file = fileUrl;
-      log(`AlphaTab settings prepared. SoundFont URL: ${settings.player.soundFont}`);
-
-      const api = new alphaTab.AlphaTabApi(containerRef.current, settings);
+       log(`AlphaTab settings prepared. SoundFont URL: ${settings.player.soundFont}`);
+       try {
+         alphaTab.Environment.initializeWorker();
+         alphaTab.Environment.initializeAudioWorklet();
+         log('Workers and AudioWorklet initialized');
+       } catch (e: any) {
+         log(`Worker/Worklet init error: ${e?.message || e}`);
+       }
+ 
+       const api = new alphaTab.AlphaTabApi(containerRef.current, settings);
+       apiRef.current = api;
       apiRef.current = api;
       log('AlphaTabApi created');
       try {
