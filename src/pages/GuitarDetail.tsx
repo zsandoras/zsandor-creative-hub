@@ -4,10 +4,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Maximize2 } from "lucide-react";
 import AlphaTabPlayer from "@/components/AlphaTabPlayer";
 import { EditableItemText } from "@/components/EditableItemText";
 import { CommentSection } from "@/components/CommentSection";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useState } from "react";
 
 interface GuitarEmbed {
   id: string;
@@ -20,6 +27,14 @@ interface GuitarEmbed {
 
 const GuitarDetail = () => {
   const { id } = useParams<{ id: string }>();
+  const [containerWidth, setContainerWidth] = useState<"narrow" | "normal" | "wide" | "full">("normal");
+
+  const widthClasses = {
+    narrow: "max-w-4xl",
+    normal: "max-w-6xl",
+    wide: "max-w-7xl",
+    full: "max-w-none px-8",
+  };
 
   const { data: embed, isLoading } = useQuery({
     queryKey: ["guitar-embed", id],
@@ -41,13 +56,38 @@ const GuitarDetail = () => {
 
   return (
     <main className="min-h-screen bg-background pt-24 pb-16">
-      <div className="container mx-auto px-4 max-w-4xl">
-        <Link to="/guitar">
-          <Button variant="ghost" className="mb-6">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Guitar Pro
-          </Button>
-        </Link>
+      <div className={`container mx-auto px-4 ${widthClasses[containerWidth]}`}>
+        <div className="flex items-center justify-between mb-6">
+          <Link to="/guitar">
+            <Button variant="ghost">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Guitar Pro
+            </Button>
+          </Link>
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-2">
+                <Maximize2 className="h-4 w-4" />
+                <span className="hidden sm:inline">Width: {containerWidth}</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setContainerWidth("narrow")}>
+                Narrow
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setContainerWidth("normal")}>
+                Normal
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setContainerWidth("wide")}>
+                Wide
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setContainerWidth("full")}>
+                Full Width
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
 
         {isLoading ? (
           <Card className="p-6">
