@@ -51,15 +51,22 @@ export const MusicPlayer = () => {
 
     const updateTime = () => setCurrentTime(audio.currentTime);
     const updateDuration = () => setDuration(audio.duration);
+    const handleTrackChange = (e: CustomEvent) => {
+      const { index } = e.detail;
+      setCurrentTrackIndex(index);
+      setIsPlaying(true);
+    };
 
     audio.addEventListener("timeupdate", updateTime);
     audio.addEventListener("loadedmetadata", updateDuration);
     audio.addEventListener("ended", handleNext);
+    window.addEventListener("playTrack", handleTrackChange as EventListener);
 
     return () => {
       audio.removeEventListener("timeupdate", updateTime);
       audio.removeEventListener("loadedmetadata", updateDuration);
       audio.removeEventListener("ended", handleNext);
+      window.removeEventListener("playTrack", handleTrackChange as EventListener);
     };
   }, [currentTrackIndex, tracks]);
 

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { EditableText } from "@/components/EditableText";
 import { EditableItemText } from "@/components/EditableItemText";
+import { useAuth } from "@/hooks/useAuth";
 
 interface FoodItem {
   id: string;
@@ -18,6 +19,7 @@ interface FoodItem {
 
 const FoodGallery = () => {
   const [fullscreenIndex, setFullscreenIndex] = useState<number | null>(null);
+  const { isAdmin, isEditMode } = useAuth();
 
   const { data: foodItems, isLoading } = useQuery({
     queryKey: ["food-gallery"],
@@ -93,26 +95,28 @@ const FoodGallery = () => {
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>
-                  <div className="p-4">
-                    <EditableItemText
-                      table="food_gallery"
-                      itemId={item.id}
-                      field="title"
-                      value={item.title}
-                      className="text-lg font-semibold mb-1"
-                      as="h3"
-                      queryKey={["food-gallery"]}
-                    />
-                    <EditableItemText
-                      table="food_gallery"
-                      itemId={item.id}
-                      field="description"
-                      value={item.description}
-                      className="text-sm text-muted-foreground"
-                      as="p"
-                      queryKey={["food-gallery"]}
-                    />
-                  </div>
+                  {(item.title || item.description || (isAdmin && isEditMode)) && (
+                    <div className="p-4">
+                      <EditableItemText
+                        table="food_gallery"
+                        itemId={item.id}
+                        field="title"
+                        value={item.title}
+                        className="text-lg font-semibold mb-1"
+                        as="h3"
+                        queryKey={["food-gallery"]}
+                      />
+                      <EditableItemText
+                        table="food_gallery"
+                        itemId={item.id}
+                        field="description"
+                        value={item.description}
+                        className="text-sm text-muted-foreground"
+                        as="p"
+                        queryKey={["food-gallery"]}
+                      />
+                    </div>
+                  )}
                 </Card>
               ))}
             </div>

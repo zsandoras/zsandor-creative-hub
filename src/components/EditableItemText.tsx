@@ -103,21 +103,25 @@ export const EditableItemText = ({
 
   const isClickable = isAdmin && isEditMode;
 
-  // Always show editable field in edit mode even if no value
-  if (!value && isClickable) {
-    return (
-      <Component
-        onClick={handleClick}
-        className={cn(
-          className,
-          "cursor-pointer bg-primary/10 border-2 border-dashed border-primary/50 rounded px-2 py-1 transition-all hover:bg-primary/20 hover:border-primary",
-          isSaving && "opacity-50"
-        )}
-        title="Click to add content"
-      >
-        {field === "title" ? "Click to add title" : "Click to add description"}
-      </Component>
-    );
+  // Only show placeholder for missing content in edit mode
+  if (!value && !isEditing) {
+    if (isClickable) {
+      return (
+        <Component
+          onClick={handleClick}
+          className={cn(
+            className,
+            "cursor-pointer bg-primary/10 border-2 border-dashed border-primary/50 rounded px-2 py-1 transition-all hover:bg-primary/20 hover:border-primary",
+            isSaving && "opacity-50"
+          )}
+          title="Click to add content"
+        >
+          {field === "title" ? "Click to add title" : "Click to add description"}
+        </Component>
+      );
+    }
+    // Don't render anything if no value and not in edit mode
+    return null;
   }
 
   if (isEditing) {
