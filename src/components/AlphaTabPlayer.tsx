@@ -48,6 +48,14 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       apiRef.current = api;
       log('AlphaTabApi created');
 
+      try {
+        // Explicitly trigger load as a fallback (in addition to settings.core.file)
+        api.load(fileUrl as any);
+        log('api.load(fileUrl) called');
+      } catch (e: any) {
+        log(`api.load failed: ${e?.message || e}`);
+      }
+
       const timeoutId = window.setTimeout(() => {
         log('Render timeout after 10s');
         setIsLoading(false);
