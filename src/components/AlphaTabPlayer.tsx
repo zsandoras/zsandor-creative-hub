@@ -151,9 +151,18 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       });
 
       api.soundFontLoaded.on(() => {
-        log('🎵 SoundFont fully loaded');
+        log('🎵 SoundFont fully loaded - Auto-starting playback for testing');
         setLoadProgress(100);
         setIsPlayerReady(true);
+        // Auto-play for testing
+        if (apiRef.current) {
+          try {
+            apiRef.current.play();
+            log('▶️ Auto-play started');
+          } catch (e: any) {
+            log(`❌ Auto-play failed: ${e.message}`);
+          }
+        }
       });
 
       api.playerReady.on(() => {
