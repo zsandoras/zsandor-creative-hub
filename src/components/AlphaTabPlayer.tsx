@@ -134,6 +134,7 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
 
       // Step 7: Create AlphaTab API
       const api = new alphaTab.AlphaTabApi(container, settings);
+      (api as any).masterVolume = playerState.volume / 100;
       apiRef.current = api;
       addDebugEvent("API created", "AlphaTabApi instance created");
 
@@ -193,6 +194,23 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
 
       addDebugEvent("Event listeners registered", "All events subscribed");
 
+      // Manually trigger SoundFont load to ensure synth readiness (CDN first, then local fallback)
+      const cdnSf = "https://cdn.jsdelivr.net/npm/@coderline/alphatab@1.6.3/dist/soundfont/sonivox.sf2";
+      if (typeof (api as any).loadSoundFont === "function") {
+        const started = (api as any).loadSoundFont(cdnSf);
+        addDebugEvent("Manual SoundFont load", `CDN loadSoundFont() returned ${started}`);
+        // Also try local as a backup after a short delay if not loaded yet
+        setTimeout(() => {
+          if (!isSoundFontLoaded) {
+            const localSf = `${window.location.origin}/soundfont/sonivox.sf2`;
+            const startedLocal = (api as any).loadSoundFont(localSf, true);
+            addDebugEvent("Manual SoundFont load (fallback)", `Local append returned ${startedLocal}`);
+          }
+        }, 1000);
+      } else {
+        addDebugEvent("Manual SoundFont load", "loadSoundFont() not available on API");
+      }
+
       // Step 11: Load the file
       addDebugEvent("Loading file", fileUrl);
       api.load(fileUrl);
@@ -206,6 +224,24 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
     }
   };
 
+  // Wait for both SoundFont and Player readiness with a timeout
+  const waitForReady = async (timeoutMs = 7000) => {
+    const start = Date.now();
+    return new Promise<void>((resolve, reject) => {
+      const tick = () => {
+        if (isSoundFontLoaded && isPlayerReady) {
+          resolve();
+          return;
+        }
+        if (Date.now() - start > timeoutMs) {
+          reject(new Error("Timeout waiting for synth readiness"));
+          return;
+        }
+        requestAnimationFrame(tick);
+      };
+      tick();
+    });
+  };
   const reloadPlayer = () => {
     addDebugEvent("Manual reload", "User triggered reload");
     if (apiRef.current) {
@@ -229,8 +265,27 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
     }
 
     if (!isSoundFontLoaded || !isPlayerReady) {
-      addDebugEvent("Test Beep", "Not ready - SoundFont or Player not initialized");
-      return;
+      addDebugEvent("Test Beep", "Waiting for synth readiness (up to 7s)...");
+      try {
+        await waitForReady(7000);
+        addDebugEvent("Test Beep", "Synth ready after wait");
+      } catch (err: any) {
+        addDebugEvent("Test Beep", `Timeout waiting for readiness: ${err?.message || err}`);
+        if (typeof (api as any).loadSoundFont === "function") {
+          const cdnSf = "https://cdn.jsdelivr.net/npm/@coderline/alphatab@1.6.3/dist/soundfont/sonivox.sf2";
+          const started = (api as any).loadSoundFont(cdnSf, true);
+          addDebugEvent("Test Beep", `Retry loadSoundFont() append returned ${started}`);
+          try {
+            await waitForReady(5000);
+            addDebugEvent("Test Beep", "Synth ready after retry load");
+          } catch {
+            addDebugEvent("Test Beep", "Still not ready after retry");
+            return;
+          }
+        } else {
+          return;
+        }
+      }
     }
 
     try {
