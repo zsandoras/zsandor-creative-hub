@@ -67,17 +67,17 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       settings.core.useWorkers = false;
       // Display layout
       settings.display.layoutMode = alphaTab.LayoutMode.Page;
-      // Enable player
       // Enable player with synthesizer mode
       settings.player.enablePlayer = true;
       settings.player.enableCursor = true;
+      settings.player.enableAnimatedBeatCursor = true;
       settings.player.soundFont = "/soundfont/sonivox.sf2";
       if (viewportRef.current) {
         (settings.player as any).scrollElement = viewportRef.current;
       }
       // Load file directly
       settings.core.file = fileUrl;
-      log('AlphaTab settings prepared');
+      log('AlphaTab settings prepared with player and cursor enabled');
 
       const api = new alphaTab.AlphaTabApi(containerRef.current, settings);
       apiRef.current = api;
@@ -127,14 +127,14 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       });
 
       api.playerReady.on(() => {
-        log('Player ready - controls enabled');
+        log('✓ Player ready - controls enabled');
         setIsPlayerReady(true);
         setLoadProgress(100);
       });
 
       api.error.on((e: any) => {
         const message = e?.message || e?.reason || e?.toString?.() || 'Unknown error';
-        log(`AlphaTab error: ${message}`);
+        log(`✗ AlphaTab error: ${message}`);
         console.error('AlphaTab error', e);
         window.clearTimeout(timeoutId);
         setError(`AlphaTab error: ${message}`);
@@ -145,7 +145,7 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       api.playerStateChanged.on((e: any) => {
         const isPlaying = e.state === alphaTab.synth.PlayerState.Playing;
         setPlayerState((prev) => ({ ...prev, isPlaying }));
-        log(`Player state: ${isPlaying ? 'Playing' : 'Paused'}`);
+        log(`♪ Player state: ${isPlaying ? 'Playing' : 'Paused'}`);
       });
 
       api.playerPositionChanged.on((e: any) => {
@@ -177,12 +177,21 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
   }, [fileUrl]);
 
   const togglePlayPause = () => {
-    if (!apiRef.current || !isPlayerReady) return;
-    apiRef.current.playPause(); // Use playPause() as per alphaTab official docs
+    if (!apiRef.current) {
+      console.warn('API not ready');
+      return;
+    }
+    if (!isPlayerReady) {
+      console.warn('Player not ready yet');
+      return;
+    }
+    log(`User clicked ${playerState.isPlaying ? 'Pause' : 'Play'}`);
+    apiRef.current.playPause();
   };
 
   const stop = () => {
     if (!apiRef.current || !isPlayerReady) return;
+    log('User clicked Stop');
     apiRef.current.stop();
   };
 
@@ -289,6 +298,13 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
               </div>
             )}
           </div>
+          
+          <details className="mt-3 text-xs">
+            <summary className="cursor-pointer text-muted-foreground">Debug logs (click to view)</summary>
+            <pre className="mt-2 text-muted-foreground bg-muted/40 p-3 rounded-md overflow-auto max-h-48">
+{logs.join('\n') || 'No logs yet'}
+            </pre>
+          </details>
         </Card>
       )}
 
