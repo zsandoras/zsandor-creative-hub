@@ -689,8 +689,8 @@ const AlphaTabControls = ({
         </span>
         <Slider
           value={[currentTime + timeOffset]}
-          onValueChange={handleSeek}
-          max={duration}
+          onValueCommit={handleSeek}
+          max={Math.max(duration, currentTime + timeOffset)}
           step={100}
           className="flex-1"
         />
