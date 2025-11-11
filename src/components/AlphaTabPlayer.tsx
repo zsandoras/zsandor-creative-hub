@@ -116,15 +116,6 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
           }));
         }
       }
-
-      setTimeout(() => {
-        try {
-          api.stop();
-          addDebugEvent("Force init", "stop() called");
-        } catch (e: any) {
-          addDebugEvent("Force init stop error", e.message);
-        }
-      }, 250);
     } catch (e: any) {
       addDebugEvent("Force init error", e.message);
     }
@@ -165,6 +156,20 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       if (!api.isReadyForPlayback) {
         addDebugEvent("Test Beep", "Synth not ready, calling forceInit()");
         await forceInit();
+        
+        // Wait for synth to fully initialize
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
+        if (!api.isReadyForPlayback) {
+          addDebugEvent("Test Beep", "Synth still not ready after forceInit()");
+          return;
+        }
+        addDebugEvent("Test Beep", "Synth ready after forceInit()");
+      }
+
+      // Log AudioContext state before playing
+      if (ctx) {
+        addDebugEvent("Test Beep", `AudioContext state: ${ctx.state}`);
       }
 
       // Require a valid Note object per AlphaTab docs
@@ -177,10 +182,15 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
 
       if (typeof api.playNote === "function") {
         api.playNote(note);
-        addDebugEvent("Test Beep", "api.playNote(first note) called");
+        addDebugEvent("Test Beep", `api.playNote(note) called - Note: ${note.fret} on string ${note.string}`);
+        
+        // Log when note should finish (note duration is typically in ticks, we'll just log that play was called)
+        setTimeout(() => {
+          addDebugEvent("Test Beep", "Note playback should be complete");
+        }, 1000);
       } else if (typeof player?.playNote === "function") {
         player.playNote(note);
-        addDebugEvent("Test Beep", "player.playNote(first note) called");
+        addDebugEvent("Test Beep", `player.playNote(note) called - Note: ${note.fret} on string ${note.string}`);
       } else {
         addDebugEvent("Test Beep", "No playNote method on API or player");
       }
