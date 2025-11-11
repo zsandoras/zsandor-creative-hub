@@ -136,23 +136,24 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
         }
       });
 
-      // Player loading events
+      // Player loading events with enhanced diagnostics
       api.soundFontLoad.on((e: any) => {
         const percentage = Math.floor((e.loaded / e.total) * 100);
         setLoadProgress(percentage);
         log(`🎵 SoundFont loading: ${percentage}% (${e.loaded}/${e.total} bytes)`);
+        if (percentage === 100) {
+          log('🎵 SoundFont download 100%, waiting for soundFontLoaded event...');
+        }
       });
 
       api.soundFontLoaded.on(() => {
-        log('🎵 SoundFont fully loaded');
+        log('🎵 ✓ SoundFont fully loaded - player should be ready');
         setLoadProgress(100);
         setIsPlayerReady(true);
       });
 
-      // Temporarily disable MIDI event logs for stability
-
       api.playerReady.on(() => {
-        log(`✓ Player ready - controls enabled (ready=${String(api.isReadyForPlayback)})`);
+        log(`✓ Player ready (isReadyForPlayback=${String(api.isReadyForPlayback)})`);
         setIsPlayerReady(true);
         setLoadProgress(100);
         setUiEnabled(true);
