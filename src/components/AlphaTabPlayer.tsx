@@ -19,6 +19,8 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
   const apiRef = useRef<alphaTab.AlphaTabApi | null>(null);
+  const soundFontRequestedRef = useRef(false);
+  const autoPlayOnceRef = useRef(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isPlayerReady, setIsPlayerReady] = useState(false);
   const [loadProgress, setLoadProgress] = useState(0);
@@ -123,16 +125,7 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
             selectedTracks: [0],
           }));
           log(`Loaded ${tracks.length} tracks`);
-          
-          // Manually trigger soundfont load after render
-          const soundFontUrl = window.location.origin + "/soundfont/sonivox.sf2";
-          log(`🎵 Manually loading soundFont from: ${soundFontUrl}`);
-          try {
-            api.loadSoundFontFromUrl(soundFontUrl, false);
-            log('🎵 loadSoundFontFromUrl() called');
-          } catch (e: any) {
-            log(`❌ loadSoundFontFromUrl failed: ${e?.message || e}`);
-          }
+          // Removed manual soundfont load here; will load on first user gesture to ensure AudioContext is unlocked
         }
       });
 
@@ -157,6 +150,16 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
         setIsPlayerReady(true);
         setLoadProgress(100);
         setUiEnabled(true);
+        if (autoPlayOnceRef.current) {
+          try {
+            api.playPause();
+            log('▶️ Auto-play on playerReady');
+          } catch (e: any) {
+            log(`❌ Auto-play failed: ${e?.message || e}`);
+          } finally {
+            autoPlayOnceRef.current = false;
+          }
+        }
       });
 
       api.error.on((e: any) => {
@@ -225,18 +228,36 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       log('API not ready');
       return;
     }
-    
+
     try {
-      // Resume AudioContext if suspended
       await (apiRef.current as any).audioContext?.resume();
       log('🔓 AudioContext resumed');
     } catch (e: any) {
       log(`❌ AudioContext resume failed: ${e?.message || e}`);
     }
-    
+
+    const api = apiRef.current as any;
+    if (!api.isReadyForPlayback && !soundFontRequestedRef.current) {
+      const soundFontUrl = window.location.origin + "/soundfont/sonivox.sf2";
+      soundFontRequestedRef.current = true;
+      log(`🎵 Loading soundfont on user gesture: ${soundFontUrl}`);
+      try {
+        api.loadSoundFontFromUrl(soundFontUrl, true);
+        log('🎵 loadSoundFontFromUrl() called');
+      } catch (e: any) {
+        log(`❌ loadSoundFontFromUrl failed: ${e?.message || e}`);
+      }
+      // auto play when ready
+      autoPlayOnceRef.current = true;
+    }
+
     try {
-      apiRef.current.playPause();
-      log('▶️ playPause() called');
+      if (api.isReadyForPlayback) {
+        api.playPause();
+        log('▶️ playPause() called');
+      } else {
+        log('⏳ Not ready yet; will auto-play on playerReady');
+      }
     } catch (e: any) {
       log(`❌ playPause() error: ${e?.message || e}`);
     }
@@ -252,7 +273,21 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
     try {
       await (apiRef.current as any)?.audioContext?.resume();
       log('🔓 AudioContext resumed');
-      apiRef.current?.playPause();
+      const api = apiRef.current as any;
+      if (!api.isReadyForPlayback && !soundFontRequestedRef.current) {
+        const soundFontUrl = window.location.origin + "/soundfont/sonivox.sf2";
+        soundFontRequestedRef.current = true;
+        log(`🎵 Loading soundfont on user gesture: ${soundFontUrl}`);
+        try {
+          api.loadSoundFontFromUrl(soundFontUrl, true);
+          log('🎵 loadSoundFontFromUrl() called');
+        } catch (e: any) {
+          log(`❌ loadSoundFontFromUrl failed: ${e?.message || e}`);
+        }
+        autoPlayOnceRef.current = true;
+      }
+      // Try play (it will auto-play on playerReady if not ready yet)
+      api.playPause?.();
       log('▶️ playPause() called');
     } catch (e: any) {
       log(`❌ Audio unlock failed: ${e?.message || e}`);
