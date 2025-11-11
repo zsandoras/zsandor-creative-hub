@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import * as alphaTab from "@coderline/alphatab";
+import "@coderline/alphatab/dist/alphaTab.webAudio.js";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
