@@ -246,8 +246,11 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const buf = await resp.arrayBuffer();
         const bytes = new Uint8Array(buf);
-        (api as any).loadSoundFont(bytes, true);
-        log(`🎵 loadSoundFont(raw) called, bytes=${bytes.byteLength}`);
+        (api as any).resetSoundFonts?.();
+        const ok = (api as any).loadSoundFont(bytes, false);
+        log(`🎵 loadSoundFont(raw) called (append=false), ok=${String(ok)}; rebuilding MIDI...`);
+        (api as any).loadMidiForScore?.();
+        log('🎼 loadMidiForScore() called');
       } catch (e: any) {
         log(`❌ loadSoundFont(raw) failed: ${e?.message || e}`);
       }
@@ -287,8 +290,11 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
           if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
           const buf = await resp.arrayBuffer();
           const bytes = new Uint8Array(buf);
-          (api as any).loadSoundFont(bytes, true);
-          log(`🎵 loadSoundFont(raw) called, bytes=${bytes.byteLength}`);
+          (api as any).resetSoundFonts?.();
+          const ok = (api as any).loadSoundFont(bytes, false);
+          log(`🎵 loadSoundFont(raw) called (append=false), ok=${String(ok)}; rebuilding MIDI...`);
+          (api as any).loadMidiForScore?.();
+          log('🎼 loadMidiForScore() called');
         } catch (e: any) {
           log(`❌ loadSoundFont(raw) failed: ${e?.message || e}`);
         }
