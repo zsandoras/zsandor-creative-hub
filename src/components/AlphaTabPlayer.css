@@ -67,83 +67,84 @@
 
 /* Print styles - only show tablature */
 @media print {
-  /* Hide all page elements */
-  body > * {
-    display: none !important;
-  }
-  
-  /* Only show the root and main container */
+  /* Reset page styles */
   body {
     margin: 0 !important;
     padding: 0 !important;
     background: white !important;
   }
   
-  #root {
-    display: block !important;
+  /* Hide navigation and other UI elements */
+  nav,
+  header,
+  footer,
+  button,
+  .fixed,
+  [class*="Button"],
+  [class*="button"] {
+    display: none !important;
   }
   
-  /* Show only alphatab container */
+  /* Hide the page container padding and make full width */
   main {
+    padding: 0 !important;
+    margin: 0 !important;
+    min-height: auto !important;
+    background: white !important;
+  }
+  
+  /* Hide everything except alphatab */
+  main > .container > * {
+    display: none !important;
+  }
+  
+  /* Show only the alphatab player card */
+  main > .container > div:has(.alphatab-container) {
     display: block !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  
+  /* Style the alphatab container for print */
+  .alphatab-container {
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    background: white !important;
     padding: 0 !important;
     margin: 0 !important;
     min-height: auto !important;
   }
   
-  main > * {
+  /* Hide control buttons within alphatab */
+  .alphatab-container ~ div {
     display: none !important;
   }
   
-  .alphatab-container {
-    display: block !important;
-    visibility: visible !important;
-    position: relative !important;
-    left: 0 !important;
-    top: 0 !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    box-shadow: none !important;
-    border: none !important;
-    border-radius: 0 !important;
-    background: white !important;
-  }
-  
-  /* Hide the control card completely in print */
-  .alphatab-container + * {
-    display: none !important;
-  }
-  
-  /* Show tablature content */
+  /* Show the notation surface */
   .alphatab-container .at-surface {
-    display: block !important;
     padding: 0 !important;
     background: white !important;
-    width: 100% !important;
   }
   
-  /* Expand viewport for print */
+  /* Expand the viewport to show all content */
   .alphatab-container .at-viewport {
     overflow: visible !important;
     max-height: none !important;
     height: auto !important;
-    width: 100% !important;
-    display: block !important;
   }
   
-  /* Ensure SVG renders properly */
+  /* Ensure SVG tablature is visible and properly sized */
   .alphatab-container svg {
     max-width: 100% !important;
     height: auto !important;
-    margin: 0 !important;
     display: block !important;
     page-break-inside: avoid;
   }
   
-  /* Hide score info section */
-  .alphatab-container .at-score-info {
+  /* Hide any score info or metadata */
+  .at-score-info,
+  .at-controls {
     display: none !important;
   }
   
@@ -151,10 +152,5 @@
   @page {
     margin: 0.5in;
     size: letter portrait;
-  }
-  
-  /* Ensure page breaks between measures if needed */
-  .at-measure-group {
-    page-break-inside: avoid;
   }
 }
