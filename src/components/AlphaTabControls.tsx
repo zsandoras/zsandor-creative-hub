@@ -89,6 +89,8 @@ const AlphaTabControls = ({
   onToggleScale,
 }: AlphaTabControlsProps) => {
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
+  const [originalBPM, setOriginalBPM] = useState<number | null>(null);
+  const [currentBPM, setCurrentBPM] = useState<number | null>(null);
   const [zoom, setZoom] = useState(100);
   const [countIn, setCountIn] = useState(false);
   const [metronome, setMetronome] = useState(false);
@@ -181,6 +183,16 @@ const AlphaTabControls = ({
 
     api.playerPositionChanged.on(positionHandler);
 
+    // Get the original BPM from the score
+    if (api.score && api.score.masterBars && api.score.masterBars.length > 0) {
+      const firstBar = api.score.masterBars[0];
+      if (firstBar.tempoAutomation && firstBar.tempoAutomation.value) {
+        const bpm = firstBar.tempoAutomation.value;
+        setOriginalBPM(bpm);
+        setCurrentBPM(bpm);
+      }
+    }
+
     return () => {
       if (api.playerPositionChanged) {
         api.playerPositionChanged.off(positionHandler);
@@ -202,7 +214,14 @@ const AlphaTabControls = ({
     if (api) api.stop();
   };
 
-  const handleSpeedChange = (speed: number) => {
+  const handleBPMChange = (direction: "up" | "down") => {
+    if (!originalBPM || !currentBPM) return;
+    
+    const newBPM = direction === "up" ? currentBPM + 5 : Math.max(20, currentBPM - 5);
+    setCurrentBPM(newBPM);
+    
+    // Calculate playback speed based on BPM ratio
+    const speed = newBPM / originalBPM;
     setPlaybackSpeed(speed);
     if (api) api.playbackSpeed = speed;
   };
@@ -441,20 +460,29 @@ const AlphaTabControls = ({
             {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
           </Button>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm">
-                {playbackSpeed}x
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              {[0.25, 0.5, 0.75, 0.9, 1, 1.25, 1.5, 2].map((speed) => (
-                <DropdownMenuItem key={speed} onClick={() => handleSpeedChange(speed)}>
-                  {speed}x
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div className="flex items-center gap-1 border-r pr-2">
+            <Button
+              onClick={() => handleBPMChange("down")}
+              variant="ghost"
+              size="icon"
+              title="Decrease BPM"
+              disabled={!api || !currentBPM}
+            >
+              <ChevronDown className="h-4 w-4" />
+            </Button>
+            <span className="text-xs text-muted-foreground min-w-[4ch] text-center font-mono">
+              {currentBPM ? Math.round(currentBPM) : "---"}
+            </span>
+            <Button
+              onClick={() => handleBPMChange("up")}
+              variant="ghost"
+              size="icon"
+              title="Increase BPM"
+              disabled={!api || !currentBPM}
+            >
+              <ChevronUp className="h-4 w-4" />
+            </Button>
+          </div>
 
           <div className="hidden md:flex items-center gap-2 text-sm px-2">
             <span className="font-semibold text-foreground">{title}</span>

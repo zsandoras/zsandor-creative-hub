@@ -47,27 +47,21 @@ const AlphaTabPlayer = ({ fileUrl, file, title, onReset, defaultInstrument }: Al
     return () => container.removeEventListener('wheel', handleWheel);
   }, [isHovered]);
 
-  // Handle spacebar to play/pause (avoid conflicts with MP3 player and inputs)
+  // Handle spacebar to play/pause (only on guitar pages)
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
       // Ignore if typing in input/textarea
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       
-      if (e.code === "Space") {
+      // Only handle spacebar on guitar pages (check if AlphaTab player exists)
+      if (e.code === "Space" && apiRef.current) {
         e.preventDefault();
         
         // Pause MP3 player if it's playing
-        const audioElements = document.querySelectorAll('audio');
-        audioElements.forEach(audio => {
-          if (!audio.paused) {
-            audio.pause();
-          }
-        });
+        window.dispatchEvent(new CustomEvent('alphaTabPlay'));
         
         // Toggle AlphaTab playback
-        if (apiRef.current) {
-          apiRef.current.playPause();
-        }
+        apiRef.current.playPause();
       }
     };
 

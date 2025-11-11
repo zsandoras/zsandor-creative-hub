@@ -61,11 +61,14 @@ export const MusicPlayer = () => {
     const audio = audioRef.current;
     if (!audio) return;
 
-    // Keyboard shortcuts
+    // Keyboard shortcuts (only when MP3 player is active, not on guitar pages)
     const handleKeyPress = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       
-      if (e.code === "Space") {
+      // Check if we're on a guitar page (AlphaTab player would handle spacebar)
+      const isGuitarPage = window.location.pathname.includes('/guitar/');
+      
+      if (e.code === "Space" && !isGuitarPage) {
         e.preventDefault();
         togglePlay();
       } else if (e.code === "ArrowLeft") {
