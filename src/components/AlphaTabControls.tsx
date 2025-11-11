@@ -189,7 +189,9 @@ const AlphaTabControls = ({
   };
 
   const handlePrint = () => {
-    window.print();
+    if (api && typeof api.print === 'function') {
+      api.print();
+    }
   };
 
   const handleDownload = () => {
@@ -293,9 +295,8 @@ const AlphaTabControls = ({
   };
 
   const handleExportPDF = () => {
-    if (api) {
-      // Use browser print functionality for PDF export
-      window.print();
+    if (api && typeof api.print === 'function') {
+      api.print();
     }
   };
 
