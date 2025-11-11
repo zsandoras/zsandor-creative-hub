@@ -59,25 +59,54 @@ export const MusicPlayer = () => {
         }));
       }
     };
+    
     const updateDuration = () => setDuration(audio.duration);
+    
     const handleTrackChange = (e: CustomEvent) => {
       const { index } = e.detail;
       setCurrentTrackIndex(index);
       setIsPlaying(true);
     };
 
+    const handleTogglePlayback = () => {
+      if (isPlaying) {
+        audio.pause();
+        setIsPlaying(false);
+      } else {
+        audio.play();
+        setIsPlaying(true);
+      }
+    };
+
     audio.addEventListener("timeupdate", updateTime);
     audio.addEventListener("loadedmetadata", updateDuration);
     audio.addEventListener("ended", handleNext);
+    audio.addEventListener("play", () => {
+      if (currentTrack) {
+        window.dispatchEvent(new CustomEvent('playingStateChange', {
+          detail: { trackId: currentTrack.id, isPlaying: true }
+        }));
+      }
+    });
+    audio.addEventListener("pause", () => {
+      if (currentTrack) {
+        window.dispatchEvent(new CustomEvent('playingStateChange', {
+          detail: { trackId: currentTrack.id, isPlaying: false }
+        }));
+      }
+    });
+    
     window.addEventListener("playTrack", handleTrackChange as EventListener);
+    window.addEventListener("togglePlayback", handleTogglePlayback);
 
     return () => {
       audio.removeEventListener("timeupdate", updateTime);
       audio.removeEventListener("loadedmetadata", updateDuration);
       audio.removeEventListener("ended", handleNext);
       window.removeEventListener("playTrack", handleTrackChange as EventListener);
+      window.removeEventListener("togglePlayback", handleTogglePlayback);
     };
-  }, [currentTrackIndex, tracks, currentTrack]);
+  }, [currentTrackIndex, tracks, currentTrack, isPlaying]);
 
   const togglePlay = () => {
     if (audioRef.current) {

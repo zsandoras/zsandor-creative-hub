@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { Play, Pause, Heart, Repeat2, Share2, MoreHorizontal } from "lucide-react";
+import { Play, Pause } from "lucide-react";
 import { EditableText } from "@/components/EditableText";
 import { EditableItemText } from "@/components/EditableItemText";
 import { useAuth } from "@/hooks/useAuth";
@@ -40,20 +40,40 @@ const Recordings = () => {
   });
 
   useEffect(() => {
-    // Listen for playback progress from MusicPlayer
+    // Listen for playback progress and playing state from MusicPlayer
     const handleProgress = (e: CustomEvent) => {
       const { trackId, progress } = e.detail;
       setPlaybackProgress(prev => ({ ...prev, [trackId]: progress }));
     };
 
-    window.addEventListener("playbackProgress", handleProgress as EventListener);
-    return () => window.removeEventListener("playbackProgress", handleProgress as EventListener);
-  }, []);
+    const handlePlayingState = (e: CustomEvent) => {
+      const { trackId, isPlaying } = e.detail;
+      if (isPlaying) {
+        setCurrentlyPlaying(trackId);
+      } else if (currentlyPlaying === trackId) {
+        setCurrentlyPlaying(null);
+      }
+    };
 
-  const handlePlay = (trackId: string) => {
-    const trackIndex = recordings?.findIndex(r => r.id === trackId);
-    if (trackIndex !== undefined && trackIndex !== -1) {
-      window.dispatchEvent(new CustomEvent('playTrack', { detail: { index: trackIndex } }));
+    window.addEventListener("playbackProgress", handleProgress as EventListener);
+    window.addEventListener("playingStateChange", handlePlayingState as EventListener);
+    
+    return () => {
+      window.removeEventListener("playbackProgress", handleProgress as EventListener);
+      window.removeEventListener("playingStateChange", handlePlayingState as EventListener);
+    };
+  }, [currentlyPlaying]);
+
+  const handlePlay = (trackId: string, index: number) => {
+    const isCurrentlyPlaying = currentlyPlaying === trackId;
+    
+    if (isCurrentlyPlaying) {
+      // Pause current track
+      window.dispatchEvent(new CustomEvent('togglePlayback'));
+      setCurrentlyPlaying(null);
+    } else {
+      // Play selected track
+      window.dispatchEvent(new CustomEvent('playTrack', { detail: { index } }));
       setCurrentlyPlaying(trackId);
     }
   };
@@ -105,7 +125,7 @@ const Recordings = () => {
           </div>
         ) : recordings && recordings.length > 0 ? (
           <div className="space-y-6">
-            {recordings.map((recording) => {
+            {recordings.map((recording, index) => {
               const isPlaying = currentlyPlaying === recording.id;
               const progress = playbackProgress[recording.id] || 0;
 
@@ -138,7 +158,10 @@ const Recordings = () => {
                             "opacity-0 group-hover:opacity-100 transition-opacity h-12 w-12 rounded-full",
                             isPlaying && "opacity-100"
                           )}
-                          onClick={() => handlePlay(recording.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handlePlay(recording.id, index);
+                          }}
                         >
                           {isPlaying ? (
                             <Pause className="h-6 w-6" />
@@ -181,36 +204,13 @@ const Recordings = () => {
                       </div>
 
                       {/* Waveform */}
-                      <div className="flex-1 flex items-center relative group/wave cursor-pointer">
+                      <div className="flex-1 flex items-center relative group/wave">
                         <div className="w-full h-20 relative">
                           <WaveformVisualizer
                             audioUrl={recording.file_url}
                             isPlaying={isPlaying}
                             progress={progress}
                           />
-                        </div>
-                      </div>
-
-                      {/* Action Buttons */}
-                      <div className="flex items-center justify-between mt-3">
-                        <div className="flex items-center gap-3">
-                          <Button variant="ghost" size="sm" className="gap-2">
-                            <Heart className="h-4 w-4" />
-                            <span className="text-xs">1</span>
-                          </Button>
-                          <Button variant="ghost" size="sm">
-                            <Repeat2 className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm">
-                            <Share2 className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Play className="h-3 w-3" />
-                          <span>{Math.floor(Math.random() * 100)}</span>
                         </div>
                       </div>
                     </div>

@@ -18,10 +18,23 @@ export const WaveformVisualizer = ({
   const [waveformData, setWaveformData] = useState<number[]>([]);
 
   useEffect(() => {
-    // Generate random waveform data for visual effect
-    // In production, this would analyze the actual audio file
-    const bars = 150;
-    const data = Array.from({ length: bars }, () => Math.random() * 0.8 + 0.2);
+    // Generate more realistic waveform data
+    const bars = 180;
+    const data: number[] = [];
+    
+    // Create a wave-like pattern that looks more like actual audio
+    for (let i = 0; i < bars; i++) {
+      const position = i / bars;
+      // Create peaks and valleys that look more natural
+      const wave1 = Math.sin(position * Math.PI * 8) * 0.3;
+      const wave2 = Math.sin(position * Math.PI * 3) * 0.2;
+      const randomness = Math.random() * 0.2;
+      const baseHeight = 0.4;
+      
+      const value = Math.abs(baseHeight + wave1 + wave2 + randomness);
+      data.push(Math.min(value, 1));
+    }
+    
     setWaveformData(data);
   }, [audioUrl]);
 
