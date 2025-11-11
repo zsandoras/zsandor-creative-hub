@@ -30,20 +30,11 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
         // Initialize AlphaTab
         const settings = {
           file: fileUrl,
-          core: {
-            engine: "html5",
-            logLevel: 1,
-            useWorkers: true,
-            fontDirectory: "https://cdn.jsdelivr.net/npm/@coderline/alphatab@latest/dist/font/",
-          },
           player: {
             enablePlayer: true,
             enableCursor: true,
-            enableUserInteraction: true,
-            soundFont: "https://cdn.jsdelivr.net/npm/@coderline/alphatab@latest/dist/soundfont/sonivox.sf2",
           },
           display: {
-            staveProfile: "ScoreTab" as const,
             layoutMode: "page" as const,
           },
         };
