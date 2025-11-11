@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft } from "lucide-react";
 import AlphaTabPlayer from "@/components/AlphaTabPlayer";
+import { EditableItemText } from "@/components/EditableItemText";
 
 interface GuitarEmbed {
   id: string;
@@ -56,10 +57,24 @@ const GuitarDetail = () => {
         ) : embed ? (
           <div>
             <Card className="p-6 mb-6 bg-card/50 backdrop-blur">
-              <h1 className="text-3xl font-bold mb-2">{embed.title}</h1>
-              {embed.description && (
-                <p className="text-muted-foreground">{embed.description}</p>
-              )}
+              <EditableItemText
+                table="guitar_embeds"
+                itemId={embed.id}
+                field="title"
+                value={embed.title}
+                className="text-3xl font-bold mb-2"
+                as="h1"
+                queryKey={["guitar-embed", id]}
+              />
+              <EditableItemText
+                table="guitar_embeds"
+                itemId={embed.id}
+                field="description"
+                value={embed.description}
+                className="text-muted-foreground"
+                as="p"
+                queryKey={["guitar-embed", id]}
+              />
             </Card>
             
             {embed.file_url ? (
