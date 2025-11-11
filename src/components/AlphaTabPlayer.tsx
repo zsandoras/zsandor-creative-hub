@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import * as alphaTab from "@coderline/alphatab";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -47,7 +46,7 @@ interface DebugEvent {
 }
 
 const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
-  const apiRef = useRef<alphaTab.AlphaTabApi | null>(null);
+  const apiRef = useRef<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [loadProgress, setLoadProgress] = useState(0);
@@ -112,6 +111,7 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       setDebugEvents([]);
 
       // Create Settings - Force WebAudio (no workers)
+      const alphaTab = (window as any).alphaTab;
       const settings = new alphaTab.Settings();
       settings.core.useWorkers = false; // This forces WebAudio backend instead of worker
       settings.core.fontDirectory = "/font/";
