@@ -1,13 +1,15 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { Play, Pause } from "lucide-react";
+import { Play, Pause, Heart, Repeat2, Share2, MoreHorizontal } from "lucide-react";
 import { EditableText } from "@/components/EditableText";
 import { EditableItemText } from "@/components/EditableItemText";
 import { useAuth } from "@/hooks/useAuth";
+import { WaveformVisualizer } from "@/components/WaveformVisualizer";
+import { cn } from "@/lib/utils";
 
 interface Recording {
   id: string;
@@ -22,6 +24,7 @@ interface Recording {
 const Recordings = () => {
   const { isAdmin, isEditMode } = useAuth();
   const [currentlyPlaying, setCurrentlyPlaying] = useState<string | null>(null);
+  const [playbackProgress, setPlaybackProgress] = useState<{ [key: string]: number }>({});
 
   const { data: recordings, isLoading } = useQuery({
     queryKey: ["recordings"],
@@ -36,19 +39,39 @@ const Recordings = () => {
     },
   });
 
-  // Notify MusicPlayer component to play a specific track
+  useEffect(() => {
+    // Listen for playback progress from MusicPlayer
+    const handleProgress = (e: CustomEvent) => {
+      const { trackId, progress } = e.detail;
+      setPlaybackProgress(prev => ({ ...prev, [trackId]: progress }));
+    };
+
+    window.addEventListener("playbackProgress", handleProgress as EventListener);
+    return () => window.removeEventListener("playbackProgress", handleProgress as EventListener);
+  }, []);
+
   const handlePlay = (trackId: string) => {
     const trackIndex = recordings?.findIndex(r => r.id === trackId);
     if (trackIndex !== undefined && trackIndex !== -1) {
-      // Dispatch custom event for MusicPlayer to listen to
       window.dispatchEvent(new CustomEvent('playTrack', { detail: { index: trackIndex } }));
       setCurrentlyPlaying(trackId);
     }
   };
 
+  const formatTime = (seconds: number | null) => {
+    if (!seconds) return "0:00";
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  const formatTimeAgo = () => {
+    return "4 years ago"; // Placeholder - would calculate actual time
+  };
+
   return (
-    <main className="min-h-screen bg-background pt-24 pb-16">
-      <div className="container mx-auto px-4">
+    <main className="min-h-screen bg-background pt-24 pb-32">
+      <div className="container mx-auto px-4 max-w-5xl">
         <div className="text-center mb-12">
           <EditableText
             pageKey="recordings"
@@ -67,77 +90,134 @@ const Recordings = () => {
         </div>
 
         {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {[1, 2, 3, 4].map((i) => (
-              <Card key={i} className="overflow-hidden">
-                <Skeleton className="aspect-square w-full" />
-                <div className="p-4">
-                  <Skeleton className="h-6 w-3/4 mb-2" />
-                  <Skeleton className="h-4 w-1/2" />
+          <div className="space-y-4">
+            {[1, 2, 3].map((i) => (
+              <Card key={i} className="p-4">
+                <div className="flex gap-4">
+                  <Skeleton className="w-32 h-32 shrink-0" />
+                  <div className="flex-1 space-y-3">
+                    <Skeleton className="h-6 w-1/3" />
+                    <Skeleton className="h-20 w-full" />
+                  </div>
                 </div>
               </Card>
             ))}
           </div>
         ) : recordings && recordings.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {recordings.map((recording) => (
-              <Card 
-                key={recording.id} 
-                className="overflow-hidden group hover:shadow-2xl transition-all duration-300 bg-card/50 backdrop-blur"
-              >
-                <div className="relative aspect-square overflow-hidden bg-secondary">
-                  {recording.cover_image_url ? (
-                    <img
-                      src={recording.cover_image_url}
-                      alt={recording.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-accent/20">
-                      <div className="text-6xl text-primary/50">♪</div>
-                    </div>
-                  )}
-                  
-                  {/* Play button overlay */}
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
-                    <Button
-                      size="icon"
-                      className="opacity-0 group-hover:opacity-100 transition-opacity h-16 w-16 rounded-full"
-                      onClick={() => handlePlay(recording.id)}
-                    >
-                      {currentlyPlaying === recording.id ? (
-                        <Pause className="h-8 w-8" />
-                      ) : (
-                        <Play className="h-8 w-8" />
-                      )}
-                    </Button>
-                  </div>
-                </div>
+          <div className="space-y-6">
+            {recordings.map((recording) => {
+              const isPlaying = currentlyPlaying === recording.id;
+              const progress = playbackProgress[recording.id] || 0;
 
-                <div className="p-4">
-                  <EditableItemText
-                    table="music_tracks"
-                    itemId={recording.id}
-                    field="title"
-                    value={recording.title}
-                    className="text-lg font-semibold mb-1 truncate"
-                    as="h3"
-                    queryKey={["recordings"]}
-                  />
-                  {(recording.artist || (isAdmin && isEditMode)) && (
-                    <EditableItemText
-                      table="music_tracks"
-                      itemId={recording.id}
-                      field="artist"
-                      value={recording.artist}
-                      className="text-sm text-muted-foreground truncate"
-                      as="p"
-                      queryKey={["recordings"]}
-                    />
-                  )}
-                </div>
-              </Card>
-            ))}
+              return (
+                <Card 
+                  key={recording.id} 
+                  className="overflow-hidden group hover:shadow-xl transition-all duration-300 bg-card/80 backdrop-blur border-border/50"
+                >
+                  <div className="flex gap-4 p-4">
+                    {/* Album Art / Thumbnail */}
+                    <div className="relative w-32 h-32 shrink-0 rounded overflow-hidden bg-secondary">
+                      {recording.cover_image_url ? (
+                        <img
+                          src={recording.cover_image_url}
+                          alt={recording.title}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-accent/20">
+                          <div className="text-4xl text-primary/50">♪</div>
+                        </div>
+                      )}
+                      
+                      {/* Play Button Overlay */}
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/40 transition-colors">
+                        <Button
+                          size="icon"
+                          variant="default"
+                          className={cn(
+                            "opacity-0 group-hover:opacity-100 transition-opacity h-12 w-12 rounded-full",
+                            isPlaying && "opacity-100"
+                          )}
+                          onClick={() => handlePlay(recording.id)}
+                        >
+                          {isPlaying ? (
+                            <Pause className="h-6 w-6" />
+                          ) : (
+                            <Play className="h-6 w-6 ml-0.5" />
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Content Area */}
+                    <div className="flex-1 min-w-0 flex flex-col">
+                      {/* Header */}
+                      <div className="flex items-start justify-between gap-4 mb-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-baseline gap-2">
+                            <EditableItemText
+                              table="music_tracks"
+                              itemId={recording.id}
+                              field="artist"
+                              value={recording.artist}
+                              className="text-sm text-muted-foreground"
+                              as="span"
+                              queryKey={["recordings"]}
+                            />
+                          </div>
+                          <EditableItemText
+                            table="music_tracks"
+                            itemId={recording.id}
+                            field="title"
+                            value={recording.title}
+                            className="text-lg font-semibold truncate block"
+                            as="h3"
+                            queryKey={["recordings"]}
+                          />
+                        </div>
+                        <span className="text-sm text-muted-foreground shrink-0">
+                          {formatTimeAgo()}
+                        </span>
+                      </div>
+
+                      {/* Waveform */}
+                      <div className="flex-1 flex items-center relative group/wave cursor-pointer">
+                        <div className="w-full h-20 relative">
+                          <WaveformVisualizer
+                            audioUrl={recording.file_url}
+                            isPlaying={isPlaying}
+                            progress={progress}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="flex items-center justify-between mt-3">
+                        <div className="flex items-center gap-3">
+                          <Button variant="ghost" size="sm" className="gap-2">
+                            <Heart className="h-4 w-4" />
+                            <span className="text-xs">1</span>
+                          </Button>
+                          <Button variant="ghost" size="sm">
+                            <Repeat2 className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm">
+                            <Share2 className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Play className="h-3 w-3" />
+                          <span>{Math.floor(Math.random() * 100)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              );
+            })}
           </div>
         ) : (
           <Card className="p-12 text-center max-w-2xl mx-auto bg-card/50 backdrop-blur">

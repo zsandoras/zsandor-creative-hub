@@ -49,7 +49,16 @@ export const MusicPlayer = () => {
     const audio = audioRef.current;
     if (!audio) return;
 
-    const updateTime = () => setCurrentTime(audio.currentTime);
+    const updateTime = () => {
+      setCurrentTime(audio.currentTime);
+      // Dispatch progress event for Recordings page
+      if (currentTrack) {
+        const progress = audio.duration ? audio.currentTime / audio.duration : 0;
+        window.dispatchEvent(new CustomEvent('playbackProgress', { 
+          detail: { trackId: currentTrack.id, progress } 
+        }));
+      }
+    };
     const updateDuration = () => setDuration(audio.duration);
     const handleTrackChange = (e: CustomEvent) => {
       const { index } = e.detail;
@@ -68,7 +77,7 @@ export const MusicPlayer = () => {
       audio.removeEventListener("ended", handleNext);
       window.removeEventListener("playTrack", handleTrackChange as EventListener);
     };
-  }, [currentTrackIndex, tracks]);
+  }, [currentTrackIndex, tracks, currentTrack]);
 
   const togglePlay = () => {
     if (audioRef.current) {

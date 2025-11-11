@@ -1,0 +1,76 @@
+import { useEffect, useRef, useState } from "react";
+import { cn } from "@/lib/utils";
+
+interface WaveformVisualizerProps {
+  audioUrl?: string;
+  isPlaying?: boolean;
+  progress?: number;
+  className?: string;
+}
+
+export const WaveformVisualizer = ({ 
+  audioUrl, 
+  isPlaying = false, 
+  progress = 0,
+  className 
+}: WaveformVisualizerProps) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [waveformData, setWaveformData] = useState<number[]>([]);
+
+  useEffect(() => {
+    // Generate random waveform data for visual effect
+    // In production, this would analyze the actual audio file
+    const bars = 150;
+    const data = Array.from({ length: bars }, () => Math.random() * 0.8 + 0.2);
+    setWaveformData(data);
+  }, [audioUrl]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || waveformData.length === 0) return;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    
+    ctx.scale(dpr, dpr);
+
+    const barWidth = rect.width / waveformData.length;
+    const centerY = rect.height / 2;
+
+    ctx.clearRect(0, 0, rect.width, rect.height);
+
+    waveformData.forEach((value, index) => {
+      const barHeight = value * rect.height * 0.8;
+      const x = index * barWidth;
+      const progressPosition = progress * waveformData.length;
+
+      // Color based on whether this bar has been played
+      if (index < progressPosition) {
+        ctx.fillStyle = "hsl(var(--primary))";
+      } else {
+        ctx.fillStyle = "hsl(var(--muted-foreground) / 0.3)";
+      }
+
+      ctx.fillRect(
+        x,
+        centerY - barHeight / 2,
+        Math.max(barWidth * 0.8, 1),
+        barHeight
+      );
+    });
+  }, [waveformData, progress, isPlaying]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className={cn("w-full h-full", className)}
+      style={{ width: "100%", height: "100%" }}
+    />
+  );
+};
