@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Navigation } from "./components/Navigation";
 import { MusicPlayer } from "./components/MusicPlayer";
+import { RainEffect } from "./components/RainEffect";
 import { AuthProvider } from "./hooks/useAuth";
 import Home from "./pages/Home";
 import GuitarPro from "./pages/GuitarPro";
@@ -27,22 +28,25 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <Navigation />
-          <MusicPlayer />
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/guitar" element={<GuitarPro />} />
-            <Route path="/guitar/:id" element={<GuitarDetail />} />
-            <Route path="/food" element={<FoodGallery />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/admin" element={<Dashboard />} />
-            <Route path="/admin/music" element={<MusicManager />} />
-            <Route path="/admin/food" element={<FoodManager />} />
-            <Route path="/admin/guitar" element={<GuitarManager />} />
-            <Route path="/admin/settings" element={<Settings />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <RainEffect />
+          <div className="relative z-10">
+            <Navigation />
+            <MusicPlayer />
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/guitar" element={<GuitarPro />} />
+              <Route path="/guitar/:id" element={<GuitarDetail />} />
+              <Route path="/food" element={<FoodGallery />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/admin" element={<Dashboard />} />
+              <Route path="/admin/music" element={<MusicManager />} />
+              <Route path="/admin/food" element={<FoodManager />} />
+              <Route path="/admin/guitar" element={<GuitarManager />} />
+              <Route path="/admin/settings" element={<Settings />} />
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </div>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>

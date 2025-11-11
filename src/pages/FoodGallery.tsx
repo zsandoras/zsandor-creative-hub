@@ -78,18 +78,18 @@ const FoodGallery = () => {
           </div>
         ) : foodItems && foodItems.length > 0 ? (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="columns-1 md:columns-2 lg:columns-3 gap-6 space-y-6">
               {foodItems.map((item, index) => (
                 <Card 
                   key={item.id} 
-                  className="overflow-hidden group hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 bg-card/50 backdrop-blur cursor-pointer"
+                  className="overflow-hidden group hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 bg-card/50 backdrop-blur cursor-pointer break-inside-avoid"
                   onClick={() => setFullscreenIndex(index)}
                 >
-                  <div className="relative overflow-hidden aspect-square">
+                  <div className="relative overflow-hidden">
                     <img
                       src={item.image_url}
                       alt={item.title || "Food creation"}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                      className="w-full object-cover group-hover:scale-110 transition-transform duration-500"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>

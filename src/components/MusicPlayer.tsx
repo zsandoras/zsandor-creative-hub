@@ -113,100 +113,110 @@ export const MusicPlayer = () => {
   if (!tracks.length) return null;
 
   return (
-    <Card 
-      className="fixed bottom-6 right-6 bg-card/95 backdrop-blur-lg border-border shadow-2xl transition-all duration-300"
-      style={{ width: isExpanded ? '320px' : '280px' }}
+    <div 
+      className="fixed bottom-0 right-6 transition-all duration-300 ease-out"
+      style={{ 
+        width: '320px',
+        transform: isExpanded ? 'translateY(-8px)' : 'translateY(0)'
+      }}
       onMouseEnter={() => setIsExpanded(true)}
       onMouseLeave={() => setIsExpanded(false)}
     >
       <audio ref={audioRef} src={currentTrack?.file_url} />
       
-      <div className="p-3">
-        {/* Compact header with play button and title */}
-        <div className="flex items-center gap-3 mb-2">
-          <Button
-            variant="default"
-            size="icon"
-            onClick={togglePlay}
-            className="h-9 w-9 shrink-0"
-          >
-            {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-          </Button>
-          
-          <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-sm truncate">{currentTrack?.title}</h3>
-            {currentTrack?.artist && (
-              <p className="text-xs text-muted-foreground truncate">{currentTrack.artist}</p>
-            )}
-          </div>
+      <Card className="bg-card/95 backdrop-blur-lg border-border shadow-2xl overflow-hidden">
+        {/* Expanded content - shows on hover */}
+        <div 
+          className="transition-all duration-300 overflow-hidden"
+          style={{
+            maxHeight: isExpanded ? '400px' : '0',
+            opacity: isExpanded ? 1 : 0
+          }}
+        >
+          <div className="p-3 space-y-3">
+            {/* Header with play button and title */}
+            <div className="flex items-center gap-3">
+              <Button
+                variant="default"
+                size="icon"
+                onClick={togglePlay}
+                className="h-9 w-9 shrink-0"
+              >
+                {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+              </Button>
+              
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold text-sm truncate">{currentTrack?.title}</h3>
+                {currentTrack?.artist && (
+                  <p className="text-xs text-muted-foreground truncate">{currentTrack.artist}</p>
+                )}
+              </div>
+            </div>
 
-          <div className="flex items-center gap-1 shrink-0">
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleMute}>
-              {isMuted ? <VolumeX className="h-3 w-3" /> : <Volume2 className="h-3 w-3" />}
-            </Button>
+            {/* Track list */}
+            {tracks.length > 1 && (
+              <div className="max-h-48 overflow-y-auto space-y-1 scrollbar-thin">
+                {tracks.map((track, index) => (
+                  <button
+                    key={track.id}
+                    onClick={() => {
+                      setCurrentTrackIndex(index);
+                      setIsPlaying(true);
+                    }}
+                    className={cn(
+                      "w-full text-left p-2 rounded text-xs transition-colors",
+                      index === currentTrackIndex 
+                        ? "bg-primary/20 text-primary" 
+                        : "hover:bg-secondary text-muted-foreground"
+                    )}
+                  >
+                    <div className="truncate font-medium">{track.title}</div>
+                    {track.artist && <div className="truncate text-[10px]">{track.artist}</div>}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Controls */}
+            <div className="flex items-center justify-between gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={handlePrevious}
+                disabled={tracks.length <= 1}
+              >
+                <SkipBack className="h-3 w-3" />
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={handleNext}
+                disabled={tracks.length <= 1}
+              >
+                <SkipForward className="h-3 w-3" />
+              </Button>
+
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleMute}>
+                {isMuted ? <VolumeX className="h-3 w-3" /> : <Volume2 className="h-3 w-3" />}
+              </Button>
+
+              <div className="flex-1">
+                <Slider
+                  value={[isMuted ? 0 : volume]}
+                  max={100}
+                  step={1}
+                  onValueChange={(value) => setVolume(value[0])}
+                />
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Expanded track list */}
-        {isExpanded && tracks.length > 1 && (
-          <div className="mb-3 max-h-48 overflow-y-auto space-y-1 animate-fade-in">
-            {tracks.map((track, index) => (
-              <button
-                key={track.id}
-                onClick={() => {
-                  setCurrentTrackIndex(index);
-                  setIsPlaying(true);
-                }}
-                className={cn(
-                  "w-full text-left p-2 rounded text-xs transition-colors",
-                  index === currentTrackIndex 
-                    ? "bg-primary/20 text-primary" 
-                    : "hover:bg-secondary text-muted-foreground"
-                )}
-              >
-                <div className="truncate font-medium">{track.title}</div>
-                {track.artist && <div className="truncate text-[10px]">{track.artist}</div>}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Expanded controls */}
-        {isExpanded && (
-          <div className="flex items-center justify-center gap-2 mb-3 animate-fade-in">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              onClick={handlePrevious}
-              disabled={tracks.length <= 1}
-            >
-              <SkipBack className="h-3 w-3" />
-            </Button>
-
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              onClick={handleNext}
-              disabled={tracks.length <= 1}
-            >
-              <SkipForward className="h-3 w-3" />
-            </Button>
-
-            <div className="flex-1">
-              <Slider
-                value={[isMuted ? 0 : volume]}
-                max={100}
-                step={1}
-                onValueChange={(value) => setVolume(value[0])}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Progress bar at bottom */}
-        <div className="space-y-1">
+        {/* Progress bar - always visible at bottom */}
+        <div className="px-3 py-2 space-y-1">
           <Slider
             value={[currentTime]}
             max={duration || 100}
@@ -214,12 +224,14 @@ export const MusicPlayer = () => {
             onValueChange={handleSeek}
             className="cursor-pointer"
           />
-          <div className="flex justify-between text-[10px] text-muted-foreground">
-            <span>{formatTime(currentTime)}</span>
-            <span>{formatTime(duration)}</span>
-          </div>
+          {isExpanded && (
+            <div className="flex justify-between text-[10px] text-muted-foreground">
+              <span>{formatTime(currentTime)}</span>
+              <span>{formatTime(duration)}</span>
+            </div>
+          )}
         </div>
-      </div>
-    </Card>
+      </Card>
+    </div>
   );
 };

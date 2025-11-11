@@ -11,7 +11,9 @@ import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Trash2, ArrowLeft, Pencil } from "lucide-react";
 import { Link } from "react-router-dom";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { BatchFileUpload } from "@/components/BatchFileUpload";
+import { ImageCropper } from "@/components/ImageCropper";
 
 interface FoodItem {
   id: string;
@@ -30,6 +32,11 @@ const FoodManager = () => {
   const [editTitle, setEditTitle] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [cropperOpen, setCropperOpen] = useState(false);
+  const [currentCropImage, setCurrentCropImage] = useState<string | null>(null);
+  const [currentCropIndex, setCurrentCropIndex] = useState(0);
+  const [processedFiles, setProcessedFiles] = useState<Blob[]>([]);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -97,41 +104,74 @@ const FoodManager = () => {
     });
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handleFileUpload = async (files: File[]) => {
+    setSelectedFiles(files);
+    if (files.length > 0) {
+      // Start cropping flow
+      const reader = new FileReader();
+      reader.onload = () => {
+        setCurrentCropImage(reader.result as string);
+        setCurrentCropIndex(0);
+        setCropperOpen(true);
+      };
+      reader.readAsDataURL(files[0]);
+    }
+  };
 
+  const handleCropComplete = async (croppedBlob: Blob) => {
+    const newProcessed = [...processedFiles, croppedBlob];
+    setProcessedFiles(newProcessed);
+    
+    const nextIndex = currentCropIndex + 1;
+    
+    if (nextIndex < selectedFiles.length) {
+      // Crop next image
+      const reader = new FileReader();
+      reader.onload = () => {
+        setCurrentCropImage(reader.result as string);
+        setCurrentCropIndex(nextIndex);
+      };
+      reader.readAsDataURL(selectedFiles[nextIndex]);
+    } else {
+      // All images cropped, upload them
+      setCropperOpen(false);
+      await uploadAllImages(newProcessed);
+    }
+  };
+
+  const uploadAllImages = async (blobs: Blob[]) => {
     setUploading(true);
 
     try {
-      const fileExt = file.name.split(".").pop();
-      const fileName = `${Math.random()}.${fileExt}`;
-      const filePath = `${fileName}`;
+      for (let i = 0; i < blobs.length; i++) {
+        const blob = blobs[i];
+        const fileName = `${Math.random()}.jpg`;
 
-      const { error: uploadError } = await supabase.storage
-        .from("food-images")
-        .upload(filePath, file);
+        const { error: uploadError } = await supabase.storage
+          .from("food-images")
+          .upload(fileName, blob);
 
-      if (uploadError) throw uploadError;
+        if (uploadError) throw uploadError;
 
-      const { data: { publicUrl } } = supabase.storage
-        .from("food-images")
-        .getPublicUrl(filePath);
+        const { data: { publicUrl } } = supabase.storage
+          .from("food-images")
+          .getPublicUrl(fileName);
 
-      const { error: insertError } = await supabase
-        .from("food_gallery")
-        .insert({
-          title: title || null,
-          description: description || null,
-          image_url: publicUrl,
-          display_order: foodItems.length,
-        });
+        const { error: insertError } = await supabase
+          .from("food_gallery")
+          .insert({
+            title: null,
+            description: null,
+            image_url: publicUrl,
+            display_order: foodItems.length + i,
+          });
 
-      if (insertError) throw insertError;
+        if (insertError) throw insertError;
+      }
 
-      toast({ title: "Image uploaded successfully!" });
-      setTitle("");
-      setDescription("");
+      toast({ title: `${blobs.length} images uploaded successfully!` });
+      setSelectedFiles([]);
+      setProcessedFiles([]);
       queryClient.invalidateQueries({ queryKey: ["food-gallery"] });
     } catch (error: any) {
       toast({
@@ -167,38 +207,18 @@ const FoodManager = () => {
         </h1>
 
         <Card className="p-6 mb-8 bg-card/50 backdrop-blur">
-          <h2 className="text-2xl font-bold mb-4">Upload New Image</h2>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="title">Title</Label>
-              <Input
-                id="title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Optional title"
-              />
-            </div>
-            <div>
-              <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Optional description"
-              />
-            </div>
-            <div>
-              <Label htmlFor="file">Image File *</Label>
-              <Input
-                id="file"
-                type="file"
-                accept="image/*"
-                onChange={handleFileUpload}
-                disabled={uploading}
-              />
-            </div>
-            {uploading && <p className="text-sm text-muted-foreground">Uploading...</p>}
-          </div>
+          <h2 className="text-2xl font-bold mb-4">Upload New Images</h2>
+          <BatchFileUpload
+            onFilesSelect={handleFileUpload}
+            accept="image/*"
+            maxFiles={10}
+            disabled={uploading}
+          />
+          {uploading && (
+            <p className="text-sm text-muted-foreground mt-4">
+              Uploading {processedFiles.length} of {selectedFiles.length} images...
+            </p>
+          )}
         </Card>
 
         <Card className="p-6 bg-card/50 backdrop-blur">
@@ -274,6 +294,20 @@ const FoodManager = () => {
             </div>
           </DialogContent>
         </Dialog>
+
+        {currentCropImage && (
+          <ImageCropper
+            image={currentCropImage}
+            onCropComplete={handleCropComplete}
+            onCancel={() => {
+              setCropperOpen(false);
+              setCurrentCropImage(null);
+              setSelectedFiles([]);
+              setProcessedFiles([]);
+            }}
+            open={cropperOpen}
+          />
+        )}
       </div>
     </main>
   );
