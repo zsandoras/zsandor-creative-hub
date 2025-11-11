@@ -70,7 +70,6 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       settings.player.enableCursor = true;
       settings.player.enableAnimatedBeatCursor = true;
       settings.player.soundFont = window.location.origin + "/soundfont/sonivox.sf2";
-      settings.core.file = fileUrl;
       
       // Note: do not set scrollElement to keep defaults and avoid potential init issues
       
@@ -172,6 +171,10 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
           duration: e.endTime
         }));
       });
+
+      // Start loading score after all listeners are attached
+      log(`Init order OK. SoundFont=${settings.player.soundFont}. Loading: ${fileUrl}`);
+      api.load(fileUrl);
     } catch (e: any) {
       const message = e?.message || e?.toString?.() || 'Unknown init error';
       log(`Init failed: ${message}`);
@@ -244,8 +247,37 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
   };
   const stop = () => {
     if (!apiRef.current) return;
-    log('User clicked Stop');
+    log('⏹ stop() called');
     apiRef.current.stop();
+  };
+
+  const handleSeek = (seconds: number) => {
+    if (!apiRef.current) return;
+    try {
+      (apiRef.current as any).seek(seconds);
+      setPlayerState(prev => ({ ...prev, currentTime: seconds }));
+      log(`⏩ seek(${seconds.toFixed(2)})`);
+    } catch (e: any) {
+      log(`❌ seek failed: ${e?.message || e}`);
+    }
+  };
+
+  const setVolume = (vol01: number) => {
+    if (!apiRef.current) return;
+    const v = Math.max(0, Math.min(1, vol01));
+    const api: any = apiRef.current as any;
+    try {
+      if (typeof api.setVolume === 'function') {
+        api.setVolume(v);
+      } else if ('volume' in api) {
+        api.volume = v;
+      } else if (api.player && 'volume' in api.player) {
+        api.player.volume = v;
+      }
+      log(`🔊 volume=${v.toFixed(2)}`);
+    } catch (e: any) {
+      log(`❌ volume set failed: ${e?.message || e}`);
+    }
   };
 
   const unlockAudio = async () => {
