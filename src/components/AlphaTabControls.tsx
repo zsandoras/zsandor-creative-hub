@@ -383,8 +383,9 @@ const AlphaTabControls = ({
 
   return (
     <div className="rounded-lg border text-card-foreground shadow-sm p-0 bg-card border-border overflow-hidden">
-      <div className="flex items-center justify-between gap-4 p-4 bg-muted/30 flex-wrap">
-        <div className="flex items-center gap-2 flex-wrap">
+      {/* Top row: Playback controls, title, and right-side controls */}
+      <div className="flex items-center justify-between gap-4 p-4 bg-muted/30">
+        <div className="flex items-center gap-2 flex-shrink-0">
           <Button onClick={stop} variant="ghost" size="icon" title="Stop" disabled={!api}>
             <SkipBack className="h-4 w-4" />
           </Button>
@@ -417,28 +418,9 @@ const AlphaTabControls = ({
           <div className="hidden md:flex items-center gap-2 text-sm px-2">
             <span className="font-semibold text-foreground">{title}</span>
           </div>
-
-          {/* Audio scrubbing slider - Note: This controls AlphaTab's MIDI synthesis only.
-              It cannot sync with the separate MP3 player (MusicPlayer component) because they use
-              different audio sources and AlphaTab unmounts when navigating away from this page. */}
-          <div className="flex items-center gap-2 flex-1 min-w-[200px]">
-            <span className="text-sm text-muted-foreground whitespace-nowrap">
-              {formatTime(currentTime)}
-            </span>
-            <Slider
-              value={[currentTime]}
-              onValueChange={handleSeek}
-              max={duration}
-              step={100}
-              className="flex-1"
-            />
-            <span className="text-sm text-muted-foreground whitespace-nowrap">
-              {formatTime(duration)}
-            </span>
-          </div>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-shrink-0">
           <Button
             onClick={toggleCountIn}
             variant="ghost"
@@ -564,21 +546,6 @@ const AlphaTabControls = ({
             <span className="text-xs text-muted-foreground min-w-[4ch] text-right">{zoom}%</span>
           </div>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" title="Layout">
-                <LayoutGrid className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuItem onClick={() => handleLayoutChange(0)}>Page Layout</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleLayoutChange(1)}>Horizontal</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleLayoutChange(2)}>
-                Horizontal (Bar-Wise)
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
           {onToggleScale && (
             <Button
               onClick={onToggleScale}
@@ -603,6 +570,23 @@ const AlphaTabControls = ({
             <span className="text-xs text-muted-foreground min-w-[3ch]">{volume}%</span>
           </div>
         </div>
+      </div>
+
+      {/* Bottom row: Full-width scrubber */}
+      <div className="flex items-center gap-2 px-4 py-3 bg-muted/20 border-t border-border">
+        <span className="text-sm text-muted-foreground whitespace-nowrap">
+          {formatTime(currentTime)}
+        </span>
+        <Slider
+          value={[currentTime]}
+          onValueChange={handleSeek}
+          max={duration}
+          step={100}
+          className="flex-1"
+        />
+        <span className="text-sm text-muted-foreground whitespace-nowrap">
+          {formatTime(duration)}
+        </span>
       </div>
 
       <div className="px-4 py-2 bg-muted/20 border-t border-border">
