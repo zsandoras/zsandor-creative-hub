@@ -183,11 +183,11 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
         setIsLoading(false);
       });
 
-      // Player events - following alphaTab official pattern
       api.playerStateChanged.on((e: any) => {
         const isPlaying = e.state === alphaTab.synth.PlayerState.Playing;
         setPlayerState((prev) => ({ ...prev, isPlaying }));
-        log(`♪ Player state: ${isPlaying ? 'Playing' : 'Paused'}`);
+        const ready: any = (api as any).isReadyForPlayback;
+        log(`♪ Player state: ${isPlaying ? 'Playing' : 'Paused'} (ready=${String(ready)})`);
       });
 
       api.playerPositionChanged.on((e: any) => {
@@ -223,10 +223,13 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       console.warn('API not ready');
       return;
     }
-    log(`User clicked ${playerState.isPlaying ? 'Pause' : 'Play'}`);
-    apiRef.current.playPause();
+    const api: any = apiRef.current as any;
+    const ready = api.isReadyForPlayback;
+    const mode = api.actualPlayerMode;
+    const hasPlayer = !!api.player;
+    const result = api.playPause();
+    log(`▶️ playPause() returned ${String(result)} | ready=${String(ready)} | mode=${String(mode)} | hasPlayer=${hasPlayer}`);
   };
-
   const stop = () => {
     if (!apiRef.current) return;
     log('User clicked Stop');
