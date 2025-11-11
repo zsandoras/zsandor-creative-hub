@@ -104,7 +104,7 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       setIsRenderFinished(false);
       setDebugEvents([]);
 
-      // Create Settings - use CDN soundfont with correct player mode
+      // Create Settings - use plugin-provided paths
       const settings = new alphaTab.Settings();
       settings.player.enablePlayer = true;
       settings.player.enableUserInteraction = true;
@@ -115,7 +115,7 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       settings.display.scale = 1.0;
       settings.notation.notationMode = alphaTab.NotationMode.GuitarPro;
       settings.core.fontDirectory = "/font/";
-      settings.core.useWorkers = false;
+      settings.core.useWorkers = true;
 
       logState("LOADING", `Settings configured - SoundFont: ${settings.player.soundFont}`);
 
@@ -197,14 +197,6 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       });
 
       logState("LOADING", "Event listeners registered");
-
-      // Ensure SoundFont loads (explicit trigger)
-      try {
-        logState("LOADING", `Loading SoundFont from URL: ${settings.player.soundFont}`);
-        (api as any).loadSoundFontFromUrl?.(settings.player.soundFont, false);
-      } catch (e: any) {
-        logState("ERROR", `loadSoundFontFromUrl failed: ${e?.message || e}`);
-      }
 
       // Load file
       logState("LOADING", `Loading file: ${fileUrl}`);
