@@ -12,6 +12,7 @@ import {
   ZoomIn,
   LayoutGrid,
   Music2,
+  Guitar,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -31,6 +32,24 @@ interface AlphaTabControlsProps {
   tracks?: any[];
 }
 
+// Common MIDI instruments
+const INSTRUMENTS = [
+  { name: "Acoustic Guitar (nylon)", program: 24 },
+  { name: "Acoustic Guitar (steel)", program: 25 },
+  { name: "Electric Guitar (jazz)", program: 26 },
+  { name: "Electric Guitar (clean)", program: 27 },
+  { name: "Electric Guitar (muted)", program: 28 },
+  { name: "Overdriven Guitar", program: 29 },
+  { name: "Distortion Guitar", program: 30 },
+  { name: "Electric Bass (finger)", program: 33 },
+  { name: "Electric Bass (pick)", program: 34 },
+  { name: "Acoustic Bass", program: 32 },
+  { name: "Piano", program: 0 },
+  { name: "Electric Piano", program: 4 },
+  { name: "Strings", program: 48 },
+  { name: "Synth Lead", program: 80 },
+];
+
 const AlphaTabControls = ({
   api,
   isPlaying,
@@ -48,6 +67,7 @@ const AlphaTabControls = ({
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [selectedInstrument, setSelectedInstrument] = useState(0);
+  const [currentInstrument, setCurrentInstrument] = useState(INSTRUMENTS[0]);
 
   useEffect(() => {
     if (!api) return;
@@ -126,6 +146,25 @@ const AlphaTabControls = ({
     setSelectedInstrument(trackIndex);
     if (api && tracks[trackIndex]) {
       api.renderTracks([tracks[trackIndex]]);
+    }
+  };
+
+  const handleSynthInstrumentChange = (instrument: typeof INSTRUMENTS[0]) => {
+    setCurrentInstrument(instrument);
+    if (api && (api as any).player) {
+      // Change the MIDI program for all channels
+      const player = (api as any).player;
+      if (player.midiEventsPlayedFilter) {
+        // Apply instrument change to synthesizer
+        for (let channel = 0; channel < 16; channel++) {
+          player.midiEventsPlayedFilter.push({
+            channel: channel,
+            command: 0xC0, // Program Change
+            data1: instrument.program,
+            data2: 0,
+          });
+        }
+      }
     }
   };
 
@@ -227,6 +266,24 @@ const AlphaTabControls = ({
           <Download className="h-4 w-4" />
         </button>
 
+        <DropdownMenu>
+          <DropdownMenuTrigger className="control-dropdown-trigger">
+            <Guitar className="h-4 w-4 mr-1" />
+            <span>Synth</span>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="control-dropdown-menu max-h-80 overflow-y-auto">
+            {INSTRUMENTS.map((instrument) => (
+              <DropdownMenuItem
+                key={instrument.program}
+                onClick={() => handleSynthInstrumentChange(instrument)}
+                className={currentInstrument.program === instrument.program ? "bg-primary/20" : ""}
+              >
+                {instrument.name}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+
         {tracks.length > 1 && (
           <DropdownMenu>
             <DropdownMenuTrigger className="control-dropdown-trigger">
@@ -280,11 +337,6 @@ const AlphaTabControls = ({
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-
-        <div className="alphatab-logo">
-          <span className="powered-by">powered by</span>
-          <span className="alphatab-text">alphaTab</span>
-        </div>
       </div>
     </div>
   );

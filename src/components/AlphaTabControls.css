@@ -136,24 +136,6 @@
   text-align: center;
 }
 
-.alphatab-logo {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-  padding: 0 0.5rem;
-  font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.6);
-}
-
-.powered-by {
-  font-weight: 400;
-}
-
-.alphatab-text {
-  font-weight: 700;
-  color: #00bf8f;
-}
-
 /* Responsive adjustments */
 @media (max-width: 1024px) {
   .alphatab-controls {
@@ -185,9 +167,5 @@
 
   .song-info {
     font-size: 0.75rem;
-  }
-
-  .alphatab-logo {
-    display: none;
   }
 }
