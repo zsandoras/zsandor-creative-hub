@@ -27,12 +27,16 @@ const AlphaTabRenderer: React.FC<AlphaTabRendererProps> = ({ fileUrl, onPlayerRe
     settings.core.file = fileUrl;
     settings.core.fontDirectory = "/font/";
     settings.core.useWorkers = true;
+    settings.core.scriptFile = alphaTabWorkerUrl; // Set worker file
     settings.player.enablePlayer = true;
     settings.player.enableUserInteraction = true;
     settings.player.soundFont = "https://cdn.jsdelivr.net/npm/@coderline/alphatab@1.6.3/dist/soundfont/sonivox.sf2";
     settings.display.layoutMode = alphaTab.LayoutMode.Page;
     settings.display.scale = 1.0;
     settings.notation.notationMode = alphaTab.NotationMode.GuitarPro;
+
+    console.log('[AlphaTab] Initializing with worker:', alphaTabWorkerUrl);
+    console.log('[AlphaTab] WASM file:', alphaSynthWasmUrl);
 
     // Create the AlphaTab instance
     const api = new alphaTab.AlphaTabApi(atContainer.current, settings);
