@@ -80,141 +80,142 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
     addDebugEvent(`STATE: ${state}`, details);
   };
 
-  const initAlphaTab = async () => {
-    logState("LOADING", "User clicked - initializing AlphaTab");
-    if (initializingRef.current || apiRef.current) {
-      logState("LOADING", "Already initialized or initializing");
-      return;
-    }
-
-    const container = document.getElementById("alphaTab");
-    if (!container) {
-      logState("ERROR", "Container #alphaTab not found");
-      setError("AlphaTab container not found");
-      return;
-    }
-
-    try {
-      initializingRef.current = true;
-      setNeedsUserGesture(false);
-      setIsLoading(true);
-      setError(null);
-      setIsPlayerReady(false);
-      setIsSoundFontLoaded(false);
-      setIsRenderFinished(false);
-      setDebugEvents([]);
-
-      // Create Settings - SIMPLIFIED
-      const settings = new alphaTab.Settings();
-      settings.player.enablePlayer = true;
-      settings.player.enableUserInteraction = true; // Allow clicking notation to play
-      settings.player.playerMode = alphaTab.PlayerMode.EnabledSynthesizer;
-      settings.player.soundFont = "https://cdn.jsdelivr.net/npm/@coderline/alphatab@1.6.3/dist/soundfont/sonivox.sf2";
-      settings.player.scrollElement = (container.querySelector('.at-viewport') as HTMLElement) || undefined;
-      settings.display.layoutMode = alphaTab.LayoutMode.Page;
-      settings.display.scale = 1.0;
-      settings.notation.notationMode = alphaTab.NotationMode.GuitarPro;
-      settings.core.fontDirectory = "/font/";
-      settings.core.useWorkers = false;
-
-      logState("LOADING", "Settings configured - single SoundFont URL");
-
-      // Create API
-      const api = new alphaTab.AlphaTabApi(container, settings);
-      (api as any).masterVolume = playerState.volume / 100;
-      apiRef.current = api;
-      logState("LOADING", "AlphaTabApi created");
-
-      // Resume AudioContext on user gesture and check player state
-      const player: any = (api as any).player;
-      logState("LOADING", `Player object exists: ${!!player}`);
-      
-      if (player) {
-        logState("LOADING", `Player ready state: ${player.ready || player.isReady || 'unknown'}`);
-        logState("LOADING", `Player state: ${player.state || 'unknown'}`);
+  // Initialize AlphaTab when user gestures to load
+  useEffect(() => {
+    if (!needsUserGesture && !initializingRef.current && !apiRef.current) {
+      const initAlphaTab = async () => {
+        logState("LOADING", "User clicked - initializing AlphaTab");
         
-        const ctx = player.audioContext || player.context;
-        if (ctx) {
-          if (ctx.state === "suspended") {
-            await ctx.resume();
-            logState("LOADING", `AudioContext resumed from suspended`);
+        const container = document.getElementById("alphaTab");
+        if (!container) {
+          logState("ERROR", "Container #alphaTab not found");
+          setError("AlphaTab container not found");
+          return;
+        }
+
+        try {
+          initializingRef.current = true;
+          setIsLoading(true);
+          setError(null);
+          setIsPlayerReady(false);
+          setIsSoundFontLoaded(false);
+          setIsRenderFinished(false);
+          setDebugEvents([]);
+
+          // Create Settings - SIMPLIFIED
+          const settings = new alphaTab.Settings();
+          settings.player.enablePlayer = true;
+          settings.player.enableUserInteraction = true; // Allow clicking notation to play
+          settings.player.playerMode = alphaTab.PlayerMode.EnabledSynthesizer;
+          settings.player.soundFont = "https://cdn.jsdelivr.net/npm/@coderline/alphatab@1.6.3/dist/soundfont/sonivox.sf2";
+          settings.player.scrollElement = (container.querySelector('.at-viewport') as HTMLElement) || undefined;
+          settings.display.layoutMode = alphaTab.LayoutMode.Page;
+          settings.display.scale = 1.0;
+          settings.notation.notationMode = alphaTab.NotationMode.GuitarPro;
+          settings.core.fontDirectory = "/font/";
+          settings.core.useWorkers = false;
+
+          logState("LOADING", "Settings configured - single SoundFont URL");
+
+          // Create API
+          const api = new alphaTab.AlphaTabApi(container, settings);
+          (api as any).masterVolume = playerState.volume / 100;
+          apiRef.current = api;
+          logState("LOADING", "AlphaTabApi created");
+
+          // Resume AudioContext on user gesture and check player state
+          const player: any = (api as any).player;
+          logState("LOADING", `Player object exists: ${!!player}`);
+          
+          if (player) {
+            logState("LOADING", `Player ready state: ${player.ready || player.isReady || 'unknown'}`);
+            logState("LOADING", `Player state: ${player.state || 'unknown'}`);
+            
+            const ctx = player.audioContext || player.context;
+            if (ctx) {
+              if (ctx.state === "suspended") {
+                await ctx.resume();
+                logState("LOADING", `AudioContext resumed from suspended`);
+              }
+              logState("LOADING", `AudioContext state: ${ctx.state}`);
+            } else {
+              logState("LOADING", `No AudioContext found on player`);
+            }
+          } else {
+            logState("LOADING", `No player object - this means synth not initialized!`);
           }
-          logState("LOADING", `AudioContext state: ${ctx.state}`);
-        } else {
-          logState("LOADING", `No AudioContext found on player`);
+
+          // Event Listeners
+          api.scoreLoaded.on((score: any) => {
+            logState("LOADING", `Score loaded - ${score.tracks.length} track(s)`);
+            setTrackCount(score.tracks.length);
+          });
+
+          api.renderFinished.on(() => {
+            logState("RENDER_FINISHED", "Tablature rendered - try clicking the notation to play");
+            setIsLoading(false);
+            setIsRenderFinished(true);
+          });
+
+          api.soundFontLoad.on((e: any) => {
+            const pct = e.total > 0 ? Math.floor((e.loaded / e.total) * 100) : null;
+            setLoadProgress(pct ?? 0);
+            if (pct !== null) {
+              logState("LOADING", `SoundFont: ${pct}%`);
+            }
+          });
+
+          api.soundFontLoaded.on(() => {
+            logState("SOUNDFONT_LOADED", "SoundFont ready");
+            setLoadProgress(100);
+            setIsSoundFontLoaded(true);
+          });
+
+          api.playerReady.on(() => {
+            logState("PLAYER_READY", "Player ready for playback");
+            setIsPlayerReady(true);
+          });
+
+          api.playerStateChanged.on((e: any) => {
+            setPlayerState((prev) => ({ ...prev, isPlaying: e.state === 1 }));
+            const stateMsg = e.state === 1 ? "Playing" : "Stopped";
+            logState("PLAYER_STATE", stateMsg);
+          });
+
+          api.error.on((error: any) => {
+            const errorMsg = error?.message || error?.toString?.() || "Unknown error";
+            logState("ERROR", errorMsg);
+            setError(`AlphaTab error: ${errorMsg}`);
+          });
+
+          logState("LOADING", "Event listeners registered");
+
+          // Load file
+          logState("LOADING", `Loading file: ${fileUrl}`);
+          api.load(fileUrl);
+          
+          // Check if player is initializing after load
+          setTimeout(() => {
+            const playerCheck: any = (api as any).player;
+            logState("DEBUG", `Player check after load - exists: ${!!playerCheck}`);
+            if (playerCheck) {
+              logState("DEBUG", `Player isReady: ${playerCheck.isReady}, ready: ${playerCheck.ready}`);
+              logState("DEBUG", `Player soundFontLoaded: ${playerCheck.soundFontLoaded}`);
+            }
+          }, 2000);
+
+        } catch (e: any) {
+          const message = e?.message || e?.toString?.() || "Unknown error";
+          logState("ERROR", `Initialization failed: ${message}`);
+          setError(`Failed to initialize: ${message}`);
+          setIsLoading(false);
+          initializingRef.current = false;
         }
-      } else {
-        logState("LOADING", `No player object - this means synth not initialized!`);
-      }
+      };
 
-      // Event Listeners
-      api.scoreLoaded.on((score: any) => {
-        logState("LOADING", `Score loaded - ${score.tracks.length} track(s)`);
-        setTrackCount(score.tracks.length);
-      });
-
-      api.renderFinished.on(() => {
-        logState("RENDER_FINISHED", "Tablature rendered - try clicking the notation to play");
-        setIsLoading(false);
-        setIsRenderFinished(true);
-      });
-
-      api.soundFontLoad.on((e: any) => {
-        const pct = e.total > 0 ? Math.floor((e.loaded / e.total) * 100) : null;
-        setLoadProgress(pct ?? 0);
-        if (pct !== null) {
-          logState("LOADING", `SoundFont: ${pct}%`);
-        }
-      });
-
-      api.soundFontLoaded.on(() => {
-        logState("SOUNDFONT_LOADED", "SoundFont ready");
-        setLoadProgress(100);
-        setIsSoundFontLoaded(true);
-      });
-
-      api.playerReady.on(() => {
-        logState("PLAYER_READY", "Player ready for playback");
-        setIsPlayerReady(true);
-      });
-
-      api.playerStateChanged.on((e: any) => {
-        setPlayerState((prev) => ({ ...prev, isPlaying: e.state === 1 }));
-        const stateMsg = e.state === 1 ? "Playing" : "Stopped";
-        logState("PLAYER_STATE", stateMsg);
-      });
-
-      api.error.on((error: any) => {
-        const errorMsg = error?.message || error?.toString?.() || "Unknown error";
-        logState("ERROR", errorMsg);
-        setError(`AlphaTab error: ${errorMsg}`);
-      });
-
-      logState("LOADING", "Event listeners registered");
-
-      // Load file
-      logState("LOADING", `Loading file: ${fileUrl}`);
-      api.load(fileUrl);
-      
-      // Check if player is initializing after load
-      setTimeout(() => {
-        const playerCheck: any = (api as any).player;
-        logState("DEBUG", `Player check after load - exists: ${!!playerCheck}`);
-        if (playerCheck) {
-          logState("DEBUG", `Player isReady: ${playerCheck.isReady}, ready: ${playerCheck.ready}`);
-          logState("DEBUG", `Player soundFontLoaded: ${playerCheck.soundFontLoaded}`);
-        }
-      }, 2000);
-
-    } catch (e: any) {
-      const message = e?.message || e?.toString?.() || "Unknown error";
-      logState("ERROR", `Initialization failed: ${message}`);
-      setError(`Failed to initialize: ${message}`);
-      setIsLoading(false);
-      initializingRef.current = false;
+      initAlphaTab();
     }
-  };
-
+  }, [needsUserGesture, fileUrl, playerState.volume]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -328,9 +329,9 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
         {/* Initialization Button */}
         {needsUserGesture && (
           <div className="flex flex-col items-center justify-center py-12">
-            <Button onClick={initAlphaTab} size="lg" className="gap-2">
+            <Button onClick={() => setNeedsUserGesture(false)} size="lg" className="gap-2">
               <Play className="h-5 w-5" />
-              Load Tablature & Initialize Player
+              Click to Load Music
             </Button>
             <p className="text-sm text-muted-foreground mt-4">
               Click to load the music sheet and initialize audio playback
