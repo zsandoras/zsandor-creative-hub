@@ -550,7 +550,7 @@ const AlphaTabControls = ({
           </div>
 
           <div className="hidden md:flex items-center">
-            <span className={`font-semibold text-foreground truncate ${scaleControls ? 'text-sm max-w-[150px]' : 'text-xs max-w-[120px]'}`}>{title}</span>
+            <span className={`font-semibold text-foreground ${scaleControls ? 'text-sm' : 'text-xs'}`}>{title}</span>
           </div>
         </div>
 
@@ -627,9 +627,9 @@ const AlphaTabControls = ({
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size={buttonSize} className={`gap-1 ${scaleControls ? 'max-w-[180px]' : 'max-w-[120px]'}`}>
+              <Button variant="ghost" size={buttonSize} className="gap-1">
                 <Guitar className={`${iconSize} flex-shrink-0`} />
-                <span className={`hidden sm:inline truncate ${scaleControls ? '' : 'text-xs'}`}>{currentInstrument.name}</span>
+                <span className={`hidden sm:inline ${scaleControls ? '' : 'text-xs'}`}>{currentInstrument.name}</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="max-h-80 overflow-y-auto">
@@ -667,7 +667,7 @@ const AlphaTabControls = ({
             </DropdownMenu>
           )}
 
-          <div className={`hidden xl:flex items-center ${spacing} ${scaleControls ? 'px-2' : 'px-1'} border-l`}>
+          <div className={`hidden xl:flex items-center ${spacing} ${scaleControls ? 'px-3' : 'px-2'} border-l`}>
             <ZoomIn className={`${iconSize} text-muted-foreground flex-shrink-0`} />
             <Slider
               value={[zoom]}
@@ -675,19 +675,19 @@ const AlphaTabControls = ({
               min={25}
               max={300}
               step={5}
-              className={scaleControls ? "w-16" : "w-12"}
+              className={scaleControls ? "w-24" : "w-20"}
             />
             <span className={`${scaleControls ? 'text-xs' : 'text-[10px]'} text-muted-foreground min-w-[4ch] text-right`}>{zoom}%</span>
           </div>
 
-          <div className={`hidden xl:flex items-center ${spacing} ${scaleControls ? 'px-2' : 'px-1'} border-l`}>
+          <div className={`hidden xl:flex items-center ${spacing} ${scaleControls ? 'px-3' : 'px-2'} border-l`}>
             <Volume2 className={`${iconSize} text-muted-foreground`} />
             <Slider
               value={[volume]}
               onValueChange={handleVolumeChange}
               max={100}
               step={1}
-              className={scaleControls ? "w-16" : "w-12"}
+              className={scaleControls ? "w-24" : "w-20"}
             />
             <span className={`${scaleControls ? 'text-xs' : 'text-[10px]'} text-muted-foreground min-w-[3ch]`}>{volume}%</span>
           </div>
