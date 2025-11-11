@@ -55,7 +55,7 @@ const GuitarDetail = () => {
   });
 
   return (
-    <main className="min-h-screen bg-background pt-24 pb-16">
+    <main className="min-h-screen bg-background pt-24 pb-16 overflow-x-auto">
       <div className={`container mx-auto px-4 ${widthClasses[containerWidth]}`}>
         <div className="flex items-center justify-between mb-6">
           <Link to="/guitar">

@@ -545,21 +545,18 @@ const AlphaTabControls = ({
             </DropdownMenu>
           )}
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="gap-1">
-                <ZoomIn className="h-4 w-4" />
-                {zoom}%
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              {[25, 50, 75, 90, 100, 110, 125, 150, 200].map((zoomLevel) => (
-                <DropdownMenuItem key={zoomLevel} onClick={() => handleZoomChange(zoomLevel)}>
-                  {zoomLevel}%
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div className="flex items-center gap-2 px-2 border-l">
+            <ZoomIn className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+            <Slider
+              value={[zoom]}
+              onValueChange={(value) => handleZoomChange(value[0])}
+              min={25}
+              max={300}
+              step={5}
+              className="w-24"
+            />
+            <span className="text-xs text-muted-foreground min-w-[4ch] text-right">{zoom}%</span>
+          </div>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
