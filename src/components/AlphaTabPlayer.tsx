@@ -51,6 +51,7 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
   const loadProgressRef = useRef(0);
   const initializingRef = useRef(false);
   const watchdogTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const isPlayingRef = useRef(false);
 
   const addDebugEvent = (event: string, details?: string) => {
     const timestamp = new Date().toLocaleTimeString();
@@ -128,6 +129,8 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       settings.player.enablePlayer = true;
       settings.player.playerMode = alphaTab.PlayerMode.EnabledSynthesizer;
       settings.player.soundFont = "https://cdn.jsdelivr.net/npm/@coderline/alphatab@1.6.3/dist/soundfont/sonivox.sf2";
+      // Ensure cursor scrolling uses the correct viewport
+      settings.player.scrollElement = (container.querySelector('.at-viewport') as HTMLElement) || undefined;
       settings.display.layoutMode = alphaTab.LayoutMode.Page;
       settings.display.scale = 1.0;
       settings.notation.notationMode = alphaTab.NotationMode.GuitarPro;
@@ -213,6 +216,7 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
 
       api.playerStateChanged.on((e: any) => {
         setPlayerState((prev) => ({ ...prev, isPlaying: e.state === 1 }));
+        isPlayingRef.current = e.state === 1;
         if (e.state === 1) {
           logState("PLAYBACK_STARTED", "Playback active");
         } else if (e.state === 0) {
@@ -388,6 +392,20 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
 
       apiRef.current.playPause();
       logState("PLAY_PAUSE", "playPause() called");
+
+      // Fallback nudge: if synth is ready but not playing after a short delay, try play() once
+      window.setTimeout(() => {
+        const ready = isSoundFontLoaded && isPlayerReady;
+        if (!apiRef.current || !ready) return;
+        if (!isPlayingRef.current && typeof (apiRef.current as any).player?.play === "function") {
+          try {
+            (apiRef.current as any).player.play();
+            logState("NUDGE", "Retrying play() once after readiness");
+          } catch (err: any) {
+            logState("NUDGE", `Retry play() error: ${err?.message || err}`);
+          }
+        }
+      }, 1200);
     } catch (e: any) {
       logState("PLAY_PAUSE", `Error: ${e?.message}`);
       console.error("Play/Pause error:", e?.message);
