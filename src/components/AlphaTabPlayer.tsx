@@ -1,8 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Slider } from "@/components/ui/slider";
-import { Play, Pause, Square, Music } from "lucide-react";
+import AlphaTabControls from "./AlphaTabControls";
 import "./AlphaTabPlayer.css";
 
 declare global {
@@ -24,9 +22,7 @@ const AlphaTabPlayer = ({ fileUrl, file, title, onReset }: AlphaTabPlayerProps) 
   const [isLoading, setIsLoading] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [tracks, setTracks] = useState<any[]>([]);
-  const [selectedTrackIndex, setSelectedTrackIndex] = useState(0);
-  const [playbackSpeed, setPlaybackSpeed] = useState(100);
-const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [alphaTabLoaded, setAlphaTabLoaded] = useState<boolean>(!!window.alphaTab);
 
   // Load AlphaTab script from CDN
@@ -163,32 +159,6 @@ const [error, setError] = useState<string | null>(null);
     }
   };
 
-  const togglePlayPause = () => {
-    if (apiRef.current) {
-      apiRef.current.playPause();
-    }
-  };
-
-  const stop = () => {
-    if (apiRef.current) {
-      apiRef.current.stop();
-    }
-  };
-
-  const handlePlaybackSpeedChange = (values: number[]) => {
-    const speed = values[0];
-    setPlaybackSpeed(speed);
-    if (apiRef.current) {
-      apiRef.current.playbackSpeed = speed / 100;
-    }
-  };
-
-  const handleTrackChange = (index: number) => {
-    setSelectedTrackIndex(index);
-    if (apiRef.current && tracks[index]) {
-      apiRef.current.renderTracks([tracks[index]]);
-    }
-  };
 
   return (
     <div className="space-y-6">
@@ -212,83 +182,17 @@ const [error, setError] = useState<string | null>(null);
         </div>
       </Card>
 
-      {/* Player Controls */}
-      {!isLoading && !error && (
-        <Card className="p-6 bg-card">
-          <div className="flex flex-col gap-6">
-            {/* Playback Controls */}
-            <div className="flex items-center justify-center gap-4">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={stop}
-                title="Stop"
-              >
-                <Square className="h-4 w-4" />
-              </Button>
-              
-              <Button
-                variant="default"
-                size="icon"
-                onClick={togglePlayPause}
-                title="Play/Pause"
-                className="h-12 w-12"
-              >
-                {isPlaying ? (
-                  <Pause className="h-5 w-5" />
-                ) : (
-                  <Play className="h-5 w-5" />
-                )}
-              </Button>
-            </div>
-
-            {/* Tempo Control */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <label className="text-sm font-medium">Playback Speed</label>
-                <span className="text-sm text-muted-foreground">{playbackSpeed}%</span>
-              </div>
-              <Slider
-                value={[playbackSpeed]}
-                onValueChange={handlePlaybackSpeedChange}
-                min={25}
-                max={200}
-                step={5}
-                className="w-full"
-              />
-            </div>
-
-            {/* Track Selector */}
-            {tracks.length > 1 && (
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Select Track</label>
-                <div className="flex flex-wrap gap-2">
-                  {tracks.map((track, index) => (
-                    <Button
-                      key={index}
-                      variant={selectedTrackIndex === index ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => handleTrackChange(index)}
-                    >
-                      {track.name}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Reset Button */}
-            {onReset && (
-              <Button
-                variant="outline"
-                onClick={onReset}
-                className="w-full"
-              >
-                Load Different File
-              </Button>
-            )}
-          </div>
-        </Card>
+      {/* Professional Player Controls */}
+      {!isLoading && !error && apiRef.current && (
+        <AlphaTabControls
+          api={apiRef.current}
+          isPlaying={isPlaying}
+          title={title}
+          artist="Unknown Artist"
+          fileUrl={fileUrl}
+          onOpenFile={onReset}
+          tracks={tracks}
+        />
       )}
     </div>
   );

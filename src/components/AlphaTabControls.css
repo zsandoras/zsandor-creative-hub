@@ -1,0 +1,193 @@
+/* Professional AlphaTab Control Bar */
+.alphatab-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  background: linear-gradient(to bottom, #2d3748, #1a202c);
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  color: #ffffff;
+  font-size: 0.875rem;
+  flex-wrap: wrap;
+}
+
+.alphatab-controls-left,
+.alphatab-controls-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.control-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  border-radius: 0.375rem;
+  color: #ffffff;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 36px;
+  min-height: 36px;
+}
+
+.control-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+}
+
+.control-btn.active {
+  background: rgba(0, 191, 143, 0.3);
+  box-shadow: 0 0 0 2px rgba(0, 191, 143, 0.5);
+}
+
+.control-btn-primary {
+  background: linear-gradient(135deg, #00bf8f, #00a078);
+  box-shadow: 0 2px 8px rgba(0, 191, 143, 0.3);
+}
+
+.control-btn-primary:hover {
+  background: linear-gradient(135deg, #00d69f, #00bf8f);
+  box-shadow: 0 4px 12px rgba(0, 191, 143, 0.4);
+}
+
+.control-dropdown-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  border-radius: 0.375rem;
+  color: #ffffff;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.875rem;
+  min-height: 36px;
+}
+
+.control-dropdown-trigger:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.control-dropdown-menu {
+  background: #2d3748;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.5rem;
+  padding: 0.5rem;
+  min-width: 120px;
+  z-index: 9999;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+}
+
+.control-dropdown-menu [role="menuitem"] {
+  color: #ffffff;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.control-dropdown-menu [role="menuitem"]:hover {
+  background: rgba(0, 191, 143, 0.2);
+}
+
+.song-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 0.5rem;
+  max-width: 300px;
+  overflow: hidden;
+}
+
+.song-title {
+  font-weight: 600;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.song-separator {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.song-artist {
+  color: rgba(255, 255, 255, 0.7);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.time-position {
+  padding: 0.5rem 0.75rem;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 0.375rem;
+  font-family: 'Courier New', monospace;
+  font-size: 0.875rem;
+  color: #00bf8f;
+  min-width: 100px;
+  text-align: center;
+}
+
+.alphatab-logo {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0 0.5rem;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.powered-by {
+  font-weight: 400;
+}
+
+.alphatab-text {
+  font-weight: 700;
+  color: #00bf8f;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1024px) {
+  .alphatab-controls {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .alphatab-controls-left,
+  .alphatab-controls-right {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .song-info {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  .alphatab-controls {
+    font-size: 0.75rem;
+  }
+
+  .control-btn {
+    min-width: 32px;
+    min-height: 32px;
+    padding: 0.375rem;
+  }
+
+  .song-info {
+    font-size: 0.75rem;
+  }
+
+  .alphatab-logo {
+    display: none;
+  }
+}
