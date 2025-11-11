@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import * as alphaTab from "@coderline/alphatab";
 import { Card } from "@/components/ui/card";
-
+import "@/styles/alphatab.css";
 interface AlphaTabPlayerProps {
   fileUrl: string;
   title?: string;
@@ -17,6 +17,7 @@ interface PlayerState {
 
 const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const viewportRef = useRef<HTMLDivElement>(null);
   const apiRef = useRef<alphaTab.AlphaTabApi | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isPlayerReady, setIsPlayerReady] = useState(false);
@@ -67,9 +68,11 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       // Display layout
       settings.display.layoutMode = alphaTab.LayoutMode.Page;
       // Enable player
-      settings.player.enablePlayer = true;
+      settings.player.playerMode = alphaTab.PlayerMode.EnabledSynthesizer;
+      settings.player.enablePlayer = true; // keep for older versions
       settings.player.enableCursor = true;
       settings.player.soundFont = "/soundfont/sonivox.sf2";
+      (settings.player as any).scrollElement = viewportRef.current as any;
       // Load file directly
       settings.core.file = fileUrl;
       log('AlphaTab settings prepared');
@@ -278,11 +281,15 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
         </Card>
       )}
 
-      <div
-        ref={containerRef}
-        className="w-full min-h-[600px] rounded-lg overflow-auto border border-border bg-background/95 backdrop-blur"
-        style={{ visibility: isLoading ? "hidden" : "visible" }}
-      />
+      <div className="relative rounded-lg border border-border bg-background/95 backdrop-blur">
+        <div className="at-viewport" ref={viewportRef}>
+          <div
+            ref={containerRef}
+            className="w-full min-h-[600px]"
+            style={{ visibility: isLoading ? "hidden" : "visible" }}
+          />
+        </div>
+      </div>
     </div>
   );
 };
