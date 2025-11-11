@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft } from "lucide-react";
 import AlphaTabPlayer from "@/components/AlphaTabPlayer";
 import { EditableItemText } from "@/components/EditableItemText";
+import { CommentSection } from "@/components/CommentSection";
 
 interface GuitarEmbed {
   id: string;
@@ -78,18 +79,34 @@ const GuitarDetail = () => {
             </Card>
             
             {embed.file_url ? (
-              <AlphaTabPlayer 
-                fileUrl={embed.file_url} 
-                title={embed.title}
-                defaultInstrument={embed.default_instrument}
-              />
-            ) : embed.embed_code ? (
-              <Card className="p-6 bg-card/50 backdrop-blur">
-                <div 
-                  className="w-full min-h-[600px] rounded-lg overflow-hidden border border-border"
-                  dangerouslySetInnerHTML={{ __html: embed.embed_code }}
+              <>
+                <AlphaTabPlayer 
+                  fileUrl={embed.file_url} 
+                  title={embed.title}
+                  defaultInstrument={embed.default_instrument}
                 />
-              </Card>
+                <Card className="p-6 mt-6 bg-card/50 backdrop-blur">
+                  <CommentSection
+                    contentType="guitar_embed"
+                    contentId={embed.id}
+                  />
+                </Card>
+              </>
+            ) : embed.embed_code ? (
+              <>
+                <Card className="p-6 bg-card/50 backdrop-blur">
+                  <div 
+                    className="w-full min-h-[600px] rounded-lg overflow-hidden border border-border"
+                    dangerouslySetInnerHTML={{ __html: embed.embed_code }}
+                  />
+                </Card>
+                <Card className="p-6 mt-6 bg-card/50 backdrop-blur">
+                  <CommentSection
+                    contentType="guitar_embed"
+                    contentId={embed.id}
+                  />
+                </Card>
+              </>
             ) : (
               <Card className="p-12 text-center bg-card/50 backdrop-blur">
                 <p className="text-lg text-muted-foreground">

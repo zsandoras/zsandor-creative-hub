@@ -9,6 +9,8 @@ import { EditableText } from "@/components/EditableText";
 import { EditableItemText } from "@/components/EditableItemText";
 import { useAuth } from "@/hooks/useAuth";
 import { FoodSkeleton } from "@/components/LoadingSkeleton";
+import { CommentSection } from "@/components/CommentSection";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface FoodItem {
   id: string;
@@ -116,9 +118,9 @@ const FoodGallery = () => {
             </div>
 
             <Dialog open={fullscreenIndex !== null} onOpenChange={(open) => !open && setFullscreenIndex(null)}>
-              <DialogContent className="max-w-[95vw] max-h-[95vh] p-0 bg-background/95 backdrop-blur-lg">
+              <DialogContent className="max-w-[95vw] max-h-[95vh] p-0 bg-background/95 backdrop-blur-lg overflow-hidden">
                 {fullscreenIndex !== null && foodItems[fullscreenIndex] && (
-                  <div className="relative w-full h-full flex items-center justify-center">
+                  <div className="relative w-full h-full flex flex-col">
                     <Button
                       variant="ghost"
                       size="icon"
@@ -148,33 +150,43 @@ const FoodGallery = () => {
                       <ChevronRight className="h-8 w-8" />
                     </Button>
 
-                    <div className="flex flex-col items-center justify-center w-full h-full p-8">
-                      <img
-                        src={foodItems[fullscreenIndex].image_url}
-                        alt={foodItems[fullscreenIndex].title || "Food creation"}
-                        className="max-w-full max-h-[80vh] object-contain"
-                      />
-                      <div className="mt-6 text-center max-w-2xl">
-                        <EditableItemText
-                          table="food_gallery"
-                          itemId={foodItems[fullscreenIndex].id}
-                          field="title"
-                          value={foodItems[fullscreenIndex].title}
-                          className="text-2xl font-bold mb-2"
-                          as="h3"
-                          queryKey={["food-gallery"]}
+                    <ScrollArea className="flex-1">
+                      <div className="flex flex-col items-center justify-start w-full p-8 space-y-6">
+                        <img
+                          src={foodItems[fullscreenIndex].image_url}
+                          alt={foodItems[fullscreenIndex].title || "Food creation"}
+                          className="max-w-full max-h-[60vh] object-contain"
                         />
-                        <EditableItemText
-                          table="food_gallery"
-                          itemId={foodItems[fullscreenIndex].id}
-                          field="description"
-                          value={foodItems[fullscreenIndex].description}
-                          className="text-muted-foreground"
-                          as="p"
-                          queryKey={["food-gallery"]}
-                        />
+                        <div className="text-center max-w-2xl">
+                          <EditableItemText
+                            table="food_gallery"
+                            itemId={foodItems[fullscreenIndex].id}
+                            field="title"
+                            value={foodItems[fullscreenIndex].title}
+                            className="text-2xl font-bold mb-2"
+                            as="h3"
+                            queryKey={["food-gallery"]}
+                          />
+                          <EditableItemText
+                            table="food_gallery"
+                            itemId={foodItems[fullscreenIndex].id}
+                            field="description"
+                            value={foodItems[fullscreenIndex].description}
+                            className="text-muted-foreground mb-6"
+                            as="p"
+                            queryKey={["food-gallery"]}
+                          />
+                        </div>
+                        
+                        {/* Comments Section */}
+                        <div className="w-full max-w-2xl">
+                          <CommentSection
+                            contentType="food_item"
+                            contentId={foodItems[fullscreenIndex].id}
+                          />
+                        </div>
                       </div>
-                    </div>
+                    </ScrollArea>
                   </div>
                 )}
               </DialogContent>

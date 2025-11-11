@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { WaveformVisualizer } from "@/components/WaveformVisualizer";
 import { RecordingSkeleton } from "@/components/LoadingSkeleton";
 import { cn } from "@/lib/utils";
+import { CommentSection } from "@/components/CommentSection";
 
 interface Recording {
   id: string;
@@ -206,6 +207,14 @@ const Recordings = () => {
                         </div>
                       </div>
                     </div>
+                  </div>
+                  
+                  {/* Comments Section */}
+                  <div className="px-4 pb-4 border-t border-border/50 pt-4">
+                    <CommentSection
+                      contentType="music_track"
+                      contentId={recording.id}
+                    />
                   </div>
                 </Card>
               );

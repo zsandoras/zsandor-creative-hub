@@ -9,9 +9,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Trash2, Check, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
+import { Link } from "react-router-dom";
 
 export default function GuestBook() {
-  const { isAdmin } = useAuth();
+  const { user, isAdmin } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [name, setName] = useState("");
@@ -37,10 +38,12 @@ export default function GuestBook() {
 
   const createMutation = useMutation({
     mutationFn: async () => {
+      if (!user) throw new Error("Must be logged in to post");
+      
       const { error } = await supabase.from("guest_book").insert({
         name,
         message,
-        user_id: (await supabase.auth.getUser()).data.user?.id,
+        user_id: user.id,
       });
       if (error) throw error;
     },
@@ -81,28 +84,40 @@ export default function GuestBook() {
       <div className="container mx-auto px-4 max-w-4xl">
         <h1 className="text-4xl font-bold mb-8">Guest Book</h1>
 
-        <Card className="p-6 mb-8">
-          <h2 className="text-xl font-semibold mb-4">Leave a Message</h2>
-          <div className="space-y-4">
-            <Input
-              placeholder="Your name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
-            <Textarea
-              placeholder="Your message"
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              rows={4}
-            />
-            <Button
-              onClick={() => createMutation.mutate()}
-              disabled={!name || !message || createMutation.isPending}
-            >
-              Submit
-            </Button>
-          </div>
-        </Card>
+        {user ? (
+          <Card className="p-6 mb-8">
+            <h2 className="text-xl font-semibold mb-4">Leave a Message</h2>
+            <div className="space-y-4">
+              <Input
+                placeholder="Your name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+              <Textarea
+                placeholder="Your message"
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                rows={4}
+              />
+              <Button
+                onClick={() => createMutation.mutate()}
+                disabled={!name || !message || createMutation.isPending}
+              >
+                Submit
+              </Button>
+            </div>
+          </Card>
+        ) : (
+          <Card className="p-6 mb-8 text-center bg-card/50 backdrop-blur">
+            <h2 className="text-xl font-semibold mb-2">Leave a Message</h2>
+            <p className="text-muted-foreground mb-4">
+              Sign in to leave a message in the guest book
+            </p>
+            <Link to="/auth">
+              <Button>Sign In</Button>
+            </Link>
+          </Card>
+        )}
 
         <div className="space-y-4">
           {messages.map((msg: any) => (

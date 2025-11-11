@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { Music2, Guitar, UtensilsCrossed, Shield, Edit3, Disc3, Menu } from "lucide-react";
+import { Music2, Guitar, UtensilsCrossed, Shield, Edit3, Disc3, Menu, LogIn, LogOut } from "lucide-react";
 import { Button } from "./ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -13,7 +13,7 @@ import { GlobalSearch } from "./GlobalSearch";
 
 export const Navigation = () => {
   const location = useLocation();
-  const { isAdmin, isEditMode, setIsEditMode } = useAuth();
+  const { user, isAdmin, isEditMode, setIsEditMode, signOut } = useAuth();
   const isMobile = useIsMobile();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
@@ -67,34 +67,52 @@ export const Navigation = () => {
                 </Link>
               ))}
               
-              {isAdmin && (
-                <>
-                  <div className="flex items-center gap-2 border-l pl-6 border-border">
-                    <Edit3 className="h-4 w-4 text-muted-foreground" />
-                    <EditableText
-                      pageKey="navigation"
-                      contentKey="edit_mode_label"
-                      defaultValue="Edit Mode"
-                      className="text-sm text-muted-foreground inline"
-                      as="span"
-                    />
-                    <Switch checked={isEditMode} onCheckedChange={setIsEditMode} />
-                  </div>
-                  
-                  <Link to="/admin">
+              <div className="flex items-center gap-4 border-l pl-6 border-border">
+                {user ? (
+                  <>
+                    {isAdmin && (
+                      <>
+                        <div className="flex items-center gap-2">
+                          <Edit3 className="h-4 w-4 text-muted-foreground" />
+                          <EditableText
+                            pageKey="navigation"
+                            contentKey="edit_mode_label"
+                            defaultValue="Edit Mode"
+                            className="text-sm text-muted-foreground inline"
+                            as="span"
+                          />
+                          <Switch checked={isEditMode} onCheckedChange={setIsEditMode} />
+                        </div>
+                        
+                        <Link to="/admin">
+                          <Button variant="outline" size="sm" className="gap-2">
+                            <Shield className="h-4 w-4" />
+                            <EditableText
+                              pageKey="navigation"
+                              contentKey="admin_button"
+                              defaultValue="Admin"
+                              className="inline"
+                              as="span"
+                            />
+                          </Button>
+                        </Link>
+                      </>
+                    )}
+                    
+                    <Button variant="outline" size="sm" onClick={signOut} className="gap-2">
+                      <LogOut className="h-4 w-4" />
+                      Sign Out
+                    </Button>
+                  </>
+                ) : (
+                  <Link to="/auth">
                     <Button variant="outline" size="sm" className="gap-2">
-                      <Shield className="h-4 w-4" />
-                      <EditableText
-                        pageKey="navigation"
-                        contentKey="admin_button"
-                        defaultValue="Admin"
-                        className="inline"
-                        as="span"
-                      />
+                      <LogIn className="h-4 w-4" />
+                      Sign In
                     </Button>
                   </Link>
-                </>
-              )}
+                )}
+              </div>
               
               <ThemeToggle />
             </div>
@@ -133,36 +151,60 @@ export const Navigation = () => {
                     </Link>
                   ))}
                   
-                  {isAdmin && (
-                    <>
-                      <div className="border-t border-border pt-6 flex flex-col gap-4">
-                        <div className="flex items-center gap-3">
-                          <Edit3 className="h-5 w-5 text-muted-foreground" />
-                          <EditableText
-                            pageKey="navigation"
-                            contentKey="edit_mode_label"
-                            defaultValue="Edit Mode"
-                            className="text-sm text-muted-foreground inline flex-1"
-                            as="span"
-                          />
-                          <Switch checked={isEditMode} onCheckedChange={setIsEditMode} />
-                        </div>
+                  <div className="border-t border-border pt-6 flex flex-col gap-4">
+                    {user ? (
+                      <>
+                        {isAdmin && (
+                          <>
+                            <div className="flex items-center gap-3">
+                              <Edit3 className="h-5 w-5 text-muted-foreground" />
+                              <EditableText
+                                pageKey="navigation"
+                                contentKey="edit_mode_label"
+                                defaultValue="Edit Mode"
+                                className="text-sm text-muted-foreground inline flex-1"
+                                as="span"
+                              />
+                              <Switch checked={isEditMode} onCheckedChange={setIsEditMode} />
+                            </div>
+                            
+                            <Link to="/admin" onClick={() => setMobileMenuOpen(false)}>
+                              <Button variant="outline" size="sm" className="gap-2 w-full">
+                                <Shield className="h-4 w-4" />
+                                <EditableText
+                                  pageKey="navigation"
+                                  contentKey="admin_button"
+                                  defaultValue="Admin"
+                                  className="inline"
+                                  as="span"
+                                />
+                              </Button>
+                            </Link>
+                          </>
+                        )}
                         
-                        <Link to="/admin" onClick={() => setMobileMenuOpen(false)}>
-                          <Button variant="outline" size="sm" className="gap-2 w-full">
-                            <Shield className="h-4 w-4" />
-                            <EditableText
-                              pageKey="navigation"
-                              contentKey="admin_button"
-                              defaultValue="Admin"
-                              className="inline"
-                              as="span"
-                            />
-                          </Button>
-                        </Link>
-                      </div>
-                    </>
-                  )}
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => {
+                            signOut();
+                            setMobileMenuOpen(false);
+                          }}
+                          className="gap-2 w-full"
+                        >
+                          <LogOut className="h-4 w-4" />
+                          Sign Out
+                        </Button>
+                      </>
+                    ) : (
+                      <Link to="/auth" onClick={() => setMobileMenuOpen(false)}>
+                        <Button variant="outline" size="sm" className="gap-2 w-full">
+                          <LogIn className="h-4 w-4" />
+                          Sign In
+                        </Button>
+                      </Link>
+                    )}
+                  </div>
                   
                   <div className="border-t border-border pt-4">
                     <ThemeToggle />
