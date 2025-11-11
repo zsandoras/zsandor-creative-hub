@@ -129,12 +129,53 @@ const AlphaTabControls = ({
     }
   };
 
+  // Apply the current instrument when API is ready and instrument changes
+  useEffect(() => {
+    if (!api || !currentInstrument) return;
+    
+    const program = currentInstrument.program;
+    
+    // Prepare handler to rewrite all Program Change events except drums (channel 9)
+    const midiLoadHandler = (file: any) => {
+      try {
+        const MidiEventType = (window as any).alphaTab?.midi?.MidiEventType;
+        const events = file?.events ?? [];
+        for (const ev of events) {
+          const isProgramChange = MidiEventType
+            ? ev.type === MidiEventType.ProgramChange || ev.command === MidiEventType.ProgramChange
+            : ev.command === 0xC0;
+          if (isProgramChange && ev.channel !== 9) {
+            if (typeof ev.program === "number") ev.program = program;
+            if (typeof ev.data1 === "number") ev.data1 = program;
+          }
+        }
+      } catch (err) {
+        console.warn("Failed to rewrite MIDI program changes:", err);
+      }
+    };
+
+    // Remove old handler if any, then attach the new one
+    if ((api as any)._midiLoadHandler) {
+      api.midiLoad.off((api as any)._midiLoadHandler);
+    }
+    (api as any)._midiLoadHandler = midiLoadHandler;
+    api.midiLoad.on(midiLoadHandler);
+
+    // Regenerate and reload the MIDI
+    if (typeof api.loadMidiForScore === "function") {
+      api.loadMidiForScore();
+    }
+  }, [api, currentInstrument]);
+
   useEffect(() => {
     if (!api) return;
 
     // Listen to player position changes for time tracking
     const positionHandler = (e: any) => {
-      setCurrentTime(e.currentTime);
+      // Use the actual playback time position for accurate scrubber display
+      if (api.timePosition !== undefined) {
+        setCurrentTime(api.timePosition);
+      }
       setDuration(e.endTime);
     };
 

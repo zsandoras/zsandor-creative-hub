@@ -47,6 +47,34 @@ const AlphaTabPlayer = ({ fileUrl, file, title, onReset, defaultInstrument }: Al
     return () => container.removeEventListener('wheel', handleWheel);
   }, [isHovered]);
 
+  // Handle spacebar to play/pause (avoid conflicts with MP3 player and inputs)
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      // Ignore if typing in input/textarea
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      
+      if (e.code === "Space") {
+        e.preventDefault();
+        
+        // Pause MP3 player if it's playing
+        const audioElements = document.querySelectorAll('audio');
+        audioElements.forEach(audio => {
+          if (!audio.paused) {
+            audio.pause();
+          }
+        });
+        
+        // Toggle AlphaTab playback
+        if (apiRef.current) {
+          apiRef.current.playPause();
+        }
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyPress);
+    return () => document.removeEventListener("keydown", handleKeyPress);
+  }, []);
+
   // Load AlphaTab script from CDN
   useEffect(() => {
     if (window.alphaTab) {
