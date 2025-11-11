@@ -199,11 +199,30 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
   useEffect(() => {
     const handler = async () => {
       try {
-        const player: any = (apiRef.current as any)?.player;
+        const api: any = apiRef.current as any;
+        const player: any = api?.player;
         const ac: AudioContext | undefined = player?.audioContext || player?.context;
         if (ac && ac.state === 'suspended') {
           await ac.resume();
           log('🔓 AudioContext resumed (global user gesture)');
+        }
+        if (api && !soundFontRequestedRef.current) {
+          soundFontRequestedRef.current = true;
+          const soundFontUrl = window.location.origin + '/soundfont/sonivox.sf2';
+          log(`🎵 Global gesture: loading soundfont once: ${soundFontUrl}`);
+          try {
+            const resp = await fetch(soundFontUrl);
+            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+            const buf = await resp.arrayBuffer();
+            const bytes = new Uint8Array(buf);
+            api.resetSoundFonts?.();
+            const ok = api.loadSoundFont(bytes, false);
+            log(`🎵 loadSoundFont(raw) (append=false) ok=${String(ok)}; rebuilding MIDI...`);
+            api.loadMidiForScore?.();
+            log('🎼 loadMidiForScore() called');
+          } catch (e: any) {
+            log(`❌ Global soundfont load failed: ${e?.message || e}`);
+          }
         }
       } catch (e) {
         // ignore
@@ -236,35 +255,9 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
       log(`❌ AudioContext resume failed: ${e?.message || e}`);
     }
 
-    const api = apiRef.current as any;
-    if (!api.isReadyForPlayback && !soundFontRequestedRef.current) {
-      const soundFontUrl = window.location.origin + "/soundfont/sonivox.sf2";
-      soundFontRequestedRef.current = true;
-      log(`🎵 Loading soundfont on user gesture: ${soundFontUrl}`);
-      try {
-        const resp = await fetch(soundFontUrl);
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-        const buf = await resp.arrayBuffer();
-        const bytes = new Uint8Array(buf);
-        (api as any).resetSoundFonts?.();
-        const ok = (api as any).loadSoundFont(bytes, false);
-        log(`🎵 loadSoundFont(raw) called (append=false), ok=${String(ok)}; rebuilding MIDI...`);
-        (api as any).loadMidiForScore?.();
-        log('🎼 loadMidiForScore() called');
-      } catch (e: any) {
-        log(`❌ loadSoundFont(raw) failed: ${e?.message || e}`);
-      }
-      // auto play when ready
-      autoPlayOnceRef.current = true;
-    }
-
     try {
-      if (api.isReadyForPlayback) {
-        api.playPause();
-        log('▶️ playPause() called');
-      } else {
-        log('⏳ Not ready yet; will auto-play on playerReady');
-      }
+      apiRef.current.playPause();
+      log('▶️ playPause() called');
     } catch (e: any) {
       log(`❌ playPause() error: ${e?.message || e}`);
     }
@@ -280,28 +273,7 @@ const AlphaTabPlayer = ({ fileUrl, title }: AlphaTabPlayerProps) => {
     try {
       await (apiRef.current as any)?.audioContext?.resume();
       log('🔓 AudioContext resumed');
-      const api = apiRef.current as any;
-      if (!api.isReadyForPlayback && !soundFontRequestedRef.current) {
-        const soundFontUrl = window.location.origin + "/soundfont/sonivox.sf2";
-        soundFontRequestedRef.current = true;
-        log(`🎵 Loading soundfont on user gesture: ${soundFontUrl}`);
-        try {
-          const resp = await fetch(soundFontUrl);
-          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-          const buf = await resp.arrayBuffer();
-          const bytes = new Uint8Array(buf);
-          (api as any).resetSoundFonts?.();
-          const ok = (api as any).loadSoundFont(bytes, false);
-          log(`🎵 loadSoundFont(raw) called (append=false), ok=${String(ok)}; rebuilding MIDI...`);
-          (api as any).loadMidiForScore?.();
-          log('🎼 loadMidiForScore() called');
-        } catch (e: any) {
-          log(`❌ loadSoundFont(raw) failed: ${e?.message || e}`);
-        }
-        autoPlayOnceRef.current = true;
-      }
-      // Try play (it will auto-play on playerReady if not ready yet)
-      api.playPause?.();
+      apiRef.current?.playPause?.();
       log('▶️ playPause() called');
     } catch (e: any) {
       log(`❌ Audio unlock failed: ${e?.message || e}`);
