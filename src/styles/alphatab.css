@@ -1,0 +1,24 @@
+/* AlphaTab styles for tablature rendering */
+.at-viewport {
+  background: hsl(var(--background));
+  overflow-y: auto;
+  border-radius: 0.5rem;
+}
+
+.at-cursor-bar {
+  background: rgba(59, 130, 246, 0.25);
+}
+
+.at-selection div {
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.at-cursor-beat {
+  background: rgba(59, 130, 246, 0.75);
+  width: 3px;
+}
+
+.at-highlight * {
+  fill: hsl(var(--primary));
+  stroke: hsl(var(--primary));
+}

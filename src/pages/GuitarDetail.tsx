@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft } from "lucide-react";
+import AlphaTabPlayer from "@/components/AlphaTabPlayer";
 
 interface GuitarEmbed {
   id: string;
@@ -58,11 +59,7 @@ const GuitarDetail = () => {
             </Card>
             
             {embed.file_url ? (
-              <Card className="p-12 text-center bg-card/50 backdrop-blur">
-                <p className="text-lg text-muted-foreground">
-                  Guitar tablature player will be implemented here.
-                </p>
-              </Card>
+              <AlphaTabPlayer fileUrl={embed.file_url} title={embed.title} />
             ) : embed.embed_code ? (
               <Card className="p-6 bg-card/50 backdrop-blur">
                 <div 
