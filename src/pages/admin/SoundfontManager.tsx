@@ -35,7 +35,7 @@ const SoundfontManager = () => {
   const [currentInstrument, setCurrentInstrument] = useState<string>("");
   const [unsupportedPrograms, setUnsupportedPrograms] = useState<number[]>([]);
   const [scanResults, setScanResults] = useState<{working: number; unsupported: number} | null>(null);
-  const [testerExpanded, setTesterExpanded] = useState(false);
+  const [testerExpanded, setTesterExpanded] = useState(true);
   const [testerEmbed, setTesterEmbed] = useState<any>(null);
   const testerApiRef = useRef<any>(null);
 
@@ -255,6 +255,8 @@ const SoundfontManager = () => {
     const originalWarn = console.warn;
     const originalError = console.error;
     const capturedUnsupported = new Set<number>();
+    let detectionActive = false;
+    let currentProgramCandidate: number | null = null;
 
     try {
       toast({
@@ -265,16 +267,17 @@ const SoundfontManager = () => {
       // Mute the player
       api.masterVolume = 0;
 
-      // Hook console to capture warnings
+      // Hook console to capture warnings without program numbers
       console.warn = (...args: any[]) => {
         const message = args.join(' ');
-        // Match: "Skipping load of unsupported" or "not supported"
-        if (message.includes('[AlphaTab][AlphaSynth]') && (message.includes('unsupported') || message.includes('not supported') || message.includes('Skipping load'))) {
-          const match = message.match(/program (\d+)/);
-          if (match) {
-            const program = parseInt(match[1]);
-            capturedUnsupported.add(program);
-            console.log(`✓ Detected unsupported program: ${program}`);
+        if (
+          message.includes('[AlphaTab][AlphaSynth]') &&
+          (message.includes('Skipping load of unsupported') || message.toLowerCase().includes('unsupported'))
+        ) {
+          if (detectionActive && currentProgramCandidate !== null) {
+            capturedUnsupported.add(currentProgramCandidate);
+            // Optional: keep a small debug trace
+            // console.debug(`[Scan] Marked program ${currentProgramCandidate} as unsupported (warn)`);
           }
         }
         return originalWarn.apply(console, args);
@@ -282,10 +285,10 @@ const SoundfontManager = () => {
 
       console.error = (...args: any[]) => {
         const message = args.join(' ');
-        if (message.includes('unsupported') || message.includes('not supported')) {
-          const match = message.match(/program (\d+)/);
-          if (match) {
-            capturedUnsupported.add(parseInt(match[1]));
+        if (message.toLowerCase().includes('unsupported')) {
+          if (detectionActive && currentProgramCandidate !== null) {
+            capturedUnsupported.add(currentProgramCandidate);
+            // console.debug(`[Scan] Marked program ${currentProgramCandidate} as unsupported (error)`);
           }
         }
         return originalError.apply(console, args);
@@ -312,6 +315,10 @@ const SoundfontManager = () => {
         setCurrentInstrument(instrumentName);
         setScanProgress(((program + 1) / 128) * 100);
 
+        // Prepare detection window for this program
+        currentProgramCandidate = program;
+        detectionActive = true;
+
         // Attach midiLoad handler to rewrite all program changes to current program
         const midiLoadHandler = (file: any) => {
           for (const ev of file.events) {
@@ -327,10 +334,10 @@ const SoundfontManager = () => {
         api.midiLoad.on(midiLoadHandler);
         api.loadMidiForScore();
         
-        // Force preset loading with brief playback
+        // Force preset loading with very brief playback (fast scan)
         try {
           api.play();
-          await new Promise(resolve => setTimeout(resolve, 200));
+          await new Promise(resolve => setTimeout(resolve, 20));
           api.stop();
         } catch (e) {
           // Ignore playback errors
@@ -338,8 +345,12 @@ const SoundfontManager = () => {
 
         api.midiLoad.off(midiLoadHandler);
 
-        // Wait 100ms for faster scanning
-        await new Promise(resolve => setTimeout(resolve, 100));
+        // Short settle time to catch any warnings for this program
+        await new Promise(resolve => setTimeout(resolve, 30));
+
+        // Close detection window
+        detectionActive = false;
+        currentProgramCandidate = null;
       }
 
       // Final delay to catch any late warnings
