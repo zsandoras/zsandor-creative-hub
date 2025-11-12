@@ -145,6 +145,9 @@ const AlphaTabPlayer = ({ fileUrl, file, title, onReset, defaultInstrument, onAp
           layoutMode: window.alphaTab.LayoutMode.Page,
           staveProfile: window.alphaTab.StaveProfile.Default,
           scale: 1.0,
+          resources: {
+            secondaryGlyphColor: 'rgb(0, 0, 0)', // Make voice 2 same weight as voice 1
+          },
         },
         player: {
           enablePlayer: true,
