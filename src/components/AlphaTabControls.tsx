@@ -19,6 +19,7 @@ import {
   ScrollText,
   CircleDot,
   Maximize2,
+  Menu,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -107,6 +108,7 @@ const AlphaTabControls = ({
   const [volume, setVolume] = useState(80);
   const [transpose, setTranspose] = useState(0);
   const [autoScroll, setAutoScroll] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     // Load default instrument from prop or fallback to settings
@@ -486,262 +488,473 @@ const AlphaTabControls = ({
 
   return (
     <div className="rounded-lg border text-card-foreground shadow-sm p-0 bg-card border-border overflow-hidden">
-      {/* Main control bar */}
-      <div className={`flex flex-wrap items-center ${spacing} ${padding} bg-muted/30`}>
-        {/* Left Section: Playback Controls + BPM + Title */}
-        <div className={`flex items-center ${spacing}`}>
-          {/* Playback buttons */}
-          <div className={`flex items-center gap-0.5`}>
-            <Button onClick={stop} variant="ghost" size={buttonSize} title="Stop" disabled={!api}>
-              <SkipBack className={iconSize} />
+      {/* Mobile View */}
+      <div className="md:hidden">
+        {/* Compact control row */}
+        <div className={`flex items-center justify-between ${padding} bg-muted/30`}>
+          {/* Left: Play controls */}
+          <div className="flex items-center gap-1">
+            <Button onClick={stop} variant="ghost" size="sm" title="Stop" disabled={!api}>
+              <SkipBack className="h-4 w-4" />
             </Button>
             <Button
               onClick={togglePlayPause}
               variant="default"
-              size={buttonSize}
+              size="sm"
               title="Play/Pause"
               disabled={!api}
             >
-              {isPlaying ? <Pause className={iconSize} /> : <Play className={iconSize} />}
+              {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
             </Button>
           </div>
 
-          {/* BPM controls */}
-          <div className={`flex items-center gap-0.5 border-l border-r ${scaleControls ? 'px-2 mx-1' : 'px-1 mx-0.5'}`}>
-            <Button
-              onClick={() => handleBPMChange(-5)}
-              variant="ghost"
-              size="icon"
-              title="Decrease BPM by 5"
-              disabled={!api || !currentBPM}
-              className={scaleControls ? "h-8 w-8" : "h-7 w-7"}
-            >
-              <ChevronsDown className={iconSize} />
-            </Button>
+          {/* Center: BPM */}
+          <div className="flex items-center gap-0.5 px-2 border-l border-r">
             <Button
               onClick={() => handleBPMChange(-1)}
               variant="ghost"
               size="icon"
-              title="Decrease BPM by 1"
               disabled={!api || !currentBPM}
-              className={scaleControls ? "h-8 w-8" : "h-7 w-7"}
+              className="h-7 w-7"
             >
-              <ChevronDown className={iconSize} />
+              <ChevronDown className="h-3 w-3" />
             </Button>
-            <span className={`${scaleControls ? 'text-xs' : 'text-[10px]'} text-muted-foreground min-w-[3ch] text-center font-mono px-1`}>
+            <span className="text-xs text-muted-foreground min-w-[3ch] text-center font-mono">
               {currentBPM ? Math.round(currentBPM) : "---"}
             </span>
             <Button
               onClick={() => handleBPMChange(1)}
               variant="ghost"
               size="icon"
-              title="Increase BPM by 1"
               disabled={!api || !currentBPM}
-              className={scaleControls ? "h-8 w-8" : "h-7 w-7"}
+              className="h-7 w-7"
             >
-              <ChevronUp className={iconSize} />
-            </Button>
-            <Button
-              onClick={() => handleBPMChange(5)}
-              variant="ghost"
-              size="icon"
-              title="Increase BPM by 5"
-              disabled={!api || !currentBPM}
-              className={scaleControls ? "h-8 w-8" : "h-7 w-7"}
-            >
-              <ChevronsUp className={iconSize} />
+              <ChevronUp className="h-3 w-3" />
             </Button>
           </div>
 
-          {/* Title */}
-          <div className={`hidden md:flex items-center ${scaleControls ? 'px-2' : 'px-1'}`}>
-            <span className={`font-semibold text-foreground whitespace-nowrap ${scaleControls ? 'text-sm' : 'text-xs'}`}>{title}</span>
-          </div>
-        </div>
-
-        {/* Middle Section: Playback Options */}
-        <div className={`flex items-center ${spacing} ${scaleControls ? 'px-2 mx-1' : 'px-1 mx-0.5'} border-l`}>
-          <Button
-            onClick={toggleCountIn}
-            variant="ghost"
-            size={buttonSize}
-            title="Count-In"
-            className={countIn ? "bg-accent" : ""}
-          >
-            <CircleDot className={iconSize} />
-          </Button>
-          <Button
-            onClick={toggleMetronome}
-            variant="ghost"
-            size={buttonSize}
-            title="Metronome"
-            className={metronome ? "bg-accent" : ""}
-          >
-            <Timer className={iconSize} />
-          </Button>
-          <Button
-            onClick={toggleLoop}
-            variant="ghost"
-            size={buttonSize}
-            title="Loop"
-            className={loop ? "bg-accent" : ""}
-          >
-            <Repeat className={iconSize} />
-          </Button>
-          <Button
-            onClick={toggleAutoScroll}
-            variant="ghost"
-            size={buttonSize}
-            title="Auto-scroll"
-            className={autoScroll ? "bg-accent" : ""}
-          >
-            <ScrollText className={iconSize} />
+          {/* Right: Menu */}
+          <Button onClick={() => setMenuOpen(!menuOpen)} variant="ghost" size="sm">
+            <Menu className="h-4 w-4" />
           </Button>
         </div>
 
-        {/* Music Controls Section: Transpose + Instruments */}
-        <div className={`flex items-center ${spacing} ${scaleControls ? 'px-2 mx-1' : 'px-1 mx-0.5'} border-l`}>
-          {/* Transpose */}
-          <div className={`flex items-center gap-0.5`}>
-            <Button
-              onClick={() => handleTranspose("down")}
-              variant="ghost"
-              size={buttonSize}
-              title="Transpose down"
-            >
-              <ChevronDown className={iconSize} />
-            </Button>
-            <span className={`${scaleControls ? 'text-xs' : 'text-[10px]'} text-muted-foreground min-w-[3ch] text-center`}>
-              {transpose > 0 ? `+${transpose}` : transpose}
-            </span>
-            <Button
-              onClick={() => handleTranspose("up")}
-              variant="ghost"
-              size={buttonSize}
-              title="Transpose up"
-            >
-              <ChevronUp className={iconSize} />
-            </Button>
-          </div>
-
-          {/* Synth Instrument */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size={buttonSize} className={`gap-1 ${scaleControls ? 'ml-1' : 'ml-0.5'}`}>
-                <Guitar className={`${iconSize} flex-shrink-0`} />
-                <span className={`hidden lg:inline ${scaleControls ? '' : 'text-xs'}`}>{currentInstrument.name}</span>
+        {/* Mobile menu */}
+        {menuOpen && (
+          <div className="border-t border-border bg-muted/20 p-3 space-y-3">
+            {/* Playback options */}
+            <div className="flex items-center justify-around gap-2">
+              <Button
+                onClick={toggleCountIn}
+                variant="ghost"
+                size="sm"
+                className={countIn ? "bg-accent" : ""}
+              >
+                <CircleDot className="h-4 w-4 mr-1" />
+                <span className="text-xs">Count</span>
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="max-h-80 overflow-y-auto z-50 bg-popover">
-              {INSTRUMENTS.map((instrument) => (
-                <DropdownMenuItem
-                  key={instrument.program}
-                  onClick={() => handleSynthInstrumentChange(instrument)}
-                  className={currentInstrument.program === instrument.program ? "bg-accent" : ""}
-                >
-                  {instrument.name}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+              <Button
+                onClick={toggleMetronome}
+                variant="ghost"
+                size="sm"
+                className={metronome ? "bg-accent" : ""}
+              >
+                <Timer className="h-4 w-4 mr-1" />
+                <span className="text-xs">Metro</span>
+              </Button>
+              <Button
+                onClick={toggleLoop}
+                variant="ghost"
+                size="sm"
+                className={loop ? "bg-accent" : ""}
+              >
+                <Repeat className="h-4 w-4 mr-1" />
+                <span className="text-xs">Loop</span>
+              </Button>
+              <Button
+                onClick={toggleAutoScroll}
+                variant="ghost"
+                size="sm"
+                className={autoScroll ? "bg-accent" : ""}
+              >
+                <ScrollText className="h-4 w-4 mr-1" />
+                <span className="text-xs">Scroll</span>
+              </Button>
+            </div>
 
-          {/* Track selector */}
-          {tracks.length > 1 && (
+            {/* Transpose & Instrument */}
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-1">
+                <span className="text-xs text-muted-foreground mr-1">Transpose:</span>
+                <Button
+                  onClick={() => handleTranspose("down")}
+                  variant="ghost"
+                  size="sm"
+                >
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+                <span className="text-xs text-muted-foreground min-w-[3ch] text-center">
+                  {transpose > 0 ? `+${transpose}` : transpose}
+                </span>
+                <Button
+                  onClick={() => handleTranspose("up")}
+                  variant="ghost"
+                  size="sm"
+                >
+                  <ChevronUp className="h-4 w-4" />
+                </Button>
+              </div>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="text-xs">
+                    <Guitar className="h-4 w-4 mr-1" />
+                    {currentInstrument.name}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="max-h-60 overflow-y-auto z-50 bg-popover">
+                  {INSTRUMENTS.map((instrument) => (
+                    <DropdownMenuItem
+                      key={instrument.program}
+                      onClick={() => handleSynthInstrumentChange(instrument)}
+                      className={currentInstrument.program === instrument.program ? "bg-accent" : ""}
+                    >
+                      {instrument.name}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            {/* Zoom */}
+            <div className="flex items-center gap-2">
+              <ZoomIn className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+              <Slider
+                value={[zoom]}
+                onValueChange={(value) => handleZoomChange(value[0])}
+                min={25}
+                max={300}
+                step={5}
+                className="flex-1"
+              />
+              <span className="text-xs text-muted-foreground min-w-[4ch] text-right">{zoom}%</span>
+            </div>
+
+            {/* Volume */}
+            <div className="flex items-center gap-2">
+              <Volume2 className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+              <Slider
+                value={[volume]}
+                onValueChange={handleVolumeChange}
+                max={100}
+                step={1}
+                className="flex-1"
+              />
+              <span className="text-xs text-muted-foreground min-w-[3ch]">{volume}%</span>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center justify-around gap-2">
+              <Button onClick={handleDownload} variant="ghost" size="sm">
+                <Download className="h-4 w-4 mr-1" />
+                <span className="text-xs">Download</span>
+              </Button>
+              <Button onClick={handleExportPDF} variant="ghost" size="sm">
+                <FileDown className="h-4 w-4 mr-1" />
+                <span className="text-xs">PDF</span>
+              </Button>
+              {onToggleScale && (
+                <Button
+                  onClick={onToggleScale}
+                  variant="ghost"
+                  size="sm"
+                  className={scaleControls ? "bg-accent" : ""}
+                >
+                  <Maximize2 className="h-4 w-4 mr-1" />
+                  <span className="text-xs">Scale</span>
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Scrubber */}
+        <div className="flex items-center gap-2 p-2 bg-muted/20 border-t border-border">
+          <span className="text-xs text-muted-foreground whitespace-nowrap">
+            {formatTime(currentTime)}
+          </span>
+          <Slider
+            value={[currentTime]}
+            onValueChange={handleSeek}
+            max={duration}
+            step={100}
+            className="flex-1"
+          />
+          <span className="text-xs text-muted-foreground whitespace-nowrap">
+            {formatTime(duration)}
+          </span>
+        </div>
+      </div>
+
+      {/* Desktop View */}
+      <div className="hidden md:block">
+        {/* Main control bar */}
+        <div className={`flex flex-wrap items-center ${spacing} ${padding} bg-muted/30`}>
+          {/* Left Section: Playback Controls + BPM + Title */}
+          <div className={`flex items-center ${spacing}`}>
+            {/* Playback buttons */}
+            <div className={`flex items-center gap-0.5`}>
+              <Button onClick={stop} variant="ghost" size={buttonSize} title="Stop" disabled={!api}>
+                <SkipBack className={iconSize} />
+              </Button>
+              <Button
+                onClick={togglePlayPause}
+                variant="default"
+                size={buttonSize}
+                title="Play/Pause"
+                disabled={!api}
+              >
+                {isPlaying ? <Pause className={iconSize} /> : <Play className={iconSize} />}
+              </Button>
+            </div>
+
+            {/* BPM controls */}
+            <div className={`flex items-center gap-0.5 border-l border-r ${scaleControls ? 'px-2 mx-1' : 'px-1 mx-0.5'}`}>
+              <Button
+                onClick={() => handleBPMChange(-5)}
+                variant="ghost"
+                size="icon"
+                title="Decrease BPM by 5"
+                disabled={!api || !currentBPM}
+                className={scaleControls ? "h-8 w-8" : "h-7 w-7"}
+              >
+                <ChevronsDown className={iconSize} />
+              </Button>
+              <Button
+                onClick={() => handleBPMChange(-1)}
+                variant="ghost"
+                size="icon"
+                title="Decrease BPM by 1"
+                disabled={!api || !currentBPM}
+                className={scaleControls ? "h-8 w-8" : "h-7 w-7"}
+              >
+                <ChevronDown className={iconSize} />
+              </Button>
+              <span className={`${scaleControls ? 'text-xs' : 'text-[10px]'} text-muted-foreground min-w-[3ch] text-center font-mono px-1`}>
+                {currentBPM ? Math.round(currentBPM) : "---"}
+              </span>
+              <Button
+                onClick={() => handleBPMChange(1)}
+                variant="ghost"
+                size="icon"
+                title="Increase BPM by 1"
+                disabled={!api || !currentBPM}
+                className={scaleControls ? "h-8 w-8" : "h-7 w-7"}
+              >
+                <ChevronUp className={iconSize} />
+              </Button>
+              <Button
+                onClick={() => handleBPMChange(5)}
+                variant="ghost"
+                size="icon"
+                title="Increase BPM by 5"
+                disabled={!api || !currentBPM}
+                className={scaleControls ? "h-8 w-8" : "h-7 w-7"}
+              >
+                <ChevronsUp className={iconSize} />
+              </Button>
+            </div>
+
+            {/* Title */}
+            <div className={`flex items-center ${scaleControls ? 'px-2' : 'px-1'}`}>
+              <span className={`font-semibold text-foreground whitespace-nowrap ${scaleControls ? 'text-sm' : 'text-xs'}`}>{title}</span>
+            </div>
+          </div>
+
+          {/* Middle Section: Playback Options */}
+          <div className={`flex items-center ${spacing} ${scaleControls ? 'px-2 mx-1' : 'px-1 mx-0.5'} border-l`}>
+            <Button
+              onClick={toggleCountIn}
+              variant="ghost"
+              size={buttonSize}
+              title="Count-In"
+              className={countIn ? "bg-accent" : ""}
+            >
+              <CircleDot className={iconSize} />
+            </Button>
+            <Button
+              onClick={toggleMetronome}
+              variant="ghost"
+              size={buttonSize}
+              title="Metronome"
+              className={metronome ? "bg-accent" : ""}
+            >
+              <Timer className={iconSize} />
+            </Button>
+            <Button
+              onClick={toggleLoop}
+              variant="ghost"
+              size={buttonSize}
+              title="Loop"
+              className={loop ? "bg-accent" : ""}
+            >
+              <Repeat className={iconSize} />
+            </Button>
+            <Button
+              onClick={toggleAutoScroll}
+              variant="ghost"
+              size={buttonSize}
+              title="Auto-scroll"
+              className={autoScroll ? "bg-accent" : ""}
+            >
+              <ScrollText className={iconSize} />
+            </Button>
+          </div>
+
+          {/* Music Controls Section: Transpose + Instruments */}
+          <div className={`flex items-center ${spacing} ${scaleControls ? 'px-2 mx-1' : 'px-1 mx-0.5'} border-l`}>
+            {/* Transpose */}
+            <div className={`flex items-center gap-0.5`}>
+              <Button
+                onClick={() => handleTranspose("down")}
+                variant="ghost"
+                size={buttonSize}
+                title="Transpose down"
+              >
+                <ChevronDown className={iconSize} />
+              </Button>
+              <span className={`${scaleControls ? 'text-xs' : 'text-[10px]'} text-muted-foreground min-w-[3ch] text-center`}>
+                {transpose > 0 ? `+${transpose}` : transpose}
+              </span>
+              <Button
+                onClick={() => handleTranspose("up")}
+                variant="ghost"
+                size={buttonSize}
+                title="Transpose up"
+              >
+                <ChevronUp className={iconSize} />
+              </Button>
+            </div>
+
+            {/* Synth Instrument */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size={buttonSize} className="gap-1">
-                  <Music2 className={iconSize} />
-                  <span className={`hidden lg:inline ${scaleControls ? '' : 'text-xs'}`}>Track</span>
+                <Button variant="ghost" size={buttonSize} className={`gap-1 ${scaleControls ? 'ml-1' : 'ml-0.5'}`}>
+                  <Guitar className={`${iconSize} flex-shrink-0`} />
+                  <span className={`hidden lg:inline ${scaleControls ? '' : 'text-xs'}`}>{currentInstrument.name}</span>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="z-50 bg-popover">
-                {tracks.map((track, index) => (
+              <DropdownMenuContent className="max-h-80 overflow-y-auto z-50 bg-popover">
+                {INSTRUMENTS.map((instrument) => (
                   <DropdownMenuItem
-                    key={index}
-                    onClick={() => handleInstrumentChange(index)}
-                    className={selectedInstrument === index ? "bg-accent" : ""}
+                    key={instrument.program}
+                    onClick={() => handleSynthInstrumentChange(instrument)}
+                    className={currentInstrument.program === instrument.program ? "bg-accent" : ""}
                   >
-                    {track.name}
+                    {instrument.name}
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
-          )}
-        </div>
 
-        {/* Zoom & Volume Section */}
-        <div className={`flex items-center ${spacing} flex-1 min-w-[200px]`}>
-          {/* Zoom */}
-          <div className={`flex items-center ${spacing} ${scaleControls ? 'px-3' : 'px-2'} border-l flex-1 min-w-[120px]`}>
-            <ZoomIn className={`${iconSize} text-muted-foreground flex-shrink-0`} />
-            <Slider
-              value={[zoom]}
-              onValueChange={(value) => handleZoomChange(value[0])}
-              min={25}
-              max={300}
-              step={5}
-              className="flex-1 min-w-[60px]"
-            />
-            <span className={`${scaleControls ? 'text-xs' : 'text-[10px]'} text-muted-foreground min-w-[4ch] text-right`}>{zoom}%</span>
+            {/* Track selector */}
+            {tracks.length > 1 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size={buttonSize} className="gap-1">
+                    <Music2 className={iconSize} />
+                    <span className={`hidden lg:inline ${scaleControls ? '' : 'text-xs'}`}>Track</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="z-50 bg-popover">
+                  {tracks.map((track, index) => (
+                    <DropdownMenuItem
+                      key={index}
+                      onClick={() => handleInstrumentChange(index)}
+                      className={selectedInstrument === index ? "bg-accent" : ""}
+                    >
+                      {track.name}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
 
-          {/* Volume */}
-          <div className={`flex items-center ${spacing} ${scaleControls ? 'px-3' : 'px-2'} border-l flex-1 min-w-[120px]`}>
-            <Volume2 className={`${iconSize} text-muted-foreground flex-shrink-0`} />
-            <Slider
-              value={[volume]}
-              onValueChange={handleVolumeChange}
-              max={100}
-              step={1}
-              className="flex-1 min-w-[60px]"
-            />
-            <span className={`${scaleControls ? 'text-xs' : 'text-[10px]'} text-muted-foreground min-w-[3ch]`}>{volume}%</span>
-          </div>
-        </div>
+          {/* Zoom & Volume Section */}
+          <div className={`flex items-center ${spacing} flex-1 min-w-[200px]`}>
+            {/* Zoom */}
+            <div className={`flex items-center ${spacing} ${scaleControls ? 'px-3' : 'px-2'} border-l flex-1 min-w-[120px]`}>
+              <ZoomIn className={`${iconSize} text-muted-foreground flex-shrink-0`} />
+              <Slider
+                value={[zoom]}
+                onValueChange={(value) => handleZoomChange(value[0])}
+                min={25}
+                max={300}
+                step={5}
+                className="flex-1 min-w-[60px]"
+              />
+              <span className={`${scaleControls ? 'text-xs' : 'text-[10px]'} text-muted-foreground min-w-[4ch] text-right`}>{zoom}%</span>
+            </div>
 
-        {/* File actions */}
-        <div className={`flex items-center gap-0.5 ${scaleControls ? 'px-2 ml-1' : 'px-1 ml-0.5'} border-l`}>
-          <Button onClick={handleDownload} variant="ghost" size={buttonSize} title="Download">
-            <Download className={iconSize} />
-          </Button>
-          <Button onClick={handleExportPDF} variant="ghost" size={buttonSize} title="Export PDF">
-            <FileDown className={iconSize} />
-          </Button>
-          {onToggleScale && (
-            <Button
-              onClick={onToggleScale}
-              variant="ghost"
-              size={buttonSize}
-              title={scaleControls ? "Fixed width" : "Auto scale"}
-              className={scaleControls ? "bg-accent" : ""}
-            >
-              <Maximize2 className={iconSize} />
+            {/* Volume */}
+            <div className={`flex items-center ${spacing} ${scaleControls ? 'px-3' : 'px-2'} border-l flex-1 min-w-[120px]`}>
+              <Volume2 className={`${iconSize} text-muted-foreground flex-shrink-0`} />
+              <Slider
+                value={[volume]}
+                onValueChange={handleVolumeChange}
+                max={100}
+                step={1}
+                className="flex-1 min-w-[60px]"
+              />
+              <span className={`${scaleControls ? 'text-xs' : 'text-[10px]'} text-muted-foreground min-w-[3ch]`}>{volume}%</span>
+            </div>
+          </div>
+
+          {/* File actions */}
+          <div className={`flex items-center gap-0.5 ${scaleControls ? 'px-2 ml-1' : 'px-1 ml-0.5'} border-l`}>
+            <Button onClick={handleDownload} variant="ghost" size={buttonSize} title="Download">
+              <Download className={iconSize} />
             </Button>
-          )}
+            <Button onClick={handleExportPDF} variant="ghost" size={buttonSize} title="Export PDF">
+              <FileDown className={iconSize} />
+            </Button>
+            {onToggleScale && (
+              <Button
+                onClick={onToggleScale}
+                variant="ghost"
+                size={buttonSize}
+                title={scaleControls ? "Fixed width" : "Auto scale"}
+                className={scaleControls ? "bg-accent" : ""}
+              >
+                <Maximize2 className={iconSize} />
+              </Button>
+            )}
+          </div>
         </div>
-      </div>
 
-      {/* Bottom row: Full-width scrubber */}
-      <div className={`flex items-center ${spacing} ${padding} ${scaleControls ? 'py-3' : 'py-2'} bg-muted/20 border-t border-border`}>
-        <span className={`${scaleControls ? 'text-sm' : 'text-xs'} text-muted-foreground whitespace-nowrap`}>
-          {formatTime(currentTime)}
-        </span>
-        <Slider
-          value={[currentTime]}
-          onValueChange={handleSeek}
-          max={duration}
-          step={100}
-          className="flex-1"
-        />
-        <span className={`${scaleControls ? 'text-sm' : 'text-xs'} text-muted-foreground whitespace-nowrap`}>
-          {formatTime(duration)}
-        </span>
-      </div>
+        {/* Bottom row: Full-width scrubber */}
+        <div className={`flex items-center ${spacing} ${padding} ${scaleControls ? 'py-3' : 'py-2'} bg-muted/20 border-t border-border`}>
+          <span className={`${scaleControls ? 'text-sm' : 'text-xs'} text-muted-foreground whitespace-nowrap`}>
+            {formatTime(currentTime)}
+          </span>
+          <Slider
+            value={[currentTime]}
+            onValueChange={handleSeek}
+            max={duration}
+            step={100}
+            className="flex-1"
+          />
+          <span className={`${scaleControls ? 'text-sm' : 'text-xs'} text-muted-foreground whitespace-nowrap`}>
+            {formatTime(duration)}
+          </span>
+        </div>
 
-      <div className={`${padding} ${scaleControls ? 'py-2' : 'py-1'} bg-muted/20 border-t border-border`}>
-        <p className={`${scaleControls ? 'text-xs' : 'text-[10px]'} text-muted-foreground text-center`}>
-          💡 Tip: Click directly on the rendered tablature to start playback
-        </p>
+        <div className={`${padding} ${scaleControls ? 'py-2' : 'py-1'} bg-muted/20 border-t border-border`}>
+          <p className={`${scaleControls ? 'text-xs' : 'text-[10px]'} text-muted-foreground text-center`}>
+            💡 Tip: Click directly on the rendered tablature to start playback
+          </p>
+        </div>
       </div>
     </div>
   );
