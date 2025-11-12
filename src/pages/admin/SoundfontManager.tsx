@@ -175,7 +175,7 @@ const SoundfontManager = () => {
           value: publicUrl,
           updated_by: user?.id,
           metadata: { available_instruments: knownInstruments }
-        });
+        }, { onConflict: 'key' });
 
       if (error) throw error;
 
@@ -217,7 +217,7 @@ const SoundfontManager = () => {
           value: defaultUrl,
           updated_by: user?.id,
           metadata: { available_instruments: sonivoxInstruments }
-        });
+        }, { onConflict: 'key' });
 
       if (error) throw error;
 
