@@ -139,6 +139,7 @@ const AlphaTabPlayer = ({ fileUrl, file, title, onReset, defaultInstrument, onAp
       const api = new window.alphaTab.AlphaTabApi(containerRef.current, {
         core: {
           fontDirectory: "https://cdn.jsdelivr.net/npm/@coderline/alphatab@latest/dist/font/",
+          logLevel: window.alphaTab.LogLevel?.Debug ?? 1,
         },
         display: {
           layoutMode: window.alphaTab.LayoutMode.Page,
@@ -155,6 +156,38 @@ const AlphaTabPlayer = ({ fileUrl, file, title, onReset, defaultInstrument, onAp
       });
 
       apiRef.current = api;
+      
+      // Enable debug logging for synth and bridge worker messages
+      try {
+        if (api.synth && typeof api.synth.logLevel !== 'undefined') {
+          api.synth.logLevel = window.alphaTab.LogLevel?.Debug ?? 1;
+        }
+        
+        // Bridge soundFontLoadFailed events to window
+        if (api.synth?.soundFontLoadFailed) {
+          api.synth.soundFontLoadFailed.on((details: any) => {
+            window.dispatchEvent(new CustomEvent('alphatab-sf-failed', { detail: details }));
+          });
+        }
+        
+        // Bridge midiLoadFailed events
+        if (api.midiLoadFailed) {
+          api.midiLoadFailed.on((err: any) => {
+            window.dispatchEvent(new CustomEvent('alphatab-midi-failed', { detail: err }));
+          });
+        }
+        
+        // Bridge raw worker messages if available
+        if (api.synth?.worker) {
+          api.synth.worker.addEventListener('message', (evt: MessageEvent) => {
+            if (evt?.data?.type === 'log') {
+              window.dispatchEvent(new CustomEvent('alphatab-worker-log', { detail: evt.data }));
+            }
+          });
+        }
+      } catch (e) {
+        console.warn('Could not setup AlphaTab worker bridges:', e);
+      }
       
       // Notify parent component that API is ready
       onApiReady?.(api);

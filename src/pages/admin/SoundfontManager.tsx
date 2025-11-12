@@ -281,55 +281,97 @@ const SoundfontManager = () => {
       });
     };
 
+    // Helper to extract and mark unsupported program
+    const markUnsupported = (program: number, source: string, message: string) => {
+      if (program >= 0 && program < 128) {
+        capturedUnsupported.add(program);
+        addDebug(`[${source}] ${message} ⛔ UNSUPPORTED → ${program}`);
+        return true;
+      }
+      return false;
+    };
+
+    // Helper to check any message for unsupported patterns
+    const checkMessageForUnsupported = (message: string, source = 'console') => {
+      const lowerMsg = message.toLowerCase();
+      const isSynth = lowerMsg.includes('[alphatab][alphasynth]') || lowerMsg.includes('alphasynth');
+      const mentionsUnsupported = lowerMsg.includes('unsupported') || lowerMsg.includes('skipping load of unsupported');
+      
+      if (isSynth && mentionsUnsupported) {
+        // Try to extract program number directly from the log
+        const match = message.match(/program\s+(\d{1,3})/i);
+        
+        if (match) {
+          const prog = parseInt(match[1], 10);
+          markUnsupported(prog, source, message);
+          return;
+        }
+        
+        // Fallback to current detection window
+        if (detectionActive && currentProgramCandidate !== null) {
+          markUnsupported(currentProgramCandidate, source, message);
+          return;
+        }
+        
+        // Log without program number
+        addDebug(`[${source}] ${message}`);
+      }
+    };
+
+    // Window event handlers for worker bridges
+    const onAlphatabSfFailed = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      const program = detail?.program;
+      const bank = detail?.bank;
+      const reason = detail?.reason || detail?.message || 'unknown';
+      
+      if (typeof program === 'number') {
+        markUnsupported(program, 'sf-failed', `bank=${bank} program=${program} reason=${reason}`);
+      } else {
+        addDebug(`[sf-failed] ${JSON.stringify(detail)}`);
+        // Try regex fallback
+        const msg = JSON.stringify(detail);
+        checkMessageForUnsupported(msg, 'sf-failed');
+      }
+    };
+
+    const onAlphatabWorkerLog = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      const message = detail?.message || '';
+      if (message) {
+        addDebug(`[worker-log] ${message}`);
+        checkMessageForUnsupported(message, 'worker-log');
+      }
+    };
+
+    const onAlphatabMidiFailed = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      addDebug(`[midi-failed] ${JSON.stringify(detail)}`);
+    };
+
     try {
       toast({
         title: "Starting Scan",
         description: "Preparing to test all 128 GM instruments...",
       });
 
+      // Register window event listeners
+      window.addEventListener('alphatab-sf-failed', onAlphatabSfFailed);
+      window.addEventListener('alphatab-worker-log', onAlphatabWorkerLog);
+      window.addEventListener('alphatab-midi-failed', onAlphatabMidiFailed);
+
       // Mute the player
       api.masterVolume = 0;
 
-      // Helper to check any message for unsupported patterns
-      const checkMessageForUnsupported = (message: string) => {
-        const lowerMsg = message.toLowerCase();
-        const isSynth = lowerMsg.includes('[alphatab][alphasynth]') || lowerMsg.includes('alphasynth');
-        const mentionsUnsupported = lowerMsg.includes('unsupported') || lowerMsg.includes('skipping load of unsupported');
-        
-        if (isSynth && mentionsUnsupported) {
-          // Try to extract program number directly from the log
-          const match = message.match(/program\s+(\d{1,3})/i);
-          let foundProgram: number | null = null;
-          
-          if (match) {
-            const prog = parseInt(match[1], 10);
-            if (!Number.isNaN(prog) && prog >= 0 && prog < 128) {
-              foundProgram = prog;
-              capturedUnsupported.add(prog);
-            }
-          } else if (detectionActive && currentProgramCandidate !== null) {
-            // Fallback to current detection window
-            foundProgram = currentProgramCandidate;
-            capturedUnsupported.add(currentProgramCandidate);
-          }
-          
-          // Show in debug feed with detection info
-          const suffix = foundProgram !== null ? ` ⛔ UNSUPPORTED → ${foundProgram}` : '';
-          addDebug(message + suffix);
-        }
-      };
-
-      // Wrap AlphaTab Logger to intercept Web Worker messages
+      // Wrap AlphaTab Logger to intercept Web Worker messages (secondary signal)
       if (at?.Logger) {
-        // Set log level to Debug for maximum verbosity
         at.Logger.logLevel = at.LogLevel?.Debug ?? 0;
         
-        // Create wrapper ILogger that captures and forwards messages
         const wrappedLogger = {
           debug: (category: string, msg: string, details?: any) => {
             const fullMsg = `[debug][${category}] ${msg}`;
             addDebug(fullMsg);
-            checkMessageForUnsupported(fullMsg);
+            checkMessageForUnsupported(fullMsg, 'logger');
             if (originalAtLogger?.debug) {
               originalAtLogger.debug(category, msg, details);
             }
@@ -337,7 +379,7 @@ const SoundfontManager = () => {
           info: (category: string, msg: string, details?: any) => {
             const fullMsg = `[info][${category}] ${msg}`;
             addDebug(fullMsg);
-            checkMessageForUnsupported(fullMsg);
+            checkMessageForUnsupported(fullMsg, 'logger');
             if (originalAtLogger?.info) {
               originalAtLogger.info(category, msg, details);
             }
@@ -345,7 +387,7 @@ const SoundfontManager = () => {
           warning: (category: string, msg: string, details?: any) => {
             const fullMsg = `[warn][${category}] ${msg}`;
             addDebug(fullMsg);
-            checkMessageForUnsupported(fullMsg);
+            checkMessageForUnsupported(fullMsg, 'logger');
             if (originalAtLogger?.warning) {
               originalAtLogger.warning(category, msg, details);
             }
@@ -353,7 +395,7 @@ const SoundfontManager = () => {
           error: (category: string, msg: string, details?: any) => {
             const fullMsg = `[error][${category}] ${msg}`;
             addDebug(fullMsg);
-            checkMessageForUnsupported(fullMsg);
+            checkMessageForUnsupported(fullMsg, 'logger');
             if (originalAtLogger?.error) {
               originalAtLogger.error(category, msg, details);
             }
@@ -363,32 +405,28 @@ const SoundfontManager = () => {
         at.Logger.log = wrappedLogger;
       }
 
-
-      // Hook console.log
+      // Hook console methods (secondary signal)
       console.log = (...args: any[]) => {
         const message = args.map(a => (typeof a === 'string' ? a : JSON.stringify(a))).join(' ');
-        checkMessageForUnsupported(message);
+        checkMessageForUnsupported(message, 'console');
         return originalLog.apply(console, args);
       };
 
-      // Hook console.info
       console.info = (...args: any[]) => {
         const message = args.map(a => (typeof a === 'string' ? a : JSON.stringify(a))).join(' ');
-        checkMessageForUnsupported(message);
+        checkMessageForUnsupported(message, 'console');
         return originalInfo.apply(console, args);
       };
 
-      // Hook console.warn
       console.warn = (...args: any[]) => {
         const message = args.map(a => (typeof a === 'string' ? a : JSON.stringify(a))).join(' ');
-        checkMessageForUnsupported(message);
+        checkMessageForUnsupported(message, 'console');
         return originalWarn.apply(console, args);
       };
 
-      // Hook console.error
       console.error = (...args: any[]) => {
         const message = args.map(a => (typeof a === 'string' ? a : JSON.stringify(a))).join(' ');
-        checkMessageForUnsupported(message);
+        checkMessageForUnsupported(message, 'console');
         return originalError.apply(console, args);
       };
 
@@ -450,8 +488,8 @@ const SoundfontManager = () => {
         await new Promise(resolve => setTimeout(resolve, 40));
       }
 
-      // Keep detection active for last program with tail wait to catch late logs
-      await new Promise(resolve => setTimeout(resolve, 200));
+      // Keep detection active with extended tail wait to catch late worker logs
+      await new Promise(resolve => setTimeout(resolve, 400));
       detectionActive = false;
       currentProgramCandidate = null;
 
@@ -477,6 +515,11 @@ const SoundfontManager = () => {
         variant: "destructive",
       });
     } finally {
+      // Remove window event listeners
+      window.removeEventListener('alphatab-sf-failed', onAlphatabSfFailed);
+      window.removeEventListener('alphatab-worker-log', onAlphatabWorkerLog);
+      window.removeEventListener('alphatab-midi-failed', onAlphatabMidiFailed);
+      
       // Restore all console methods
       console.log = originalLog;
       console.info = originalInfo;
