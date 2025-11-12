@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
 import AlphaTabControls from "./AlphaTabControls";
 import { GripVertical } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import "./AlphaTabPlayer.css";
 
 declare global {
@@ -33,6 +34,33 @@ const AlphaTabPlayer = ({ fileUrl, file, title, onReset, defaultInstrument }: Al
   const [scaleControls, setScaleControls] = useState(true);
   const [soundFontLoading, setSoundFontLoading] = useState(false);
   const [soundFontReady, setSoundFontReady] = useState(false);
+  const [soundFontUrl, setSoundFontUrl] = useState<string>("https://cdn.jsdelivr.net/npm/@coderline/alphatab@latest/dist/soundfont/sonivox.sf2");
+
+  // Load soundfont URL from settings
+  useEffect(() => {
+    const loadSoundfontUrl = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('app_settings')
+          .select('value')
+          .eq('key', 'soundfont_url')
+          .single();
+
+        if (error && error.code !== 'PGRST116') {
+          console.error("Error loading soundfont URL:", error);
+          return;
+        }
+
+        if (data?.value) {
+          setSoundFontUrl(data.value as string);
+        }
+      } catch (e) {
+        console.error("Failed to load soundfont URL:", e);
+      }
+    };
+
+    loadSoundfontUrl();
+  }, []);
 
   // Handle wheel events to enable scrolling on hover
   useEffect(() => {
@@ -118,7 +146,7 @@ const AlphaTabPlayer = ({ fileUrl, file, title, onReset, defaultInstrument }: Al
         },
         player: {
           enablePlayer: true,
-          soundFont: "https://cdn.jsdelivr.net/npm/@coderline/alphatab@latest/dist/soundfont/sonivox.sf2",
+          soundFont: soundFontUrl,
           enableCursor: true,
           scrollMode: window.alphaTab.ScrollMode.OffScreen,
           scrollElement: containerRef.current, // This is the actual scrollable container
@@ -210,7 +238,7 @@ const AlphaTabPlayer = ({ fileUrl, file, title, onReset, defaultInstrument }: Al
         apiRef.current = null;
       }
     };
-  }, [alphaTabLoaded, fileUrl, file]);
+  }, [alphaTabLoaded, fileUrl, file, soundFontUrl]);
 
   const loadFile = async (api: any) => {
     try {
