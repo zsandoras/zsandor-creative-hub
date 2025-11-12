@@ -74,9 +74,17 @@ async function parseSF2PresetsChunked(supabase: any, bucket: string, fileName: s
     let offset = 12;
     let pdtaOffset = -1;
     let pdtaSize = 0;
-    const chunkScanSize = 1024;
+    const chunkScanSize = 8192; // Increased from 1KB to 8KB for faster scanning
+    let scanIterations = 0;
+    
+    console.log('Scanning for pdta chunk...');
     
     while (offset < fileSize && pdtaOffset === -1) {
+      scanIterations++;
+      if (scanIterations % 100 === 0) {
+        console.log(`Scanned ${offset} / ${fileSize} bytes (${((offset/fileSize)*100).toFixed(1)}%)`);
+      }
+      
       const scanEnd = Math.min(offset + chunkScanSize - 1, fileSize - 1);
       const chunkBuffer = await fetchRange(supabase, bucket, fileName, offset, scanEnd);
       const view = new Uint8Array(chunkBuffer);
@@ -99,6 +107,11 @@ async function parseSF2PresetsChunked(supabase: any, bucket: string, fileName: s
       }
       
       offset += chunkScanSize - 12; // Overlap to avoid missing boundary chunks
+      
+      // Timeout protection: if scanning takes more than 50 seconds, abort
+      if (scanIterations > 10000) {
+        throw new Error('Scan timeout: could not find pdta chunk in reasonable time');
+      }
     }
     
     if (pdtaOffset === -1) {

@@ -202,18 +202,38 @@ const SoundfontManager = () => {
   const handleRescan = async (fileName: string) => {
     setScanning(true);
     try {
+      console.log('Starting soundfont scan for:', fileName);
+      
       toast({
-        title: "Scanning Soundfont",
-        description: "Analyzing available instruments using chunked parsing...",
+        title: "Starting Scan",
+        description: "Connecting to edge function...",
       });
 
+      const startTime = Date.now();
       const { data, error } = await supabase.functions.invoke('parse-soundfont', {
         body: { fileName }
       });
 
-      if (error) throw error;
+      const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+      console.log(`Edge function completed in ${duration}s`, { data, error });
+
+      if (error) {
+        console.error('Edge function error:', error);
+        throw new Error(`Edge function failed: ${JSON.stringify(error)}`);
+      }
+
+      if (!data) {
+        throw new Error('No data returned from edge function');
+      }
+
+      toast({
+        title: "Parsing Complete",
+        description: `Scan took ${duration}s. Updating settings...`,
+      });
 
       const availableInstruments = data?.availableInstruments || null;
+      console.log('Available instruments:', availableInstruments);
+      
       const { data: { publicUrl } } = supabase.storage
         .from('soundfonts')
         .getPublicUrl(fileName);
@@ -227,21 +247,24 @@ const SoundfontManager = () => {
         .eq('key', 'soundfont_url')
         .eq('value', publicUrl);
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error('Update error:', updateError);
+        throw updateError;
+      }
 
       toast({
-        title: "Scan Complete",
+        title: "✅ Scan Complete",
         description: availableInstruments 
-          ? `Found ${availableInstruments.length} instruments. Refresh the Guitar Pro page.`
-          : "Using all 128 GM instruments. Refresh the Guitar Pro page.",
+          ? `Found ${availableInstruments.length} instruments in ${duration}s. Refresh the Guitar Pro page.`
+          : `All 128 GM instruments available. Refresh the Guitar Pro page.`,
       });
 
       await loadCurrentSetting();
     } catch (error: any) {
-      console.error('Error scanning soundfont:', error);
+      console.error('Full error details:', error);
       toast({
-        title: "Scan Failed",
-        description: error.message || "Could not analyze soundfont",
+        title: "❌ Scan Failed",
+        description: error.message || "Unknown error. Check console for details.",
         variant: "destructive",
       });
     } finally {
