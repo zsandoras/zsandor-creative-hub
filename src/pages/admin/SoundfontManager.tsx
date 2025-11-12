@@ -234,18 +234,13 @@ const SoundfontManager = () => {
       const availableInstruments = data?.availableInstruments || null;
       console.log('Available instruments:', availableInstruments);
       
-      const { data: { publicUrl } } = supabase.storage
-        .from('soundfonts')
-        .getPublicUrl(fileName);
-      
-      // Update the metadata in app_settings
+      // Update the metadata in app_settings (filter by key only)
       const { error: updateError } = await supabase
         .from('app_settings')
         .update({ 
           metadata: { available_instruments: availableInstruments }
         })
-        .eq('key', 'soundfont_url')
-        .eq('value', publicUrl);
+        .eq('key', 'soundfont_url');
 
       if (updateError) {
         console.error('Update error:', updateError);
