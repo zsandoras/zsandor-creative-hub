@@ -199,34 +199,49 @@ const SoundfontManager = () => {
     }
   };
 
-  const handleConfigureInstruments = async (fileName: string, allInstruments: boolean) => {
+  const handleRescan = async (fileName: string) => {
     setScanning(true);
     try {
-      const instruments = allInstruments ? Array.from({ length: 128 }, (_, i) => i) : null;
+      toast({
+        title: "Scanning Soundfont",
+        description: "Analyzing available instruments using chunked parsing...",
+      });
+
+      const { data, error } = await supabase.functions.invoke('parse-soundfont', {
+        body: { fileName }
+      });
+
+      if (error) throw error;
+
+      const availableInstruments = data?.availableInstruments || null;
       const { data: { publicUrl } } = supabase.storage
         .from('soundfonts')
         .getPublicUrl(fileName);
-
-      const { error } = await supabase
+      
+      // Update the metadata in app_settings
+      const { error: updateError } = await supabase
         .from('app_settings')
-        .update({
-          metadata: { available_instruments: instruments }
+        .update({ 
+          metadata: { available_instruments: availableInstruments }
         })
         .eq('key', 'soundfont_url')
         .eq('value', publicUrl);
 
-      if (error) throw error;
+      if (updateError) throw updateError;
 
       toast({
-        title: "Success",
-        description: allInstruments 
-          ? "All 128 instruments enabled. Refresh the Guitar Pro page."
-          : "Instrument filter cleared. Refresh the Guitar Pro page.",
+        title: "Scan Complete",
+        description: availableInstruments 
+          ? `Found ${availableInstruments.length} instruments. Refresh the Guitar Pro page.`
+          : "Using all 128 GM instruments. Refresh the Guitar Pro page.",
       });
+
+      await loadCurrentSetting();
     } catch (error: any) {
+      console.error('Error scanning soundfont:', error);
       toast({
-        title: "Update failed",
-        description: error.message,
+        title: "Scan Failed",
+        description: error.message || "Could not analyze soundfont",
         variant: "destructive",
       });
     } finally {
@@ -390,13 +405,13 @@ const SoundfontManager = () => {
                               <span className="text-sm font-medium">Active</span>
                             </div>
                             <Button 
-                              onClick={() => handleConfigureInstruments(sf.name, true)} 
+                              onClick={() => handleRescan(sf.name)} 
                               size="sm"
                               variant="outline"
                               disabled={scanning}
-                              title="Enable all 128 instruments"
+                              title="Scan soundfont to detect available instruments"
                             >
-                              All Instruments
+                              {scanning ? "Scanning..." : "Rescan"}
                             </Button>
                           </>
                         ) : (
