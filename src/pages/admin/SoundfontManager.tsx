@@ -269,7 +269,8 @@ const SoundfontManager = () => {
 
     // Save original AlphaTab Logger
     const at = window.alphaTab;
-    const originalAtLogger = at?.Logger?.logDelegate;
+    const originalAtLogger = at?.Logger?.log; // The ILogger object, not logDelegate
+    const originalLogLevel = at?.Logger?.logLevel;
 
     // Local debug helper
     const addDebug = (msg: string) => {
@@ -296,25 +297,71 @@ const SoundfontManager = () => {
         const mentionsUnsupported = lowerMsg.includes('unsupported') || lowerMsg.includes('skipping load of unsupported');
         
         if (isSynth && mentionsUnsupported) {
-          // Show in debug feed
-          addDebug(message);
           // Try to extract program number directly from the log
           const match = message.match(/program\s+(\d{1,3})/i);
+          let foundProgram: number | null = null;
+          
           if (match) {
             const prog = parseInt(match[1], 10);
             if (!Number.isNaN(prog) && prog >= 0 && prog < 128) {
+              foundProgram = prog;
               capturedUnsupported.add(prog);
-              return;
             }
-          }
-          // Fallback to current detection window
-          if (detectionActive && currentProgramCandidate !== null) {
+          } else if (detectionActive && currentProgramCandidate !== null) {
+            // Fallback to current detection window
+            foundProgram = currentProgramCandidate;
             capturedUnsupported.add(currentProgramCandidate);
           }
+          
+          // Show in debug feed with detection info
+          const suffix = foundProgram !== null ? ` ⛔ UNSUPPORTED → ${foundProgram}` : '';
+          addDebug(message + suffix);
         }
       };
 
-      // AlphaTab internal logger hook skipped to avoid compatibility issues; relying on console hooks only.
+      // Wrap AlphaTab Logger to intercept Web Worker messages
+      if (at?.Logger) {
+        // Set log level to Debug for maximum verbosity
+        at.Logger.logLevel = at.LogLevel?.Debug ?? 0;
+        
+        // Create wrapper ILogger that captures and forwards messages
+        const wrappedLogger = {
+          debug: (category: string, msg: string, details?: any) => {
+            const fullMsg = `[debug][${category}] ${msg}`;
+            addDebug(fullMsg);
+            checkMessageForUnsupported(fullMsg);
+            if (originalAtLogger?.debug) {
+              originalAtLogger.debug(category, msg, details);
+            }
+          },
+          info: (category: string, msg: string, details?: any) => {
+            const fullMsg = `[info][${category}] ${msg}`;
+            addDebug(fullMsg);
+            checkMessageForUnsupported(fullMsg);
+            if (originalAtLogger?.info) {
+              originalAtLogger.info(category, msg, details);
+            }
+          },
+          warning: (category: string, msg: string, details?: any) => {
+            const fullMsg = `[warn][${category}] ${msg}`;
+            addDebug(fullMsg);
+            checkMessageForUnsupported(fullMsg);
+            if (originalAtLogger?.warning) {
+              originalAtLogger.warning(category, msg, details);
+            }
+          },
+          error: (category: string, msg: string, details?: any) => {
+            const fullMsg = `[error][${category}] ${msg}`;
+            addDebug(fullMsg);
+            checkMessageForUnsupported(fullMsg);
+            if (originalAtLogger?.error) {
+              originalAtLogger.error(category, msg, details);
+            }
+          }
+        };
+        
+        at.Logger.log = wrappedLogger;
+      }
 
 
       // Hook console.log
@@ -437,8 +484,13 @@ const SoundfontManager = () => {
       console.error = originalError;
       
       // Restore AlphaTab Logger
-      if (originalAtLogger && at?.Logger) {
-        at.Logger.logDelegate = originalAtLogger;
+      if (at?.Logger) {
+        if (originalAtLogger) {
+          at.Logger.log = originalAtLogger;
+        }
+        if (originalLogLevel !== undefined) {
+          at.Logger.logLevel = originalLogLevel;
+        }
       }
       
       api.masterVolume = originalVolume;
