@@ -129,16 +129,15 @@ const AlphaTabPlayer = ({ fileUrl, file, title, onReset, defaultInstrument }: Al
 
       // Monitor soundfont loading
       setSoundFontLoading(true);
+      api.soundFontLoad.on((e: any) => {
+        // Track loading progress
+        console.log("[AlphaTab] SoundFont loading:", e.loaded, "/", e.total);
+      });
+
       api.soundFontLoaded.on(() => {
         console.log("[AlphaTab] SoundFont loaded successfully");
         setSoundFontLoading(false);
         setSoundFontReady(true);
-      });
-
-      api.soundFontLoadFailed.on((error: any) => {
-        console.error("[AlphaTab] SoundFont load failed:", error);
-        setSoundFontLoading(false);
-        setError("Failed to load high-quality soundfont. Using fallback.");
       });
 
       // Event listeners
