@@ -218,14 +218,19 @@ const SoundfontManager = () => {
       // Dynamically import AlphaTab
       const { AlphaTabApi, Settings } = await import('@coderline/alphatab');
       
-      // Create an offscreen container for testing (not display:none to avoid font loading issues)
+      // Create a small visible container for testing (to avoid font loading issues)
       const testContainer = document.createElement('div');
       testContainer.style.position = 'fixed';
-      testContainer.style.top = '-9999px';
-      testContainer.style.left = '-9999px';
-      testContainer.style.width = '1px';
-      testContainer.style.height = '1px';
+      testContainer.style.bottom = '10px';
+      testContainer.style.right = '10px';
+      testContainer.style.width = '200px';
+      testContainer.style.height = '100px';
+      testContainer.style.border = '2px solid hsl(var(--primary))';
+      testContainer.style.borderRadius = '8px';
+      testContainer.style.background = 'hsl(var(--background))';
+      testContainer.style.zIndex = '9999';
       testContainer.style.overflow = 'hidden';
+      testContainer.innerHTML = '<div style="padding:10px;font-size:12px;">Testing soundfont...</div>';
       document.body.appendChild(testContainer);
 
       // Intercept console warnings to detect unsupported instruments
@@ -244,7 +249,7 @@ const SoundfontManager = () => {
       };
 
       try {
-        // Initialize AlphaTab with the soundfont
+        // Initialize AlphaTab with the soundfont and a simple test track
         const settings = new Settings();
         settings.core.engine = 'html5';
         settings.core.logLevel = 1; // Enable warnings
@@ -253,21 +258,32 @@ const SoundfontManager = () => {
 
         const api = new AlphaTabApi(testContainer, settings);
 
+        // Load a minimal test track - soundfont will be loaded and warnings triggered
+        api.tex(`\\title "Soundfont Test"
+        . | c.4 d.4 e.4 f.4`);
+
         toast({
           title: "Loading Soundfont",
-          description: "AlphaTab is loading and testing the soundfont...",
+          description: "AlphaTab is analyzing the soundfont (this may take 30-60s)...",
         });
 
-        // Wait for soundfont to load - this will trigger warnings for ALL unsupported samples
+        // Wait for soundfont to load - this automatically tests all presets
         await new Promise<void>((resolve, reject) => {
           const timeout = setTimeout(() => reject(new Error('Soundfont load timeout after 60s')), 60000);
+          
           api.soundFontLoaded.on(() => {
             clearTimeout(timeout);
-            // Wait a bit more for all warnings to be logged
-            setTimeout(resolve, 2000);
+            console.log('Soundfont loaded, waiting for warnings to be logged...');
+            // Wait for all warnings to be logged
+            setTimeout(() => {
+              console.log('Unsupported programs detected:', Array.from(unsupportedPrograms).sort((a, b) => a - b));
+              resolve();
+            }, 3000);
           });
+          
           api.error.on((e) => {
             clearTimeout(timeout);
+            console.error('AlphaTab error:', e);
             reject(e);
           });
         });
