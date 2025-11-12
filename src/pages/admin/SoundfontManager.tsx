@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,6 +10,12 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Upload, Trash2, Check } from "lucide-react";
 import { Navigate } from "react-router-dom";
 
+declare global {
+  interface Window {
+    alphaTab: any;
+  }
+}
+
 const SoundfontManager = () => {
   const { user, isAdmin, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -20,6 +26,8 @@ const SoundfontManager = () => {
   const [loading, setLoading] = useState(true);
   const [currentSoundfont, setCurrentSoundfont] = useState<string>("");
   const [scanning, setScanning] = useState(false);
+  const testPlayerRef = useRef<any>(null);
+  const testContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!authLoading && isAdmin) {
@@ -201,45 +209,41 @@ const SoundfontManager = () => {
 
   const handleRescan = async (fileName: string) => {
     setScanning(true);
+    const startTime = Date.now();
+    
     try {
       console.log('Starting AlphaTab-based soundfont scan for:', fileName);
       
       toast({
         title: "Starting Scan",
-        description: "Testing each instrument with AlphaTab...",
+        description: "Loading test player with soundfont...",
       });
 
       const { data: { publicUrl } } = supabase.storage
         .from('soundfonts')
         .getPublicUrl(fileName);
 
-      const startTime = Date.now();
-      
-      // Dynamically import AlphaTab
-      const { AlphaTabApi, Settings } = await import('@coderline/alphatab');
-      
-      // Create a small visible container for testing (to avoid font loading issues)
-      const testContainer = document.createElement('div');
-      testContainer.style.position = 'fixed';
-      testContainer.style.bottom = '10px';
-      testContainer.style.right = '10px';
-      testContainer.style.width = '200px';
-      testContainer.style.height = '100px';
-      testContainer.style.border = '2px solid hsl(var(--primary))';
-      testContainer.style.borderRadius = '8px';
-      testContainer.style.background = 'hsl(var(--background))';
-      testContainer.style.zIndex = '9999';
-      testContainer.style.overflow = 'hidden';
-      testContainer.innerHTML = '<div style="padding:10px;font-size:12px;">Testing soundfont...</div>';
-      document.body.appendChild(testContainer);
+      // Load the test guitar file
+      const testFileUrl = "https://zapwhesimfjgsjaofyjw.supabase.co/storage/v1/object/public/guitar-files/1762820464904-rxevb.gp5";
 
-      // Intercept console warnings to detect unsupported instruments
+      // Ensure AlphaTab is loaded
+      if (!window.alphaTab) {
+        await new Promise((resolve, reject) => {
+          const script = document.createElement("script");
+          script.src = "https://cdn.jsdelivr.net/npm/@coderline/alphatab@latest/dist/alphaTab.js";
+          script.async = true;
+          script.onload = resolve;
+          script.onerror = () => reject(new Error("Failed to load AlphaTab"));
+          document.body.appendChild(script);
+        });
+      }
+
+      // Intercept console warnings
       const unsupportedPrograms = new Set<number>();
       const originalWarn = console.warn;
       console.warn = (...args: any[]) => {
         const message = args.join(' ');
         if (message.includes('[AlphaTab][AlphaSynth]') && message.includes('sample type') && message.includes('not supported')) {
-          // Extract program number from message like "bank 0 program 99"
           const match = message.match(/program (\d+)/);
           if (match) {
             unsupportedPrograms.add(parseInt(match[1]));
@@ -249,62 +253,101 @@ const SoundfontManager = () => {
       };
 
       try {
-        // Initialize AlphaTab with the soundfont and a simple test track
-        const settings = new Settings();
-        settings.core.engine = 'html5';
-        settings.core.logLevel = 1; // Enable warnings
-        settings.player.enablePlayer = true;
-        settings.player.soundFont = publicUrl;
+        if (!testContainerRef.current) {
+          throw new Error("Test container not found");
+        }
 
-        const api = new AlphaTabApi(testContainer, settings);
+        // Initialize player
+        const api = new window.alphaTab.AlphaTabApi(testContainerRef.current, {
+          core: {
+            fontDirectory: "https://cdn.jsdelivr.net/npm/@coderline/alphatab@latest/dist/font/",
+          },
+          display: {
+            scale: 0.5,
+          },
+          player: {
+            enablePlayer: true,
+            soundFont: publicUrl,
+          },
+        });
 
-        // Load a minimal test track - soundfont will be loaded and warnings triggered
-        api.tex(`\\title "Soundfont Test"
-        . | c.4 d.4 e.4 f.4`);
+        testPlayerRef.current = api;
 
         toast({
           title: "Loading Soundfont",
-          description: "AlphaTab is analyzing the soundfont (this may take 30-60s)...",
+          description: "This may take 30-60 seconds...",
         });
 
-        // Wait for soundfont to load - this automatically tests all presets
+        // Wait for soundfont to load
         await new Promise<void>((resolve, reject) => {
-          const timeout = setTimeout(() => reject(new Error('Soundfont load timeout after 60s')), 60000);
+          const timeout = setTimeout(() => reject(new Error('Soundfont load timeout')), 120000);
           
           api.soundFontLoaded.on(() => {
             clearTimeout(timeout);
-            console.log('Soundfont loaded, waiting for warnings to be logged...');
-            // Wait for all warnings to be logged
-            setTimeout(() => {
-              console.log('Unsupported programs detected:', Array.from(unsupportedPrograms).sort((a, b) => a - b));
-              resolve();
-            }, 3000);
+            console.log('Soundfont loaded');
+            resolve();
           });
           
-          api.error.on((e) => {
+          api.error.on((e: any) => {
             clearTimeout(timeout);
-            console.error('AlphaTab error:', e);
             reject(e);
+          });
+
+          // Load the test file
+          api.load(testFileUrl);
+        });
+
+        // Wait for score to be ready
+        await new Promise<void>((resolve) => {
+          api.scoreLoaded.on(() => {
+            console.log('Score loaded');
+            resolve();
           });
         });
 
-        // Restore console.warn
+        toast({
+          title: "Testing Instruments",
+          description: "Cycling through all 128 GM instruments...",
+        });
+
+        // Give time for all initial warnings to be logged
+        await new Promise(resolve => setTimeout(resolve, 3000));
+
+        // Now cycle through all instruments
+        const score = api.score;
+        if (score && score.tracks.length > 0) {
+          const track = score.tracks[0];
+          
+          for (let program = 0; program < 128; program++) {
+            track.playbackInfo.program = program;
+            
+            // Trigger a mini playback to force the soundfont to load the preset
+            try {
+              api.playPause();
+              await new Promise(resolve => setTimeout(resolve, 50));
+              api.playPause();
+              await new Promise(resolve => setTimeout(resolve, 50));
+            } catch (e) {
+              // Ignore playback errors
+            }
+          }
+        }
+
+        // Wait for all warnings
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
         console.warn = originalWarn;
 
-        // Calculate supported instruments (all 128 minus unsupported ones)
+        // Calculate available instruments
         const availableInstruments = Array.from({ length: 128 }, (_, i) => i)
           .filter(program => !unsupportedPrograms.has(program));
 
         console.log('Unsupported programs:', Array.from(unsupportedPrograms).sort((a, b) => a - b));
         console.log('Available instruments:', availableInstruments);
 
-        // Clean up
-        api.destroy();
-        document.body.removeChild(testContainer);
-
         const duration = ((Date.now() - startTime) / 1000).toFixed(1);
 
-        // Update the metadata in app_settings
+        // Update the metadata
         const { error: updateError } = await supabase
           .from('app_settings')
           .update({ 
@@ -313,7 +356,6 @@ const SoundfontManager = () => {
           .eq('key', 'soundfont_url');
 
         if (updateError) {
-          console.error('Update error:', updateError);
           throw updateError;
         }
 
@@ -324,10 +366,14 @@ const SoundfontManager = () => {
 
         await loadCurrentSetting();
       } finally {
-        // Ensure cleanup
         console.warn = originalWarn;
-        if (document.body.contains(testContainer)) {
-          document.body.removeChild(testContainer);
+        if (testPlayerRef.current) {
+          try {
+            testPlayerRef.current.destroy();
+          } catch (e) {
+            console.warn("Error destroying test player:", e);
+          }
+          testPlayerRef.current = null;
         }
       }
     } catch (error: any) {
@@ -414,6 +460,21 @@ const SoundfontManager = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
+          {/* Hidden test player for scanning */}
+          <div 
+            ref={testContainerRef}
+            className={`fixed bottom-4 right-4 border-2 border-primary rounded-lg bg-background overflow-hidden transition-all ${
+              scanning ? 'w-64 h-48 opacity-100' : 'w-0 h-0 opacity-0'
+            }`}
+            style={{ zIndex: 9999 }}
+          >
+            {scanning && (
+              <div className="p-3">
+                <p className="text-xs font-medium text-primary">Testing soundfont...</p>
+                <p className="text-xs text-muted-foreground mt-1">This box will close automatically</p>
+              </div>
+            )}
+          </div>
           {/* Upload Section */}
           <div className="space-y-2">
             <Label htmlFor="soundfont-upload">Upload Soundfont (.sf2)</Label>
