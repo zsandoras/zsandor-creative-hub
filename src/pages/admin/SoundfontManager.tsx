@@ -249,9 +249,10 @@ const SoundfontManager = () => {
 
       toast({
         title: "✅ Scan Complete",
-        description: availableInstruments 
-          ? `Found ${availableInstruments.length} instruments in ${duration}s. Refresh the Guitar Pro page.`
-          : `All 128 GM instruments available. Refresh the Guitar Pro page.`,
+        description: availableInstruments && availableInstruments.length > 0
+          ? `Found ${availableInstruments.length} AlphaTab-compatible instruments in ${duration}s. Refresh the Guitar Pro page.`
+          : `⚠️ This soundfont uses stereo samples which AlphaTab doesn't support. Recommend using the default sonivox.sf2 instead.`,
+        variant: availableInstruments && availableInstruments.length > 0 ? "default" : "destructive"
       });
 
       await loadCurrentSetting();
@@ -331,7 +332,11 @@ const SoundfontManager = () => {
           <CardTitle>Soundfont Manager</CardTitle>
           <CardDescription>
             Upload and manage soundfont files (.sf2) for the Guitar Pro player. 
-            Complete GM soundfonts (like FluidR3_GM.sf2) support all 128 instruments.
+            <strong className="block mt-2 text-primary">⚠️ AlphaTab Compatibility:</strong>
+            <span className="block mt-1">
+              AlphaTab only supports <strong>mono samples</strong>. Many high-quality soundfonts (like FluidR3_GM.sf2) 
+              use stereo samples and won't play correctly. The default sonivox.sf2 is optimized for AlphaTab and recommended.
+            </span>
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
