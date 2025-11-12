@@ -583,6 +583,9 @@ const AlphaTabControls = ({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="max-h-60 overflow-y-auto z-50 bg-popover">
+                  <div className="px-2 py-2 text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 border-b border-amber-200 dark:border-amber-900 sticky top-0 z-10">
+                    ⚠️ Some instruments may be silent depending on your soundfont
+                  </div>
                   {INSTRUMENT_CATEGORIES.map((category) => (
                     <div key={category}>
                       <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50">
@@ -823,6 +826,9 @@ const AlphaTabControls = ({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="max-h-80 overflow-y-auto z-50 bg-popover">
+                <div className="px-2 py-2 text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 border-b border-amber-200 dark:border-amber-900 sticky top-0 z-10">
+                  ⚠️ Some instruments may be silent depending on your soundfont
+                </div>
                 {INSTRUMENT_CATEGORIES.map((category) => (
                   <div key={category}>
                     <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50">
