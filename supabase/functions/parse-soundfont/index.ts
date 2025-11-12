@@ -46,9 +46,10 @@ function bytesToString(buffer: ArrayBuffer, offset: number, length: number = 4):
   return String.fromCharCode(...Array.from(view.slice(offset, offset + length)));
 }
 
-// Parse SF2 file using incremental Range requests
+// Parse SF2 file and detect AlphaTab-compatible instruments
 async function parseSF2PresetsChunked(supabase: any, bucket: string, fileName: string): Promise<number[] | null> {
   const programs = new Set<number>();
+  const incompatiblePrograms = new Set<number>();
   
   try {
     console.log('Starting chunked SF2 parsing...');
@@ -73,8 +74,7 @@ async function parseSF2PresetsChunked(supabase: any, bucket: string, fileName: s
     console.log('Scanning for pdta chunk from end of file...');
     
     // Step 2: The pdta chunk is at the END of SF2 files (after sdta samples)
-    // Instead of scanning from start, scan backwards from the end
-    const scanSize = 512 * 1024; // Read last 512KB (pdta is typically much smaller)
+    const scanSize = 512 * 1024; // Read last 512KB
     const scanStart = Math.max(12, fileSize - scanSize);
     
     console.log(`Reading last ${Math.floor((fileSize - scanStart) / 1024)}KB of file...`);
@@ -82,7 +82,7 @@ async function parseSF2PresetsChunked(supabase: any, bucket: string, fileName: s
     const endBuffer = await fetchRange(supabase, bucket, fileName, scanStart, fileSize - 1);
     console.log(`Downloaded ${endBuffer.byteLength} bytes from end`);
     
-    // Search for pdta chunk in the end section
+    // Search for pdta chunk
     let pdtaOffset = -1;
     let pdtaSize = 0;
     
@@ -112,50 +112,162 @@ async function parseSF2PresetsChunked(supabase: any, bucket: string, fileName: s
     const pdtaBuffer = await fetchRange(supabase, bucket, fileName, pdtaOffset, pdtaEnd);
     console.log(`Downloaded pdta chunk: ${pdtaBuffer.byteLength} bytes`);
     
-    // Step 4: Find and parse phdr (preset headers) within pdta
-    let phdrOffset = -1;
-    let phdrSize = 0;
+    // Step 4: Find all necessary chunks within pdta
+    let phdrOffset = -1, phdrSize = 0;
+    let pbagOffset = -1, pbagSize = 0;
+    let pgenOffset = -1, pgenSize = 0;
+    let instOffset = -1, instSize = 0;
+    let ibagOffset = -1, ibagSize = 0;
+    let igenOffset = -1, igenSize = 0;
+    let shdrOffset = -1, shdrSize = 0;
     
-    // Search within pdta for phdr
     for (let i = 12; i <= pdtaBuffer.byteLength - 8; i++) {
-      const subChunkId = bytesToString(pdtaBuffer, i);
+      const chunkId = bytesToString(pdtaBuffer, i);
+      const chunkSize = readUint32LE(pdtaBuffer, i + 4);
       
-      if (subChunkId === 'phdr') {
-        phdrOffset = i;
-        phdrSize = readUint32LE(pdtaBuffer, i + 4);
-        console.log(`Found phdr at offset ${phdrOffset}, size: ${phdrSize} bytes`);
-        break;
-      }
+      if (chunkId === 'phdr') { phdrOffset = i; phdrSize = chunkSize; }
+      else if (chunkId === 'pbag') { pbagOffset = i; pbagSize = chunkSize; }
+      else if (chunkId === 'pgen') { pgenOffset = i; pgenSize = chunkSize; }
+      else if (chunkId === 'inst') { instOffset = i; instSize = chunkSize; }
+      else if (chunkId === 'ibag') { ibagOffset = i; ibagSize = chunkSize; }
+      else if (chunkId === 'igen') { igenOffset = i; igenSize = chunkSize; }
+      else if (chunkId === 'shdr') { shdrOffset = i; shdrSize = chunkSize; }
     }
     
-    if (phdrOffset === -1) {
-      console.error('Could not find phdr chunk in pdta');
+    console.log('Found chunks:', { phdr: !!phdrOffset, pbag: !!pbagOffset, shdr: !!shdrOffset });
+    
+    if (phdrOffset === -1 || shdrOffset === -1) {
+      console.error('Missing required chunks');
       return null;
     }
     
-    // Step 5: Parse preset headers (each is 38 bytes)
-    const presetCount = Math.floor(phdrSize / 38);
-    console.log(`Found ${presetCount} presets`);
+    // Step 5: Parse sample headers to identify sample types
+    // AlphaTab only supports type 1 (mono). Types 2 & 4 are stereo channels.
+    const sampleTypes = new Map<number, number>();
+    const sampleCount = Math.floor(shdrSize / 46);
     
-    for (let i = 0; i < presetCount - 1; i++) { // Last one is EOP
-      const presetOffset = phdrOffset + 8 + (i * 38);
-      const preset = readUint16LE(pdtaBuffer, presetOffset + 20);
-      const bank = readUint16LE(pdtaBuffer, presetOffset + 22);
+    console.log(`Parsing ${sampleCount} samples for compatibility...`);
+    for (let i = 0; i < sampleCount - 1; i++) {
+      const sampleHeaderOffset = shdrOffset + 8 + (i * 46);
+      const sampleType = readUint16LE(pdtaBuffer, sampleHeaderOffset + 38);
+      sampleTypes.set(i, sampleType);
+    }
+    
+    // Step 6: Build instrument to sample mapping
+    const instrumentSamples = new Map<number, Set<number>>();
+    
+    if (instOffset !== -1 && ibagOffset !== -1 && igenOffset !== -1) {
+      const instrumentCount = Math.floor(instSize / 22);
       
-      // For General MIDI, we use bank 0 presets as program numbers
-      if (bank === 0 && preset < 128) {
-        programs.add(preset);
+      for (let i = 0; i < instrumentCount - 1; i++) {
+        const instHeaderOffset = instOffset + 8 + (i * 22);
+        const bagStart = readUint16LE(pdtaBuffer, instHeaderOffset + 20);
+        const bagEnd = i < instrumentCount - 2 
+          ? readUint16LE(pdtaBuffer, instHeaderOffset + 22 + 20)
+          : Math.floor(ibagSize / 4);
+        
+        const samples = new Set<number>();
+        
+        for (let bagIdx = bagStart; bagIdx < bagEnd; bagIdx++) {
+          const bagOffset = ibagOffset + 8 + (bagIdx * 4);
+          const genStart = readUint16LE(pdtaBuffer, bagOffset);
+          const genEnd = bagIdx < Math.floor(ibagSize / 4) - 1
+            ? readUint16LE(pdtaBuffer, bagOffset + 4)
+            : Math.floor(igenSize / 4);
+          
+          for (let genIdx = genStart; genIdx < genEnd; genIdx++) {
+            const genOffset = igenOffset + 8 + (genIdx * 4);
+            const genOper = readUint16LE(pdtaBuffer, genOffset);
+            
+            if (genOper === 53) { // Sample ID
+              const sampleId = readUint16LE(pdtaBuffer, genOffset + 2);
+              samples.add(sampleId);
+            }
+          }
+        }
+        
+        instrumentSamples.set(i, samples);
       }
     }
     
-    console.log(`Parsed ${programs.size} GM instruments`);
+    // Step 7: Build preset to instrument mapping and check compatibility
+    const presetInstruments = new Map<number, Set<number>>();
+    
+    if (pbagOffset !== -1 && pgenOffset !== -1) {
+      const presetCount = Math.floor(phdrSize / 38);
+      
+      for (let i = 0; i < presetCount - 1; i++) {
+        const presetHeaderOffset = phdrOffset + 8 + (i * 38);
+        const preset = readUint16LE(pdtaBuffer, presetHeaderOffset + 20);
+        const bank = readUint16LE(pdtaBuffer, presetHeaderOffset + 22);
+        
+        if (bank === 0 && preset < 128) {
+          programs.add(preset);
+          
+          const bagStart = readUint16LE(pdtaBuffer, presetHeaderOffset + 24);
+          const bagEnd = i < presetCount - 2
+            ? readUint16LE(pdtaBuffer, presetHeaderOffset + 38 + 24)
+            : Math.floor(pbagSize / 4);
+          
+          const instruments = new Set<number>();
+          
+          for (let bagIdx = bagStart; bagIdx < bagEnd; bagIdx++) {
+            const bagOffset = pbagOffset + 8 + (bagIdx * 4);
+            const genStart = readUint16LE(pdtaBuffer, bagOffset);
+            const genEnd = bagIdx < Math.floor(pbagSize / 4) - 1
+              ? readUint16LE(pdtaBuffer, bagOffset + 4)
+              : Math.floor(pgenSize / 4);
+            
+            for (let genIdx = genStart; genIdx < genEnd; genIdx++) {
+              const genOffset = pgenOffset + 8 + (genIdx * 4);
+              const genOper = readUint16LE(pdtaBuffer, genOffset);
+              
+              if (genOper === 41) { // Instrument
+                const instId = readUint16LE(pdtaBuffer, genOffset + 2);
+                instruments.add(instId);
+              }
+            }
+          }
+          
+          presetInstruments.set(preset, instruments);
+          
+          // Check if preset has any mono samples
+          let hasMonoSample = false;
+          for (const instId of instruments) {
+            const samples = instrumentSamples.get(instId);
+            if (samples) {
+              for (const sampleId of samples) {
+                const sampleType = sampleTypes.get(sampleId);
+                if (sampleType === 1) { // Mono = AlphaTab compatible
+                  hasMonoSample = true;
+                  break;
+                }
+              }
+            }
+            if (hasMonoSample) break;
+          }
+          
+          if (!hasMonoSample && instruments.size > 0) {
+            incompatiblePrograms.add(preset);
+          }
+        }
+      }
+    }
+    
+    console.log(`Total presets found: ${programs.size}`);
+    console.log(`Stereo-only (incompatible) presets: ${incompatiblePrograms.size}`);
+    
+    // Filter out incompatible programs
+    const compatiblePrograms = Array.from(programs).filter(p => !incompatiblePrograms.has(p));
+    
+    console.log(`✅ AlphaTab-compatible instruments: ${compatiblePrograms.length}`);
+    
+    return compatiblePrograms.length > 0 ? compatiblePrograms.sort((a, b) => a - b) : null;
     
   } catch (error) {
     console.error('Error in chunked SF2 parsing:', error);
     return null;
   }
-  
-  return programs.size > 0 ? Array.from(programs).sort((a, b) => a - b) : null;
 }
 
 Deno.serve(async (req) => {
@@ -190,7 +302,7 @@ Deno.serve(async (req) => {
         success: true, 
         availableInstruments: availablePrograms,
         message: availablePrograms 
-          ? `Found ${availablePrograms.length} instruments` 
+          ? `Found ${availablePrograms.length} AlphaTab-compatible instruments` 
           : 'Could not parse instruments, will show all'
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
