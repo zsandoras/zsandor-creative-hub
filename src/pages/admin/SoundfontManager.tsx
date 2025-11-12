@@ -252,11 +252,20 @@ const SoundfontManager = () => {
     
     const api = testerApiRef.current;
     const originalVolume = api.masterVolume ?? 1;
+    
+    // Store ALL original console methods
+    const originalLog = console.log;
+    const originalInfo = console.info;
     const originalWarn = console.warn;
     const originalError = console.error;
+    
     const capturedUnsupported = new Set<number>();
     let detectionActive = false;
     let currentProgramCandidate: number | null = null;
+
+    // Save original AlphaTab Logger
+    const at = window.alphaTab;
+    const originalAtLogger = at?.Logger?.logDelegate;
 
     try {
       toast({
@@ -267,30 +276,61 @@ const SoundfontManager = () => {
       // Mute the player
       api.masterVolume = 0;
 
-      // Hook console to capture warnings without program numbers
-      console.warn = (...args: any[]) => {
-        const message = args.join(' ');
-        if (
-          message.includes('[AlphaTab][AlphaSynth]') &&
-          (message.includes('Skipping load of unsupported') || message.toLowerCase().includes('unsupported'))
-        ) {
-          if (detectionActive && currentProgramCandidate !== null) {
-            capturedUnsupported.add(currentProgramCandidate);
-            // Optional: keep a small debug trace
-            // console.debug(`[Scan] Marked program ${currentProgramCandidate} as unsupported (warn)`);
-          }
+      // Helper to check any message for unsupported patterns
+      const checkMessageForUnsupported = (message: string) => {
+        const lowerMsg = message.toLowerCase();
+        const isSynth = lowerMsg.includes('[alphatab][alphasynth]') || lowerMsg.includes('alphasynth');
+        const mentionsUnsupported = lowerMsg.includes('unsupported') || lowerMsg.includes('skipping load of unsupported');
+        
+        if (isSynth && mentionsUnsupported && detectionActive && currentProgramCandidate !== null) {
+          capturedUnsupported.add(currentProgramCandidate);
         }
+      };
+
+      // Wrap AlphaTab Logger to intercept all its messages
+      if (at?.Logger) {
+        // Set debug level to catch all messages
+        if (at.Settings?.defaults?.core) {
+          at.Settings.defaults.core.logLevel = 1; // Debug level
+        }
+
+        at.Logger.logDelegate = (level: number, category: string, msg: string, details?: any) => {
+          // Forward to original logger
+          if (originalAtLogger) {
+            originalAtLogger(level, category, msg, details);
+          }
+          
+          // Check for unsupported patterns
+          const fullMessage = `[${category}] ${msg} ${details || ''}`;
+          checkMessageForUnsupported(fullMessage);
+        };
+      }
+
+      // Hook console.log
+      console.log = (...args: any[]) => {
+        const message = args.map(a => (typeof a === 'string' ? a : JSON.stringify(a))).join(' ');
+        checkMessageForUnsupported(message);
+        return originalLog.apply(console, args);
+      };
+
+      // Hook console.info
+      console.info = (...args: any[]) => {
+        const message = args.map(a => (typeof a === 'string' ? a : JSON.stringify(a))).join(' ');
+        checkMessageForUnsupported(message);
+        return originalInfo.apply(console, args);
+      };
+
+      // Hook console.warn
+      console.warn = (...args: any[]) => {
+        const message = args.map(a => (typeof a === 'string' ? a : JSON.stringify(a))).join(' ');
+        checkMessageForUnsupported(message);
         return originalWarn.apply(console, args);
       };
 
+      // Hook console.error
       console.error = (...args: any[]) => {
-        const message = args.join(' ');
-        if (message.toLowerCase().includes('unsupported')) {
-          if (detectionActive && currentProgramCandidate !== null) {
-            capturedUnsupported.add(currentProgramCandidate);
-            // console.debug(`[Scan] Marked program ${currentProgramCandidate} as unsupported (error)`);
-          }
-        }
+        const message = args.map(a => (typeof a === 'string' ? a : JSON.stringify(a))).join(' ');
+        checkMessageForUnsupported(message);
         return originalError.apply(console, args);
       };
 
@@ -315,7 +355,7 @@ const SoundfontManager = () => {
         setCurrentInstrument(instrumentName);
         setScanProgress(((program + 1) / 128) * 100);
 
-        // Prepare detection window for this program
+        // Open detection window for this program
         currentProgramCandidate = program;
         detectionActive = true;
 
@@ -334,10 +374,10 @@ const SoundfontManager = () => {
         api.midiLoad.on(midiLoadHandler);
         api.loadMidiForScore();
         
-        // Force preset loading with very brief playback (fast scan)
+        // Force preset loading with brief playback (optimized timing: 50ms total)
         try {
           api.play();
-          await new Promise(resolve => setTimeout(resolve, 20));
+          await new Promise(resolve => setTimeout(resolve, 10));
           api.stop();
         } catch (e) {
           // Ignore playback errors
@@ -345,16 +385,14 @@ const SoundfontManager = () => {
 
         api.midiLoad.off(midiLoadHandler);
 
-        // Short settle time to catch any warnings for this program
-        await new Promise(resolve => setTimeout(resolve, 30));
-
-        // Close detection window
-        detectionActive = false;
-        currentProgramCandidate = null;
+        // Wait for console messages to arrive (40ms settle time)
+        await new Promise(resolve => setTimeout(resolve, 40));
       }
 
-      // Final delay to catch any late warnings
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Keep detection active for last program with tail wait to catch late logs
+      await new Promise(resolve => setTimeout(resolve, 200));
+      detectionActive = false;
+      currentProgramCandidate = null;
 
       // Calculate results
       const unsupported = Array.from(capturedUnsupported).sort((a, b) => a - b);
@@ -378,9 +416,17 @@ const SoundfontManager = () => {
         variant: "destructive",
       });
     } finally {
-      // Restore everything
+      // Restore all console methods
+      console.log = originalLog;
+      console.info = originalInfo;
       console.warn = originalWarn;
       console.error = originalError;
+      
+      // Restore AlphaTab Logger
+      if (originalAtLogger && at?.Logger) {
+        at.Logger.logDelegate = originalAtLogger;
+      }
+      
       api.masterVolume = originalVolume;
       setScanning(false);
       setScanProgress(0);
