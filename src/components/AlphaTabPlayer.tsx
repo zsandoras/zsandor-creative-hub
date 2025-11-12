@@ -31,6 +31,8 @@ const AlphaTabPlayer = ({ fileUrl, file, title, onReset, defaultInstrument }: Al
   const [containerHeight, setContainerHeight] = useState(1000); // pixels
   const [isHovered, setIsHovered] = useState(false);
   const [scaleControls, setScaleControls] = useState(true);
+  const [soundFontLoading, setSoundFontLoading] = useState(false);
+  const [soundFontReady, setSoundFontReady] = useState(false);
 
   // Handle wheel events to enable scrolling on hover
   useEffect(() => {
@@ -116,7 +118,7 @@ const AlphaTabPlayer = ({ fileUrl, file, title, onReset, defaultInstrument }: Al
         },
         player: {
           enablePlayer: true,
-          soundFont: "https://cdn.jsdelivr.net/npm/@coderline/alphatab@latest/dist/soundfont/sonivox.sf2",
+          soundFont: "https://cdn.jsdelivr.net/gh/pianobooster/fluid-soundfont@master/FluidR3_GM.sf2",
           enableCursor: true,
           scrollMode: window.alphaTab.ScrollMode.OffScreen,
           scrollElement: containerRef.current, // This is the actual scrollable container
@@ -124,6 +126,20 @@ const AlphaTabPlayer = ({ fileUrl, file, title, onReset, defaultInstrument }: Al
       });
 
       apiRef.current = api;
+
+      // Monitor soundfont loading
+      setSoundFontLoading(true);
+      api.soundFontLoaded.on(() => {
+        console.log("[AlphaTab] SoundFont loaded successfully");
+        setSoundFontLoading(false);
+        setSoundFontReady(true);
+      });
+
+      api.soundFontLoadFailed.on((error: any) => {
+        console.error("[AlphaTab] SoundFont load failed:", error);
+        setSoundFontLoading(false);
+        setError("Failed to load high-quality soundfont. Using fallback.");
+      });
 
       // Event listeners
       api.playerStateChanged.on((e: any) => {
@@ -387,6 +403,17 @@ const AlphaTabPlayer = ({ fileUrl, file, title, onReset, defaultInstrument }: Al
                 <div className="absolute inset-0 flex items-center justify-center bg-card/60 backdrop-blur-sm">
                   <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
                   <span className="ml-3 text-muted-foreground">Loading score...</span>
+                </div>
+              )}
+              {soundFontLoading && !isLoading && (
+                <div className="absolute top-4 right-4 flex items-center gap-2 bg-muted/90 backdrop-blur-sm px-3 py-2 rounded-lg">
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                  <span className="text-xs text-muted-foreground">Loading high-quality soundfont...</span>
+                </div>
+              )}
+              {soundFontReady && !isLoading && (
+                <div className="absolute top-4 right-4 bg-primary/10 backdrop-blur-sm px-3 py-2 rounded-lg animate-in fade-in duration-500">
+                  <span className="text-xs text-primary font-medium">✓ Premium soundfont ready</span>
                 </div>
               )}
             </div>
