@@ -118,7 +118,7 @@ const AlphaTabPlayer = ({ fileUrl, file, title, onReset, defaultInstrument }: Al
         },
         player: {
           enablePlayer: true,
-          soundFont: "https://cdn.jsdelivr.net/gh/pianobooster/fluid-soundfont@master/FluidR3_GM.sf2",
+          soundFont: "https://cdn.jsdelivr.net/npm/@coderline/alphatab@latest/dist/soundfont/sonivox.sf2",
           enableCursor: true,
           scrollMode: window.alphaTab.ScrollMode.OffScreen,
           scrollElement: containerRef.current, // This is the actual scrollable container
