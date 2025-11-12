@@ -202,60 +202,130 @@ const SoundfontManager = () => {
   const handleRescan = async (fileName: string) => {
     setScanning(true);
     try {
-      console.log('Starting soundfont scan for:', fileName);
+      console.log('Starting AlphaTab-based soundfont scan for:', fileName);
       
       toast({
         title: "Starting Scan",
-        description: "Connecting to edge function...",
+        description: "Testing each instrument with AlphaTab...",
       });
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('soundfonts')
+        .getPublicUrl(fileName);
 
       const startTime = Date.now();
-      const { data, error } = await supabase.functions.invoke('parse-soundfont', {
-        body: { fileName }
-      });
-
-      const duration = ((Date.now() - startTime) / 1000).toFixed(1);
-      console.log(`Edge function completed in ${duration}s`, { data, error });
-
-      if (error) {
-        console.error('Edge function error:', error);
-        throw new Error(`Edge function failed: ${JSON.stringify(error)}`);
-      }
-
-      if (!data) {
-        throw new Error('No data returned from edge function');
-      }
-
-      toast({
-        title: "Parsing Complete",
-        description: `Scan took ${duration}s. Updating settings...`,
-      });
-
-      const availableInstruments = data?.availableInstruments || null;
-      console.log('Available instruments:', availableInstruments);
       
-      // Update the metadata in app_settings (filter by key only)
-      const { error: updateError } = await supabase
-        .from('app_settings')
-        .update({ 
-          metadata: { available_instruments: availableInstruments }
-        })
-        .eq('key', 'soundfont_url');
+      // Dynamically import AlphaTab
+      const { AlphaTabApi, Settings } = await import('@coderline/alphatab');
+      
+      // Create a hidden container for testing
+      const testContainer = document.createElement('div');
+      testContainer.style.display = 'none';
+      document.body.appendChild(testContainer);
 
-      if (updateError) {
-        console.error('Update error:', updateError);
-        throw updateError;
+      // Intercept console warnings to detect unsupported instruments
+      const unsupportedPrograms = new Set<number>();
+      const originalWarn = console.warn;
+      console.warn = (...args: any[]) => {
+        const message = args.join(' ');
+        if (message.includes('[AlphaTab][AlphaSynth]') && message.includes('sample type') && message.includes('not supported')) {
+          // Extract program number from message like "bank 0 program 99"
+          const match = message.match(/program (\d+)/);
+          if (match) {
+            unsupportedPrograms.add(parseInt(match[1]));
+          }
+        }
+        originalWarn.apply(console, args);
+      };
+
+      try {
+        // Initialize AlphaTab with the soundfont
+        const settings = new Settings();
+        settings.core.engine = 'html5';
+        settings.core.logLevel = 1; // Enable warnings
+        settings.player.enablePlayer = true;
+        settings.player.soundFont = publicUrl;
+
+        const api = new AlphaTabApi(testContainer, settings);
+
+        // Wait for soundfont to load
+        await new Promise<void>((resolve, reject) => {
+          const timeout = setTimeout(() => reject(new Error('Soundfont load timeout')), 60000);
+          api.soundFontLoaded.on(() => {
+            clearTimeout(timeout);
+            resolve();
+          });
+          api.error.on((e) => {
+            clearTimeout(timeout);
+            reject(e);
+          });
+        });
+
+        toast({
+          title: "Testing Instruments",
+          description: "Loading all 128 GM instruments...",
+        });
+
+        // Create a minimal track for each program to test loading
+        for (let program = 0; program < 128; program++) {
+          const testTex = `\\track "Test"
+          \\staff{score} \\tuning piano \\instrument ${program}
+          . | 1.1`;
+          
+          try {
+            api.tex(testTex);
+            // Small delay to let AlphaTab process
+            await new Promise(resolve => setTimeout(resolve, 50));
+          } catch (e) {
+            console.error(`Failed to test program ${program}:`, e);
+          }
+        }
+
+        // Wait a bit for all warnings to be logged
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+        // Restore console.warn
+        console.warn = originalWarn;
+
+        // Calculate supported instruments (all 128 minus unsupported ones)
+        const availableInstruments = Array.from({ length: 128 }, (_, i) => i)
+          .filter(program => !unsupportedPrograms.has(program));
+
+        console.log('Unsupported programs:', Array.from(unsupportedPrograms).sort((a, b) => a - b));
+        console.log('Available instruments:', availableInstruments);
+
+        // Clean up
+        api.destroy();
+        document.body.removeChild(testContainer);
+
+        const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+
+        // Update the metadata in app_settings
+        const { error: updateError } = await supabase
+          .from('app_settings')
+          .update({ 
+            metadata: { available_instruments: availableInstruments }
+          })
+          .eq('key', 'soundfont_url');
+
+        if (updateError) {
+          console.error('Update error:', updateError);
+          throw updateError;
+        }
+
+        toast({
+          title: "✅ Scan Complete",
+          description: `Found ${availableInstruments.length}/128 working instruments in ${duration}s. ${128 - availableInstruments.length} instruments use unsupported stereo samples. Refresh Guitar Pro page.`,
+        });
+
+        await loadCurrentSetting();
+      } finally {
+        // Ensure cleanup
+        console.warn = originalWarn;
+        if (document.body.contains(testContainer)) {
+          document.body.removeChild(testContainer);
+        }
       }
-
-      toast({
-        title: "✅ Scan Complete",
-        description: availableInstruments && availableInstruments.length > 0
-          ? `Found ${availableInstruments.length} AlphaTab-compatible instruments in ${duration}s. Refresh the Guitar Pro page.`
-          : `⚠️ This soundfont uses stereo samples which AlphaTab doesn't support. Recommend using the default sonivox.sf2 instead.`,
-        variant: availableInstruments && availableInstruments.length > 0 ? "default" : "destructive"
-      });
-
-      await loadCurrentSetting();
     } catch (error: any) {
       console.error('Full error details:', error);
       toast({
