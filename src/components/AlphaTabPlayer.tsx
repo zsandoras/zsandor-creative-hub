@@ -17,9 +17,10 @@ interface AlphaTabPlayerProps {
   title?: string;
   onReset?: () => void;
   defaultInstrument?: { name: string; program: number } | null;
+  onApiReady?: (api: any) => void;
 }
 
-const AlphaTabPlayer = ({ fileUrl, file, title, onReset, defaultInstrument }: AlphaTabPlayerProps) => {
+const AlphaTabPlayer = ({ fileUrl, file, title, onReset, defaultInstrument, onApiReady }: AlphaTabPlayerProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const apiRef = useRef<any>(null);
@@ -154,6 +155,9 @@ const AlphaTabPlayer = ({ fileUrl, file, title, onReset, defaultInstrument }: Al
       });
 
       apiRef.current = api;
+      
+      // Notify parent component that API is ready
+      onApiReady?.(api);
 
       // Monitor soundfont loading
       setSoundFontLoading(true);
@@ -175,6 +179,8 @@ const AlphaTabPlayer = ({ fileUrl, file, title, onReset, defaultInstrument }: Al
 
       api.scoreLoaded.on((score: any) => {
         setTracks(score.tracks);
+        // Notify parent again after score is loaded
+        onApiReady?.(api);
         // Ensure score header shows title and transcriber (arranger) on print and screen
         try {
           const at = window.alphaTab;

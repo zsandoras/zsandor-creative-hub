@@ -7,14 +7,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Upload, Trash2, Check } from "lucide-react";
+import { Loader2, Upload, Trash2, Check, ChevronDown, ChevronUp } from "lucide-react";
 import { Navigate } from "react-router-dom";
+import AlphaTabPlayer from "@/components/AlphaTabPlayer";
+import { INSTRUMENTS } from "@/constants/instruments";
+import { Progress } from "@/components/ui/progress";
 
 declare global {
   interface Window {
     alphaTab: any;
   }
 }
+
+const TEST_TAB_ID = 'b8394bb0-a284-4d16-a578-d68e993e9ad4';
 
 const SoundfontManager = () => {
   const { user, isAdmin, loading: authLoading } = useAuth();
@@ -26,15 +31,36 @@ const SoundfontManager = () => {
   const [loading, setLoading] = useState(true);
   const [currentSoundfont, setCurrentSoundfont] = useState<string>("");
   const [scanning, setScanning] = useState(false);
-  const testPlayerRef = useRef<any>(null);
-  const testContainerRef = useRef<HTMLDivElement>(null);
+  const [scanProgress, setScanProgress] = useState(0);
+  const [currentInstrument, setCurrentInstrument] = useState<string>("");
+  const [unsupportedPrograms, setUnsupportedPrograms] = useState<number[]>([]);
+  const [scanResults, setScanResults] = useState<{working: number; unsupported: number} | null>(null);
+  const [testerExpanded, setTesterExpanded] = useState(false);
+  const [testerEmbed, setTesterEmbed] = useState<any>(null);
+  const testerApiRef = useRef<any>(null);
 
   useEffect(() => {
     if (!authLoading && isAdmin) {
       loadSoundfonts();
       loadCurrentSetting();
+      loadTesterTab();
     }
   }, [authLoading, isAdmin]);
+
+  const loadTesterTab = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('guitar_embeds')
+        .select('*')
+        .eq('id', TEST_TAB_ID)
+        .single();
+      
+      if (error) throw error;
+      setTesterEmbed(data);
+    } catch (error: any) {
+      console.error("Error loading tester tab:", error);
+    }
+  };
 
   const loadSoundfonts = async () => {
     try {
@@ -208,183 +234,176 @@ const SoundfontManager = () => {
   };
 
   const handleRescan = async (fileName: string) => {
+    if (!testerApiRef.current) {
+      toast({
+        title: "Error",
+        description: "Test player not ready. Please wait for the tester to load.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setScanning(true);
+    setScanProgress(0);
+    setCurrentInstrument("");
+    setScanResults(null);
+    setUnsupportedPrograms([]);
     const startTime = Date.now();
     
+    const api = testerApiRef.current;
+    const originalVolume = api.masterVolume ?? 1;
+    const originalWarn = console.warn;
+    const originalError = console.error;
+    const capturedUnsupported = new Set<number>();
+
     try {
-      console.log('Starting AlphaTab-based soundfont scan for:', fileName);
-      
       toast({
         title: "Starting Scan",
-        description: "Loading test player with soundfont...",
+        description: "Preparing to test all 128 GM instruments...",
       });
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('soundfonts')
-        .getPublicUrl(fileName);
+      // Mute the player
+      api.masterVolume = 0;
 
-      // Load the test guitar file
-      const testFileUrl = "https://zapwhesimfjgsjaofyjw.supabase.co/storage/v1/object/public/guitar-files/1762820464904-rxevb.gp5";
-
-      // Ensure AlphaTab is loaded
-      if (!window.alphaTab) {
-        await new Promise((resolve, reject) => {
-          const script = document.createElement("script");
-          script.src = "https://cdn.jsdelivr.net/npm/@coderline/alphatab@latest/dist/alphaTab.js";
-          script.async = true;
-          script.onload = resolve;
-          script.onerror = () => reject(new Error("Failed to load AlphaTab"));
-          document.body.appendChild(script);
-        });
-      }
-
-      // Intercept console warnings
-      const unsupportedPrograms = new Set<number>();
-      const originalWarn = console.warn;
+      // Hook console to capture warnings
       console.warn = (...args: any[]) => {
         const message = args.join(' ');
-        if (message.includes('[AlphaTab][AlphaSynth]') && message.includes('sample type') && message.includes('not supported')) {
+        if (message.includes('[AlphaTab][AlphaSynth]') && message.includes('not supported')) {
           const match = message.match(/program (\d+)/);
           if (match) {
-            unsupportedPrograms.add(parseInt(match[1]));
+            const program = parseInt(match[1]);
+            capturedUnsupported.add(program);
+            console.log(`Detected unsupported program: ${program}`);
           }
         }
-        originalWarn.apply(console, args);
+        return originalWarn.apply(console, args);
       };
 
-      try {
-        if (!testContainerRef.current) {
-          throw new Error("Test container not found");
+      console.error = (...args: any[]) => {
+        const message = args.join(' ');
+        if (message.includes('not supported')) {
+          const match = message.match(/program (\d+)/);
+          if (match) {
+            capturedUnsupported.add(parseInt(match[1]));
+          }
         }
+        return originalError.apply(console, args);
+      };
 
-        // Initialize player
-        const api = new window.alphaTab.AlphaTabApi(testContainerRef.current, {
-          core: {
-            fontDirectory: "https://cdn.jsdelivr.net/npm/@coderline/alphatab@latest/dist/font/",
-          },
-          display: {
-            scale: 0.5,
-          },
-          player: {
-            enablePlayer: true,
-            soundFont: publicUrl,
-          },
-        });
+      // Wait for soundfont and score to be ready
+      if (!api.score) {
+        throw new Error("Score not loaded in tester player");
+      }
 
-        testPlayerRef.current = api;
+      // Small delay to ensure everything is ready
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
-        toast({
-          title: "Loading Soundfont",
-          description: "This may take 30-60 seconds...",
-        });
+      toast({
+        title: "Scanning Instruments",
+        description: "Testing each instrument... This will take about 1 minute.",
+      });
 
-        // Wait for soundfont to load
-        await new Promise<void>((resolve, reject) => {
-          const timeout = setTimeout(() => reject(new Error('Soundfont load timeout')), 120000);
-          
-          api.soundFontLoaded.on(() => {
-            clearTimeout(timeout);
-            console.log('Soundfont loaded');
-            resolve();
-          });
-          
-          api.error.on((e: any) => {
-            clearTimeout(timeout);
-            reject(e);
-          });
+      // Test each instrument one by one
+      const MidiEventType = window.alphaTab?.midi?.MidiEventType;
+      
+      for (let program = 0; program < 128; program++) {
+        const instrumentName = INSTRUMENTS.find(i => i.program === program)?.name || `Program ${program}`;
+        setCurrentInstrument(instrumentName);
+        setScanProgress(((program + 1) / 128) * 100);
 
-          // Load the test file
-          api.load(testFileUrl);
-        });
-
-        // Wait for score to be ready
-        await new Promise<void>((resolve) => {
-          api.scoreLoaded.on(() => {
-            console.log('Score loaded');
-            resolve();
-          });
-        });
-
-        toast({
-          title: "Testing Instruments",
-          description: "Cycling through all 128 GM instruments...",
-        });
-
-        // Give time for all initial warnings to be logged
-        await new Promise(resolve => setTimeout(resolve, 3000));
-
-        // Now cycle through all instruments
-        const score = api.score;
-        if (score && score.tracks.length > 0) {
-          const track = score.tracks[0];
-          
-          for (let program = 0; program < 128; program++) {
-            track.playbackInfo.program = program;
-            
-            // Trigger a mini playback to force the soundfont to load the preset
-            try {
-              api.playPause();
-              await new Promise(resolve => setTimeout(resolve, 50));
-              api.playPause();
-              await new Promise(resolve => setTimeout(resolve, 50));
-            } catch (e) {
-              // Ignore playback errors
+        // Attach midiLoad handler to rewrite all program changes to current program
+        const midiLoadHandler = (file: any) => {
+          for (const ev of file.events) {
+            const isPC = MidiEventType 
+              ? (ev.type === MidiEventType.ProgramChange || ev.command === MidiEventType.ProgramChange)
+              : ev.command === 0xC0;
+            if (isPC && ev.channel !== 9) { // Skip drums (channel 9)
+              ev.program = program;
             }
           }
+        };
+
+        api.midiLoad.on(midiLoadHandler);
+        api.loadMidiForScore();
+        
+        // Force preset loading with brief playback
+        try {
+          api.play();
+          await new Promise(resolve => setTimeout(resolve, 200));
+          api.stop();
+        } catch (e) {
+          // Ignore playback errors
         }
 
-        // Wait for all warnings
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        api.midiLoad.off(midiLoadHandler);
 
-        console.warn = originalWarn;
-
-        // Calculate available instruments
-        const availableInstruments = Array.from({ length: 128 }, (_, i) => i)
-          .filter(program => !unsupportedPrograms.has(program));
-
-        console.log('Unsupported programs:', Array.from(unsupportedPrograms).sort((a, b) => a - b));
-        console.log('Available instruments:', availableInstruments);
-
-        const duration = ((Date.now() - startTime) / 1000).toFixed(1);
-
-        // Update the metadata
-        const { error: updateError } = await supabase
-          .from('app_settings')
-          .update({ 
-            metadata: { available_instruments: availableInstruments }
-          })
-          .eq('key', 'soundfont_url');
-
-        if (updateError) {
-          throw updateError;
-        }
-
-        toast({
-          title: "✅ Scan Complete",
-          description: `Found ${availableInstruments.length}/128 working instruments in ${duration}s. ${128 - availableInstruments.length} instruments use unsupported stereo samples. Refresh Guitar Pro page.`,
-        });
-
-        await loadCurrentSetting();
-      } finally {
-        console.warn = originalWarn;
-        if (testPlayerRef.current) {
-          try {
-            testPlayerRef.current.destroy();
-          } catch (e) {
-            console.warn("Error destroying test player:", e);
-          }
-          testPlayerRef.current = null;
-        }
+        // Wait 500ms as requested
+        await new Promise(resolve => setTimeout(resolve, 500));
       }
+
+      // Final delay to catch any late warnings
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Calculate results
+      const unsupported = Array.from(capturedUnsupported).sort((a, b) => a - b);
+      const working = 128 - unsupported.length;
+      
+      setUnsupportedPrograms(unsupported);
+      setScanResults({ working, unsupported: unsupported.length });
+
+      const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+
+      toast({
+        title: "✅ Scan Complete",
+        description: `Found ${working} working instruments, ${unsupported.length} unsupported. Duration: ${duration}s`,
+      });
+
     } catch (error: any) {
-      console.error('Full error details:', error);
+      console.error('Scan error:', error);
       toast({
         title: "❌ Scan Failed",
-        description: error.message || "Unknown error. Check console for details.",
+        description: error.message || "Unknown error",
         variant: "destructive",
       });
     } finally {
+      // Restore everything
+      console.warn = originalWarn;
+      console.error = originalError;
+      api.masterVolume = originalVolume;
       setScanning(false);
+      setScanProgress(0);
+      setCurrentInstrument("");
+    }
+  };
+
+  const handleConfirmRemoval = async () => {
+    try {
+      const supported = Array.from({ length: 128 }, (_, i) => i)
+        .filter(p => !unsupportedPrograms.includes(p));
+
+      const { error } = await supabase
+        .from('app_settings')
+        .update({ 
+          metadata: { available_instruments: supported }
+        })
+        .eq('key', 'soundfont_url');
+
+      if (error) throw error;
+
+      toast({
+        title: "✅ Updated",
+        description: `Saved ${supported.length} supported instruments. Refresh Guitar Pro page to apply.`,
+      });
+
+      setScanResults(null);
+      setUnsupportedPrograms([]);
+      await loadCurrentSetting();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
     }
   };
 
@@ -460,21 +479,96 @@ const SoundfontManager = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Hidden test player for scanning */}
-          <div 
-            ref={testContainerRef}
-            className={`fixed bottom-4 right-4 border-2 border-primary rounded-lg bg-background overflow-hidden transition-all ${
-              scanning ? 'w-64 h-48 opacity-100' : 'w-0 h-0 opacity-0'
-            }`}
-            style={{ zIndex: 9999 }}
-          >
-            {scanning && (
-              <div className="p-3">
-                <p className="text-xs font-medium text-primary">Testing soundfont...</p>
-                <p className="text-xs text-muted-foreground mt-1">This box will close automatically</p>
-              </div>
-            )}
-          </div>
+          {/* Tester Player Section */}
+          {testerEmbed && (
+            <Card className="border-primary/50">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-lg">Instrument Compatibility Tester</CardTitle>
+                    <CardDescription className="text-xs">
+                      Preloaded with "{testerEmbed.title}" • Required for scanning
+                    </CardDescription>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setTesterExpanded(!testerExpanded)}
+                  >
+                    {testerExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  </Button>
+                </div>
+              </CardHeader>
+              {testerExpanded && (
+                <CardContent className="pt-0">
+                  <div className="max-w-2xl">
+                    <AlphaTabPlayer
+                      fileUrl={testerEmbed.file_url}
+                      title={`${testerEmbed.title} (Tester)`}
+                      defaultInstrument={testerEmbed.default_instrument}
+                      onApiReady={(api) => {
+                        testerApiRef.current = api;
+                        console.log("Tester API ready");
+                      }}
+                    />
+                  </div>
+                </CardContent>
+              )}
+            </Card>
+          )}
+
+          {/* Scan Progress */}
+          {scanning && (
+            <Card className="border-primary">
+              <CardContent className="pt-6 space-y-3">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="font-medium">Testing: {currentInstrument}</span>
+                  <span className="text-muted-foreground">{Math.round(scanProgress)}%</span>
+                </div>
+                <Progress value={scanProgress} className="h-2" />
+                <p className="text-xs text-muted-foreground">
+                  Testing {Math.floor((scanProgress / 100) * 128)}/128 instruments
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Scan Results */}
+          {scanResults && !scanning && (
+            <Card className="border-primary">
+              <CardHeader>
+                <CardTitle className="text-lg">Scan Results</CardTitle>
+                <CardDescription>
+                  {scanResults.working} working instruments, {scanResults.unsupported} unsupported
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">
+                    Unsupported Instruments ({unsupportedPrograms.length})
+                  </Label>
+                  <div className="max-h-40 overflow-y-auto border rounded-lg p-3 text-xs space-y-1 bg-muted/30">
+                    {unsupportedPrograms.map(program => {
+                      const instrument = INSTRUMENTS.find(i => i.program === program);
+                      return (
+                        <div key={program} className="flex gap-2">
+                          <span className="text-muted-foreground w-8">{program}:</span>
+                          <span>{instrument?.name || 'Unknown'}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+                <Button onClick={handleConfirmRemoval} className="w-full">
+                  Confirm Removal of Unsupported Instruments
+                </Button>
+                <p className="text-xs text-muted-foreground text-center">
+                  This will update the available instruments list in the database
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Upload Section */}
           <div className="space-y-2">
             <Label htmlFor="soundfont-upload">Upload Soundfont (.sf2)</Label>
