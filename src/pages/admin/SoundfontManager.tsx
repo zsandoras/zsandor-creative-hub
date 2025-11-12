@@ -38,6 +38,8 @@ const SoundfontManager = () => {
   const [testerExpanded, setTesterExpanded] = useState(true);
   const [testerEmbed, setTesterEmbed] = useState<any>(null);
   const testerApiRef = useRef<any>(null);
+  const [debugVisible, setDebugVisible] = useState(true);
+  const [debugMessages, setDebugMessages] = useState<string[]>([]);
 
   useEffect(() => {
     if (!authLoading && isAdmin) {
@@ -248,6 +250,8 @@ const SoundfontManager = () => {
     setCurrentInstrument("");
     setScanResults(null);
     setUnsupportedPrograms([]);
+    setDebugMessages([]);
+    setDebugVisible(true);
     const startTime = Date.now();
     
     const api = testerApiRef.current;
@@ -267,6 +271,15 @@ const SoundfontManager = () => {
     const at = window.alphaTab;
     const originalAtLogger = at?.Logger?.logDelegate;
 
+    // Local debug helper
+    const addDebug = (msg: string) => {
+      const ts = new Date().toLocaleTimeString();
+      setDebugMessages((prev) => {
+        const next = [...prev, `${ts} ${msg}`];
+        return next.length > 300 ? next.slice(next.length - 300) : next;
+      });
+    };
+
     try {
       toast({
         title: "Starting Scan",
@@ -282,29 +295,27 @@ const SoundfontManager = () => {
         const isSynth = lowerMsg.includes('[alphatab][alphasynth]') || lowerMsg.includes('alphasynth');
         const mentionsUnsupported = lowerMsg.includes('unsupported') || lowerMsg.includes('skipping load of unsupported');
         
-        if (isSynth && mentionsUnsupported && detectionActive && currentProgramCandidate !== null) {
-          capturedUnsupported.add(currentProgramCandidate);
+        if (isSynth && mentionsUnsupported) {
+          // Show in debug feed
+          addDebug(message);
+          // Try to extract program number directly from the log
+          const match = message.match(/program\s+(\d{1,3})/i);
+          if (match) {
+            const prog = parseInt(match[1], 10);
+            if (!Number.isNaN(prog) && prog >= 0 && prog < 128) {
+              capturedUnsupported.add(prog);
+              return;
+            }
+          }
+          // Fallback to current detection window
+          if (detectionActive && currentProgramCandidate !== null) {
+            capturedUnsupported.add(currentProgramCandidate);
+          }
         }
       };
 
-      // Wrap AlphaTab Logger to intercept all its messages
-      if (at?.Logger) {
-        // Set debug level to catch all messages
-        if (at.Settings?.defaults?.core) {
-          at.Settings.defaults.core.logLevel = 1; // Debug level
-        }
+      // AlphaTab internal logger hook skipped to avoid compatibility issues; relying on console hooks only.
 
-        at.Logger.logDelegate = (level: number, category: string, msg: string, details?: any) => {
-          // Forward to original logger
-          if (originalAtLogger) {
-            originalAtLogger(level, category, msg, details);
-          }
-          
-          // Check for unsupported patterns
-          const fullMessage = `[${category}] ${msg} ${details || ''}`;
-          checkMessageForUnsupported(fullMessage);
-        };
-      }
 
       // Hook console.log
       console.log = (...args: any[]) => {
@@ -344,7 +355,7 @@ const SoundfontManager = () => {
 
       toast({
         title: "Scanning Instruments",
-        description: "Testing each instrument... This will take about 1 minute.",
+        description: "Testing each instrument... This will take a few seconds.",
       });
 
       // Test each instrument one by one
@@ -354,6 +365,9 @@ const SoundfontManager = () => {
         const instrumentName = INSTRUMENTS.find(i => i.program === program)?.name || `Program ${program}`;
         setCurrentInstrument(instrumentName);
         setScanProgress(((program + 1) / 128) * 100);
+        
+        // Debug trace
+        addDebug(`▶ Testing program ${program} - ${instrumentName}`);
 
         // Open detection window for this program
         currentProgramCandidate = program;
@@ -587,6 +601,24 @@ const SoundfontManager = () => {
                 <p className="text-xs text-muted-foreground">
                   Testing {Math.floor((scanProgress / 100) * 128)}/128 instruments
                 </p>
+
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs">Debug logs</Label>
+                  <Button variant="outline" size="sm" onClick={() => setDebugVisible((v) => !v)}>
+                    {debugVisible ? 'Hide' : 'Show'} Debug ({debugMessages.length})
+                  </Button>
+                </div>
+                {debugVisible && (
+                  <div className="max-h-48 overflow-y-auto border rounded-md p-2 bg-muted/30 text-[11px] font-mono space-y-1">
+                    {debugMessages.length === 0 ? (
+                      <div className="text-muted-foreground">No messages yet...</div>
+                    ) : (
+                      debugMessages.map((m, idx) => (
+                        <div key={idx} className="whitespace-pre-wrap">{m}</div>
+                      ))
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}
