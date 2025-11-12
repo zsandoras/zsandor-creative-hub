@@ -101,12 +101,9 @@ const Settings = () => {
 
         <Card className="p-6">
           <h2 className="text-2xl font-bold mb-4">Default Instrument</h2>
-          <p className="text-muted-foreground mb-2">
+          <p className="text-muted-foreground mb-6">
             Choose the default synthesizer instrument for the Guitar Pro player.
             All 128 General MIDI instruments are available in any GM-compliant soundfont.
-          </p>
-          <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 p-2 rounded border border-amber-200 dark:border-amber-900 mb-6">
-            ⚠️ Note: Not all soundfonts include complete instrument sets. Upload FluidR3_GM.sf2 for full support.
           </p>
 
           <div className="space-y-4">

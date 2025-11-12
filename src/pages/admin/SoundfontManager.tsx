@@ -250,7 +250,7 @@ const SoundfontManager = () => {
               {uploading && <Loader2 className="h-5 w-5 animate-spin" />}
             </div>
             <p className="text-sm text-muted-foreground">
-              Recommended: FluidR3_GM.sf2 (~148MB) for complete GM instrument support - 
+              Recommended: FluidR3_GM.sf2 (~148MB) - 
               <a 
                 href="https://musical-artifacts.com/artifacts/738" 
                 target="_blank" 
@@ -260,21 +260,14 @@ const SoundfontManager = () => {
                 Download here
               </a>
             </p>
-            <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 p-2 rounded border border-amber-200 dark:border-amber-900">
-              ⚠️ Note: Smaller soundfonts like sonivox.sf2 may not include all 128 GM instruments. 
-              Some instruments (e.g., Celesta, certain percussion) may be silent or missing.
-            </p>
           </div>
 
           {/* Default Soundfont Option */}
           <div className="border rounded-lg p-4 bg-muted/50">
             <div className="flex items-center justify-between">
-              <div className="flex-1">
+              <div>
                 <p className="font-medium">Default Soundfont (sonivox.sf2)</p>
                 <p className="text-sm text-muted-foreground">Web-optimized, ~30MB, hosted on CDN</p>
-                <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
-                  ⚠️ Limited instrument set - some GM instruments may be silent
-                </p>
               </div>
               {currentSoundfont === "https://cdn.jsdelivr.net/npm/@coderline/alphatab@latest/dist/soundfont/sonivox.sf2" ? (
                 <div className="flex items-center gap-2 text-primary">
