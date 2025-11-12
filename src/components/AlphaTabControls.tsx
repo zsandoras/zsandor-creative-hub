@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Slider } from "@/components/ui/slider";
 import { supabase } from "@/integrations/supabase/client";
+import { INSTRUMENTS, INSTRUMENT_CATEGORIES, getInstrumentsByCategory } from "@/constants/instruments";
 
 interface AlphaTabControlsProps {
   api: any;
@@ -43,41 +44,6 @@ interface AlphaTabControlsProps {
   scaleControls?: boolean;
   onToggleScale?: () => void;
 }
-
-// Common MIDI instruments
-const INSTRUMENTS = [
-  { name: "Violin", program: 40 },
-  { name: "Viola", program: 41 },
-  { name: "Cello", program: 42 },
-  { name: "Contrabass", program: 43 },
-  { name: "Acoustic Guitar (nylon)", program: 24 },
-  { name: "Acoustic Guitar (steel)", program: 25 },
-  { name: "Electric Guitar (jazz)", program: 26 },
-  { name: "Electric Guitar (clean)", program: 27 },
-  { name: "Electric Guitar (muted)", program: 28 },
-  { name: "Overdriven Guitar", program: 29 },
-  { name: "Distortion Guitar", program: 30 },
-  { name: "Guitar Harmonics", program: 31 },
-  { name: "Acoustic Bass", program: 32 },
-  { name: "Electric Bass (finger)", program: 33 },
-  { name: "Electric Bass (pick)", program: 34 },
-  { name: "Fretless Bass", program: 35 },
-  { name: "Piano", program: 0 },
-  { name: "Electric Piano", program: 4 },
-  { name: "Harpsichord", program: 6 },
-  { name: "Organ", program: 16 },
-  { name: "Accordion", program: 21 },
-  { name: "Strings Ensemble", program: 48 },
-  { name: "Synth Strings", program: 50 },
-  { name: "Choir Aahs", program: 52 },
-  { name: "Trumpet", program: 56 },
-  { name: "Trombone", program: 57 },
-  { name: "French Horn", program: 60 },
-  { name: "Saxophone", program: 65 },
-  { name: "Flute", program: 73 },
-  { name: "Synth Lead", program: 80 },
-  { name: "Synth Pad", program: 88 },
-];
 
 const AlphaTabControls = ({
   api,
@@ -113,7 +79,11 @@ const AlphaTabControls = ({
   useEffect(() => {
     // Load default instrument from prop or fallback to settings
     if (defaultInstrument) {
-      setCurrentInstrument(defaultInstrument);
+      // Find the matching instrument from our full list by program number
+      const matchingInstrument = INSTRUMENTS.find(i => i.program === defaultInstrument.program);
+      if (matchingInstrument) {
+        setCurrentInstrument(matchingInstrument);
+      }
     } else {
       loadDefaultInstrument();
     }
@@ -613,14 +583,22 @@ const AlphaTabControls = ({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="max-h-60 overflow-y-auto z-50 bg-popover">
-                  {INSTRUMENTS.map((instrument) => (
-                    <DropdownMenuItem
-                      key={instrument.program}
-                      onClick={() => handleSynthInstrumentChange(instrument)}
-                      className={currentInstrument.program === instrument.program ? "bg-accent" : ""}
-                    >
-                      {instrument.name}
-                    </DropdownMenuItem>
+                  {INSTRUMENT_CATEGORIES.map((category) => (
+                    <div key={category}>
+                      <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50">
+                        {category}
+                      </div>
+                      {getInstrumentsByCategory(category).map((instrument) => (
+                        <DropdownMenuItem
+                          key={instrument.program}
+                          onClick={() => handleSynthInstrumentChange(instrument)}
+                          className={currentInstrument.program === instrument.program ? "bg-accent" : ""}
+                        >
+                          <span className="text-xs text-muted-foreground mr-2 w-6">{instrument.program}</span>
+                          {instrument.name}
+                        </DropdownMenuItem>
+                      ))}
+                    </div>
                   ))}
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -845,14 +823,22 @@ const AlphaTabControls = ({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="max-h-80 overflow-y-auto z-50 bg-popover">
-                {INSTRUMENTS.map((instrument) => (
-                  <DropdownMenuItem
-                    key={instrument.program}
-                    onClick={() => handleSynthInstrumentChange(instrument)}
-                    className={currentInstrument.program === instrument.program ? "bg-accent" : ""}
-                  >
-                    {instrument.name}
-                  </DropdownMenuItem>
+                {INSTRUMENT_CATEGORIES.map((category) => (
+                  <div key={category}>
+                    <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50">
+                      {category}
+                    </div>
+                    {getInstrumentsByCategory(category).map((instrument) => (
+                      <DropdownMenuItem
+                        key={instrument.program}
+                        onClick={() => handleSynthInstrumentChange(instrument)}
+                        className={currentInstrument.program === instrument.program ? "bg-accent" : ""}
+                      >
+                        <span className="text-xs text-muted-foreground mr-2 w-6">{instrument.program}</span>
+                        {instrument.name}
+                      </DropdownMenuItem>
+                    ))}
+                  </div>
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>

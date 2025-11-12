@@ -8,44 +8,13 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-const INSTRUMENTS = [
-  { name: "Violin", program: 40 },
-  { name: "Viola", program: 41 },
-  { name: "Cello", program: 42 },
-  { name: "Contrabass", program: 43 },
-  { name: "Acoustic Guitar (nylon)", program: 24 },
-  { name: "Acoustic Guitar (steel)", program: 25 },
-  { name: "Electric Guitar (jazz)", program: 26 },
-  { name: "Electric Guitar (clean)", program: 27 },
-  { name: "Electric Guitar (muted)", program: 28 },
-  { name: "Overdriven Guitar", program: 29 },
-  { name: "Distortion Guitar", program: 30 },
-  { name: "Guitar Harmonics", program: 31 },
-  { name: "Acoustic Bass", program: 32 },
-  { name: "Electric Bass (finger)", program: 33 },
-  { name: "Electric Bass (pick)", program: 34 },
-  { name: "Fretless Bass", program: 35 },
-  { name: "Piano", program: 0 },
-  { name: "Electric Piano", program: 4 },
-  { name: "Harpsichord", program: 6 },
-  { name: "Organ", program: 16 },
-  { name: "Accordion", program: 21 },
-  { name: "Strings Ensemble", program: 48 },
-  { name: "Synth Strings", program: 50 },
-  { name: "Choir Aahs", program: 52 },
-  { name: "Trumpet", program: 56 },
-  { name: "Trombone", program: 57 },
-  { name: "French Horn", program: 60 },
-  { name: "Saxophone", program: 65 },
-  { name: "Flute", program: 73 },
-  { name: "Synth Lead", program: 80 },
-  { name: "Synth Pad", program: 88 },
-];
+import { INSTRUMENTS, INSTRUMENT_CATEGORIES, getInstrumentsByCategory } from "@/constants/instruments";
 
 const Settings = () => {
   const { isAdmin, loading } = useAuth();
@@ -120,6 +89,12 @@ const Settings = () => {
   return (
     <main className="min-h-screen bg-background pt-24 pb-16">
       <div className="container mx-auto px-4 max-w-2xl">
+        <div className="mb-8">
+          <Button variant="outline" onClick={() => window.history.back()}>
+            ← Back to Dashboard
+          </Button>
+        </div>
+
         <h1 className="text-4xl font-bold mb-8 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
           App Settings
         </h1>
@@ -127,7 +102,8 @@ const Settings = () => {
         <Card className="p-6">
           <h2 className="text-2xl font-bold mb-4">Default Instrument</h2>
           <p className="text-muted-foreground mb-6">
-            Choose the default synthesizer instrument for the Guitar Pro player
+            Choose the default synthesizer instrument for the Guitar Pro player.
+            All 128 General MIDI instruments are available in any GM-compliant soundfont.
           </p>
 
           <div className="space-y-4">
@@ -136,10 +112,18 @@ const Settings = () => {
                 <SelectValue placeholder="Select an instrument" />
               </SelectTrigger>
               <SelectContent className="max-h-80">
-                {INSTRUMENTS.map((instrument) => (
-                  <SelectItem key={instrument.program} value={String(instrument.program)}>
-                    {instrument.name}
-                  </SelectItem>
+                {INSTRUMENT_CATEGORIES.map((category) => (
+                  <SelectGroup key={category}>
+                    <SelectLabel className="text-xs font-semibold bg-muted/50">
+                      {category}
+                    </SelectLabel>
+                    {getInstrumentsByCategory(category).map((instrument) => (
+                      <SelectItem key={instrument.program} value={String(instrument.program)}>
+                        <span className="text-xs text-muted-foreground mr-2">{instrument.program}</span>
+                        {instrument.name}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
                 ))}
               </SelectContent>
             </Select>
