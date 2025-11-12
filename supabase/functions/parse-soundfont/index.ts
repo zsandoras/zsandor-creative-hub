@@ -70,47 +70,35 @@ async function parseSF2PresetsChunked(supabase: any, bucket: string, fileName: s
     
     console.log(`SF2 file size: ${fileSize} bytes`);
     
-    // Step 2: Scan chunks to find pdta location (read in 1KB increments)
-    let offset = 12;
+    console.log('Scanning for pdta chunk from end of file...');
+    
+    // Step 2: The pdta chunk is at the END of SF2 files (after sdta samples)
+    // Instead of scanning from start, scan backwards from the end
+    const scanSize = 512 * 1024; // Read last 512KB (pdta is typically much smaller)
+    const scanStart = Math.max(12, fileSize - scanSize);
+    
+    console.log(`Reading last ${Math.floor((fileSize - scanStart) / 1024)}KB of file...`);
+    
+    const endBuffer = await fetchRange(supabase, bucket, fileName, scanStart, fileSize - 1);
+    console.log(`Downloaded ${endBuffer.byteLength} bytes from end`);
+    
+    // Search for pdta chunk in the end section
     let pdtaOffset = -1;
     let pdtaSize = 0;
-    const chunkScanSize = 8192; // Increased from 1KB to 8KB for faster scanning
-    let scanIterations = 0;
     
-    console.log('Scanning for pdta chunk...');
-    
-    while (offset < fileSize && pdtaOffset === -1) {
-      scanIterations++;
-      if (scanIterations % 100 === 0) {
-        console.log(`Scanned ${offset} / ${fileSize} bytes (${((offset/fileSize)*100).toFixed(1)}%)`);
-      }
+    for (let i = 0; i <= endBuffer.byteLength - 12; i++) {
+      const chunkId = bytesToString(endBuffer, i);
       
-      const scanEnd = Math.min(offset + chunkScanSize - 1, fileSize - 1);
-      const chunkBuffer = await fetchRange(supabase, bucket, fileName, offset, scanEnd);
-      const view = new Uint8Array(chunkBuffer);
-      
-      // Search for 'LIST' followed by 'pdta'
-      for (let i = 0; i <= view.length - 12; i++) {
-        const chunkId = bytesToString(chunkBuffer, i);
+      if (chunkId === 'LIST') {
+        const chunkSize = readUint32LE(endBuffer, i + 4);
+        const listType = bytesToString(endBuffer, i + 8);
         
-        if (chunkId === 'LIST') {
-          const chunkSize = readUint32LE(chunkBuffer, i + 4);
-          const listType = bytesToString(chunkBuffer, i + 8);
-          
-          if (listType === 'pdta') {
-            pdtaOffset = offset + i;
-            pdtaSize = chunkSize;
-            console.log(`Found pdta chunk at offset ${pdtaOffset}, size: ${pdtaSize} bytes`);
-            break;
-          }
+        if (listType === 'pdta') {
+          pdtaOffset = scanStart + i;
+          pdtaSize = chunkSize;
+          console.log(`✓ Found pdta chunk at offset ${pdtaOffset}, size: ${pdtaSize} bytes`);
+          break;
         }
-      }
-      
-      offset += chunkScanSize - 12; // Overlap to avoid missing boundary chunks
-      
-      // Timeout protection: if scanning takes more than 50 seconds, abort
-      if (scanIterations > 10000) {
-        throw new Error('Scan timeout: could not find pdta chunk in reasonable time');
       }
     }
     
