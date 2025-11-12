@@ -19,6 +19,7 @@ const SoundfontManager = () => {
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [currentSoundfont, setCurrentSoundfont] = useState<string>("");
+  const [scanning, setScanning] = useState(false);
 
   useEffect(() => {
     if (!authLoading && isAdmin) {
@@ -210,6 +211,53 @@ const SoundfontManager = () => {
     }
   };
 
+  const handleRescan = async (fileName: string) => {
+    setScanning(true);
+    try {
+      toast({
+        title: "Scanning soundfont...",
+        description: "Detecting available instruments",
+      });
+
+      const { data: parseData, error: parseError } = await supabase.functions.invoke('parse-soundfont', {
+        body: { fileName }
+      });
+
+      if (parseError) {
+        throw new Error(parseError.message || 'Failed to parse soundfont');
+      }
+
+      const availableInstruments = parseData?.availableInstruments || null;
+      const { data: { publicUrl } } = supabase.storage
+        .from('soundfonts')
+        .getPublicUrl(fileName);
+
+      // Update the metadata for this soundfont
+      const { error } = await supabase
+        .from('app_settings')
+        .update({
+          metadata: { available_instruments: availableInstruments }
+        })
+        .eq('key', 'soundfont_url')
+        .eq('value', publicUrl);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: parseData?.message || "Soundfont scanned successfully. Refresh the page to see changes.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Scan failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setScanning(false);
+    }
+  };
+
   const handleDelete = async (fileName: string) => {
     if (!confirm(`Delete ${fileName}?`)) return;
 
@@ -360,10 +408,20 @@ const SoundfontManager = () => {
                       </div>
                       <div className="flex items-center gap-2">
                         {isActive ? (
-                          <div className="flex items-center gap-2 text-primary">
-                            <Check className="h-5 w-5" />
-                            <span className="text-sm font-medium">Active</span>
-                          </div>
+                          <>
+                            <div className="flex items-center gap-2 text-primary">
+                              <Check className="h-5 w-5" />
+                              <span className="text-sm font-medium">Active</span>
+                            </div>
+                            <Button 
+                              onClick={() => handleRescan(sf.name)} 
+                              size="sm"
+                              variant="outline"
+                              disabled={scanning}
+                            >
+                              {scanning ? "Scanning..." : "Rescan"}
+                            </Button>
+                          </>
                         ) : (
                           <Button onClick={() => handleSetActive(sf.name)} size="sm">
                             Set Active
