@@ -239,66 +239,76 @@ const AlphaTabPlayer = ({ fileUrl, file, title, onReset, defaultInstrument }: Al
   };
 
 
-  const handleHorizontalResize = (direction: 'left' | 'right', e: React.MouseEvent) => {
+  const handleHorizontalResize = (direction: 'left' | 'right', e: React.MouseEvent | React.TouchEvent) => {
     e.preventDefault();
-    const startX = e.clientX;
+    const startX = 'touches' in e ? e.touches[0].clientX : e.clientX;
     const startWidth = containerWidth;
     
-    const handleMouseMove = (moveEvent: MouseEvent) => {
-      const deltaX = moveEvent.clientX - startX;
+    const handleMove = (moveEvent: MouseEvent | TouchEvent) => {
+      const clientX = 'touches' in moveEvent ? moveEvent.touches[0].clientX : moveEvent.clientX;
+      const deltaX = clientX - startX;
       const parentWidth = wrapperRef.current?.parentElement?.offsetWidth || 1000;
       const deltaPercent = (deltaX / parentWidth) * 100;
       
       let newWidth;
       if (direction === 'left') {
-        newWidth = startWidth - (deltaPercent * 2); // Subtract for left, so moving right decreases width
+        newWidth = startWidth - (deltaPercent * 2);
       } else {
-        newWidth = startWidth + (deltaPercent * 2); // Add for right
+        newWidth = startWidth + (deltaPercent * 2);
       }
       
-      setContainerWidth(Math.max(50, Math.min(500, newWidth))); // Allow up to 500%
+      setContainerWidth(Math.max(50, Math.min(500, newWidth)));
     };
     
-    const handleMouseUp = () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
+    const handleEnd = () => {
+      document.removeEventListener('mousemove', handleMove as any);
+      document.removeEventListener('mouseup', handleEnd);
+      document.removeEventListener('touchmove', handleMove as any);
+      document.removeEventListener('touchend', handleEnd);
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
     };
     
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
+    document.addEventListener('mousemove', handleMove as any);
+    document.addEventListener('mouseup', handleEnd);
+    document.addEventListener('touchmove', handleMove as any, { passive: false });
+    document.addEventListener('touchend', handleEnd);
     document.body.style.cursor = 'ew-resize';
     document.body.style.userSelect = 'none';
   };
 
-  const handleVerticalResize = (direction: 'top' | 'bottom', e: React.MouseEvent) => {
+  const handleVerticalResize = (direction: 'top' | 'bottom', e: React.MouseEvent | React.TouchEvent) => {
     e.preventDefault();
-    const startY = e.clientY;
+    const startY = 'touches' in e ? e.touches[0].clientY : e.clientY;
     const startHeight = containerHeight;
     
-    const handleMouseMove = (moveEvent: MouseEvent) => {
-      const deltaY = moveEvent.clientY - startY;
+    const handleMove = (moveEvent: MouseEvent | TouchEvent) => {
+      const clientY = 'touches' in moveEvent ? moveEvent.touches[0].clientY : moveEvent.clientY;
+      const deltaY = clientY - startY;
       
       let newHeight;
       if (direction === 'top') {
-        newHeight = startHeight - (deltaY * 2); // Subtract for top
+        newHeight = startHeight - (deltaY * 2);
       } else {
-        newHeight = startHeight + (deltaY * 2); // Add for bottom
+        newHeight = startHeight + (deltaY * 2);
       }
       
-      setContainerHeight(Math.max(300, Math.min(2000, newHeight))); // 300px to 2000px
+      setContainerHeight(Math.max(300, Math.min(2000, newHeight)));
     };
     
-    const handleMouseUp = () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
+    const handleEnd = () => {
+      document.removeEventListener('mousemove', handleMove as any);
+      document.removeEventListener('mouseup', handleEnd);
+      document.removeEventListener('touchmove', handleMove as any);
+      document.removeEventListener('touchend', handleEnd);
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
     };
     
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
+    document.addEventListener('mousemove', handleMove as any);
+    document.addEventListener('mouseup', handleEnd);
+    document.addEventListener('touchmove', handleMove as any, { passive: false });
+    document.addEventListener('touchend', handleEnd);
     document.body.style.cursor = 'ns-resize';
     document.body.style.userSelect = 'none';
   };
@@ -316,8 +326,9 @@ const AlphaTabPlayer = ({ fileUrl, file, title, onReset, defaultInstrument }: Al
         >
           {/* Top Resize Handle */}
           <div
-            className="absolute left-0 right-0 top-0 h-1 bg-border/50 hover:bg-primary/50 cursor-ns-resize z-20 opacity-0 group-hover:opacity-100 transition-opacity"
+            className="absolute left-0 right-0 top-0 h-2 md:h-1 bg-border/50 hover:bg-primary/50 cursor-ns-resize z-20 opacity-30 md:opacity-0 group-hover:opacity-100 transition-opacity touch-none"
             onMouseDown={(e) => handleVerticalResize('top', e)}
+            onTouchStart={(e) => handleVerticalResize('top', e)}
           >
             <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-muted/80 backdrop-blur-sm p-1 rounded">
               <GripVertical className="h-4 w-4 text-muted-foreground rotate-90" />
@@ -326,8 +337,9 @@ const AlphaTabPlayer = ({ fileUrl, file, title, onReset, defaultInstrument }: Al
 
           {/* Left Resize Handle */}
           <div
-            className="absolute left-0 top-0 bottom-0 w-1 bg-border/50 hover:bg-primary/50 cursor-ew-resize z-20 opacity-0 group-hover:opacity-100 transition-opacity"
+            className="absolute left-0 top-0 bottom-0 w-2 md:w-1 bg-border/50 hover:bg-primary/50 cursor-ew-resize z-20 opacity-30 md:opacity-0 group-hover:opacity-100 transition-opacity touch-none"
             onMouseDown={(e) => handleHorizontalResize('left', e)}
+            onTouchStart={(e) => handleHorizontalResize('left', e)}
           >
             <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-muted/80 backdrop-blur-sm p-1 rounded">
               <GripVertical className="h-4 w-4 text-muted-foreground" />
@@ -336,8 +348,9 @@ const AlphaTabPlayer = ({ fileUrl, file, title, onReset, defaultInstrument }: Al
 
           {/* Right Resize Handle */}
           <div
-            className="absolute right-0 top-0 bottom-0 w-1 bg-border/50 hover:bg-primary/50 cursor-ew-resize z-20 opacity-0 group-hover:opacity-100 transition-opacity"
+            className="absolute right-0 top-0 bottom-0 w-2 md:w-1 bg-border/50 hover:bg-primary/50 cursor-ew-resize z-20 opacity-30 md:opacity-0 group-hover:opacity-100 transition-opacity touch-none"
             onMouseDown={(e) => handleHorizontalResize('right', e)}
+            onTouchStart={(e) => handleHorizontalResize('right', e)}
           >
             <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-muted/80 backdrop-blur-sm p-1 rounded">
               <GripVertical className="h-4 w-4 text-muted-foreground" />
@@ -346,8 +359,9 @@ const AlphaTabPlayer = ({ fileUrl, file, title, onReset, defaultInstrument }: Al
 
           {/* Bottom Resize Handle */}
           <div
-            className="absolute left-0 right-0 bottom-0 h-1 bg-border/50 hover:bg-primary/50 cursor-ns-resize z-20 opacity-0 group-hover:opacity-100 transition-opacity"
+            className="absolute left-0 right-0 bottom-0 h-2 md:h-1 bg-border/50 hover:bg-primary/50 cursor-ns-resize z-20 opacity-30 md:opacity-0 group-hover:opacity-100 transition-opacity touch-none"
             onMouseDown={(e) => handleVerticalResize('bottom', e)}
+            onTouchStart={(e) => handleVerticalResize('bottom', e)}
           >
             <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-muted/80 backdrop-blur-sm p-1 rounded">
               <GripVertical className="h-4 w-4 text-muted-foreground rotate-90" />
