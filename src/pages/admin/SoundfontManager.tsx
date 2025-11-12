@@ -218,9 +218,14 @@ const SoundfontManager = () => {
       // Dynamically import AlphaTab
       const { AlphaTabApi, Settings } = await import('@coderline/alphatab');
       
-      // Create a hidden container for testing
+      // Create an offscreen container for testing (not display:none to avoid font loading issues)
       const testContainer = document.createElement('div');
-      testContainer.style.display = 'none';
+      testContainer.style.position = 'fixed';
+      testContainer.style.top = '-9999px';
+      testContainer.style.left = '-9999px';
+      testContainer.style.width = '1px';
+      testContainer.style.height = '1px';
+      testContainer.style.overflow = 'hidden';
       document.body.appendChild(testContainer);
 
       // Intercept console warnings to detect unsupported instruments
@@ -248,41 +253,24 @@ const SoundfontManager = () => {
 
         const api = new AlphaTabApi(testContainer, settings);
 
-        // Wait for soundfont to load
+        toast({
+          title: "Loading Soundfont",
+          description: "AlphaTab is loading and testing the soundfont...",
+        });
+
+        // Wait for soundfont to load - this will trigger warnings for ALL unsupported samples
         await new Promise<void>((resolve, reject) => {
-          const timeout = setTimeout(() => reject(new Error('Soundfont load timeout')), 60000);
+          const timeout = setTimeout(() => reject(new Error('Soundfont load timeout after 60s')), 60000);
           api.soundFontLoaded.on(() => {
             clearTimeout(timeout);
-            resolve();
+            // Wait a bit more for all warnings to be logged
+            setTimeout(resolve, 2000);
           });
           api.error.on((e) => {
             clearTimeout(timeout);
             reject(e);
           });
         });
-
-        toast({
-          title: "Testing Instruments",
-          description: "Loading all 128 GM instruments...",
-        });
-
-        // Create a minimal track for each program to test loading
-        for (let program = 0; program < 128; program++) {
-          const testTex = `\\track "Test"
-          \\staff{score} \\tuning piano \\instrument ${program}
-          . | 1.1`;
-          
-          try {
-            api.tex(testTex);
-            // Small delay to let AlphaTab process
-            await new Promise(resolve => setTimeout(resolve, 50));
-          } catch (e) {
-            console.error(`Failed to test program ${program}:`, e);
-          }
-        }
-
-        // Wait a bit for all warnings to be logged
-        await new Promise(resolve => setTimeout(resolve, 2000));
 
         // Restore console.warn
         console.warn = originalWarn;
