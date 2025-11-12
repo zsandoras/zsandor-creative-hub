@@ -68,6 +68,18 @@ const SoundfontManager = () => {
     }
   };
 
+  const getKnownSoundfontInstruments = (fileName: string): number[] | null => {
+    // Known complete GM soundfonts
+    if (fileName.toLowerCase().includes('fluidr3') || fileName.toLowerCase().includes('fluid_r3')) {
+      return Array.from({ length: 128 }, (_, i) => i); // All 128 GM instruments
+    }
+    if (fileName.toLowerCase().includes('generaluser')) {
+      return Array.from({ length: 128 }, (_, i) => i); // All 128 GM instruments
+    }
+    // For unknown soundfonts, return null (will show all instruments with warning)
+    return null;
+  };
+
   const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -93,25 +105,9 @@ const SoundfontManager = () => {
 
       if (uploadError) throw uploadError;
 
-      // Parse the soundfont to get available instruments
-      toast({
-        title: "Scanning soundfont...",
-        description: "Detecting available instruments",
-      });
-
-      const { data: parseData, error: parseError } = await supabase.functions.invoke('parse-soundfont', {
-        body: { fileName }
-      });
-
-      if (parseError) {
-        console.error('Parse error:', parseError);
-      }
-
-      const availableInstruments = parseData?.availableInstruments || null;
-
       toast({
         title: "Success",
-        description: parseData?.message || "Soundfont uploaded successfully",
+        description: "Soundfont uploaded successfully. Set it as active to use it.",
       });
 
       loadSoundfonts();
@@ -133,21 +129,8 @@ const SoundfontManager = () => {
         .from('soundfonts')
         .getPublicUrl(fileName);
 
-      // Parse the soundfont to get available instruments
-      toast({
-        title: "Scanning soundfont...",
-        description: "Detecting available instruments",
-      });
-
-      const { data: parseData, error: parseError } = await supabase.functions.invoke('parse-soundfont', {
-        body: { fileName }
-      });
-
-      if (parseError) {
-        console.error('Parse error:', parseError);
-      }
-
-      const availableInstruments = parseData?.availableInstruments || null;
+      // Check if this is a known soundfont with full GM support
+      const knownInstruments = getKnownSoundfontInstruments(fileName);
 
       const { error } = await supabase
         .from('app_settings')
@@ -155,15 +138,20 @@ const SoundfontManager = () => {
           key: 'soundfont_url',
           value: publicUrl,
           updated_by: user?.id,
-          metadata: { available_instruments: availableInstruments }
+          metadata: { available_instruments: knownInstruments }
         });
 
       if (error) throw error;
 
       setCurrentSoundfont(publicUrl);
+      
+      const instrumentMessage = knownInstruments 
+        ? `All 128 GM instruments available.`
+        : `Unknown soundfont - all instruments will be shown. Some may not produce sound.`;
+      
       toast({
         title: "Success",
-        description: parseData?.message || "Active soundfont updated. Refresh the Guitar Pro page to apply changes.",
+        description: `Active soundfont updated. ${instrumentMessage} Refresh the Guitar Pro page to apply changes.`,
       });
     } catch (error: any) {
       toast({
@@ -211,32 +199,18 @@ const SoundfontManager = () => {
     }
   };
 
-  const handleRescan = async (fileName: string) => {
+  const handleConfigureInstruments = async (fileName: string, allInstruments: boolean) => {
     setScanning(true);
     try {
-      toast({
-        title: "Scanning soundfont...",
-        description: "Detecting available instruments",
-      });
-
-      const { data: parseData, error: parseError } = await supabase.functions.invoke('parse-soundfont', {
-        body: { fileName }
-      });
-
-      if (parseError) {
-        throw new Error(parseError.message || 'Failed to parse soundfont');
-      }
-
-      const availableInstruments = parseData?.availableInstruments || null;
+      const instruments = allInstruments ? Array.from({ length: 128 }, (_, i) => i) : null;
       const { data: { publicUrl } } = supabase.storage
         .from('soundfonts')
         .getPublicUrl(fileName);
 
-      // Update the metadata for this soundfont
       const { error } = await supabase
         .from('app_settings')
         .update({
-          metadata: { available_instruments: availableInstruments }
+          metadata: { available_instruments: instruments }
         })
         .eq('key', 'soundfont_url')
         .eq('value', publicUrl);
@@ -245,11 +219,13 @@ const SoundfontManager = () => {
 
       toast({
         title: "Success",
-        description: parseData?.message || "Soundfont scanned successfully. Refresh the page to see changes.",
+        description: allInstruments 
+          ? "All 128 instruments enabled. Refresh the Guitar Pro page."
+          : "Instrument filter cleared. Refresh the Guitar Pro page.",
       });
     } catch (error: any) {
       toast({
-        title: "Scan failed",
+        title: "Update failed",
         description: error.message,
         variant: "destructive",
       });
@@ -322,7 +298,7 @@ const SoundfontManager = () => {
           <CardTitle>Soundfont Manager</CardTitle>
           <CardDescription>
             Upload and manage soundfont files (.sf2) for the Guitar Pro player. 
-            Larger soundfonts provide better quality but slower loading times.
+            Complete GM soundfonts (like FluidR3_GM.sf2) support all 128 instruments.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -340,12 +316,12 @@ const SoundfontManager = () => {
               {uploading && <Loader2 className="h-5 w-5 animate-spin" />}
             </div>
             <p className="text-sm text-muted-foreground">
-              Recommended: FluidR3_GM.sf2 (~148MB) - 
+              Recommended: FluidR3_GM.sf2 (~148MB, all 128 GM instruments) - 
               <a 
                 href="https://musical-artifacts.com/artifacts/738" 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="underline hover:text-primary"
+                className="underline hover:text-primary ml-1"
               >
                 Download here
               </a>
@@ -414,12 +390,13 @@ const SoundfontManager = () => {
                               <span className="text-sm font-medium">Active</span>
                             </div>
                             <Button 
-                              onClick={() => handleRescan(sf.name)} 
+                              onClick={() => handleConfigureInstruments(sf.name, true)} 
                               size="sm"
                               variant="outline"
                               disabled={scanning}
+                              title="Enable all 128 instruments"
                             >
-                              {scanning ? "Scanning..." : "Rescan"}
+                              All Instruments
                             </Button>
                           </>
                         ) : (
