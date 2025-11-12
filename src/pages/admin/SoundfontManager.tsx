@@ -268,12 +268,13 @@ const SoundfontManager = () => {
       // Hook console to capture warnings
       console.warn = (...args: any[]) => {
         const message = args.join(' ');
-        if (message.includes('[AlphaTab][AlphaSynth]') && message.includes('not supported')) {
+        // Match: "Skipping load of unsupported" or "not supported"
+        if (message.includes('[AlphaTab][AlphaSynth]') && (message.includes('unsupported') || message.includes('not supported') || message.includes('Skipping load'))) {
           const match = message.match(/program (\d+)/);
           if (match) {
             const program = parseInt(match[1]);
             capturedUnsupported.add(program);
-            console.log(`Detected unsupported program: ${program}`);
+            console.log(`✓ Detected unsupported program: ${program}`);
           }
         }
         return originalWarn.apply(console, args);
@@ -281,7 +282,7 @@ const SoundfontManager = () => {
 
       console.error = (...args: any[]) => {
         const message = args.join(' ');
-        if (message.includes('not supported')) {
+        if (message.includes('unsupported') || message.includes('not supported')) {
           const match = message.match(/program (\d+)/);
           if (match) {
             capturedUnsupported.add(parseInt(match[1]));
@@ -337,8 +338,8 @@ const SoundfontManager = () => {
 
         api.midiLoad.off(midiLoadHandler);
 
-        // Wait 500ms as requested
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // Wait 100ms for faster scanning
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
 
       // Final delay to catch any late warnings
