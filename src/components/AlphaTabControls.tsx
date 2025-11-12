@@ -75,6 +75,35 @@ const AlphaTabControls = ({
   const [transpose, setTranspose] = useState(0);
   const [autoScroll, setAutoScroll] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [availableInstruments, setAvailableInstruments] = useState<number[] | null>(null);
+
+  useEffect(() => {
+    const loadAvailableInstruments = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('app_settings')
+          .select('metadata')
+          .eq('key', 'soundfont_url')
+          .single();
+
+        if (!error && data?.metadata) {
+          const metadata = data.metadata as { available_instruments?: number[] };
+          setAvailableInstruments(metadata.available_instruments || null);
+        }
+      } catch (error) {
+        console.error('Error loading available instruments:', error);
+      }
+    };
+
+    loadAvailableInstruments();
+  }, []);
+
+  // Filter instruments based on soundfont availability
+  const getFilteredInstrumentsByCategory = (category: string) => {
+    const categoryInstruments = getInstrumentsByCategory(category);
+    if (!availableInstruments) return categoryInstruments;
+    return categoryInstruments.filter(inst => availableInstruments.includes(inst.program));
+  };
 
   useEffect(() => {
     // Load default instrument from prop or fallback to settings
@@ -583,23 +612,27 @@ const AlphaTabControls = ({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="max-h-60 overflow-y-auto z-50 bg-popover">
-                  {INSTRUMENT_CATEGORIES.map((category) => (
-                    <div key={category}>
-                      <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50">
-                        {category}
+                  {INSTRUMENT_CATEGORIES.map((category) => {
+                    const categoryInstruments = getFilteredInstrumentsByCategory(category);
+                    if (categoryInstruments.length === 0) return null;
+                    return (
+                      <div key={category}>
+                        <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50">
+                          {category}
+                        </div>
+                        {categoryInstruments.map((instrument) => (
+                          <DropdownMenuItem
+                            key={instrument.program}
+                            onClick={() => handleSynthInstrumentChange(instrument)}
+                            className={currentInstrument.program === instrument.program ? "bg-accent" : ""}
+                          >
+                            <span className="text-xs text-muted-foreground mr-2 w-6">{instrument.program}</span>
+                            {instrument.name}
+                          </DropdownMenuItem>
+                        ))}
                       </div>
-                      {getInstrumentsByCategory(category).map((instrument) => (
-                        <DropdownMenuItem
-                          key={instrument.program}
-                          onClick={() => handleSynthInstrumentChange(instrument)}
-                          className={currentInstrument.program === instrument.program ? "bg-accent" : ""}
-                        >
-                          <span className="text-xs text-muted-foreground mr-2 w-6">{instrument.program}</span>
-                          {instrument.name}
-                        </DropdownMenuItem>
-                      ))}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -823,23 +856,27 @@ const AlphaTabControls = ({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="max-h-80 overflow-y-auto z-50 bg-popover">
-                {INSTRUMENT_CATEGORIES.map((category) => (
-                  <div key={category}>
-                    <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50">
-                      {category}
+                {INSTRUMENT_CATEGORIES.map((category) => {
+                  const categoryInstruments = getFilteredInstrumentsByCategory(category);
+                  if (categoryInstruments.length === 0) return null;
+                  return (
+                    <div key={category}>
+                      <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50">
+                        {category}
+                      </div>
+                      {categoryInstruments.map((instrument) => (
+                        <DropdownMenuItem
+                          key={instrument.program}
+                          onClick={() => handleSynthInstrumentChange(instrument)}
+                          className={currentInstrument.program === instrument.program ? "bg-accent" : ""}
+                        >
+                          <span className="text-xs text-muted-foreground mr-2 w-6">{instrument.program}</span>
+                          {instrument.name}
+                        </DropdownMenuItem>
+                      ))}
                     </div>
-                    {getInstrumentsByCategory(category).map((instrument) => (
-                      <DropdownMenuItem
-                        key={instrument.program}
-                        onClick={() => handleSynthInstrumentChange(instrument)}
-                        className={currentInstrument.program === instrument.program ? "bg-accent" : ""}
-                      >
-                        <span className="text-xs text-muted-foreground mr-2 w-6">{instrument.program}</span>
-                        {instrument.name}
-                      </DropdownMenuItem>
-                    ))}
-                  </div>
-                ))}
+                  );
+                })}
               </DropdownMenuContent>
             </DropdownMenu>
 

@@ -21,10 +21,35 @@ const Settings = () => {
   const { toast } = useToast();
   const [selectedInstrument, setSelectedInstrument] = useState<string>("40");
   const [isSaving, setIsSaving] = useState(false);
+  const [availableInstruments, setAvailableInstruments] = useState<number[] | null>(null);
 
   useEffect(() => {
     loadDefaultInstrument();
+    loadAvailableInstruments();
   }, []);
+
+  const loadAvailableInstruments = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('app_settings')
+        .select('metadata')
+        .eq('key', 'soundfont_url')
+        .single();
+
+      if (!error && data?.metadata) {
+        const metadata = data.metadata as { available_instruments?: number[] };
+        setAvailableInstruments(metadata.available_instruments || null);
+      }
+    } catch (error) {
+      console.error('Error loading available instruments:', error);
+    }
+  };
+
+  const getFilteredInstrumentsByCategory = (category: string) => {
+    const categoryInstruments = getInstrumentsByCategory(category);
+    if (!availableInstruments) return categoryInstruments;
+    return categoryInstruments.filter(inst => availableInstruments.includes(inst.program));
+  };
 
   const loadDefaultInstrument = async () => {
     try {
@@ -112,19 +137,23 @@ const Settings = () => {
                 <SelectValue placeholder="Select an instrument" />
               </SelectTrigger>
               <SelectContent className="max-h-80">
-                {INSTRUMENT_CATEGORIES.map((category) => (
-                  <SelectGroup key={category}>
-                    <SelectLabel className="text-xs font-semibold bg-muted/50">
-                      {category}
-                    </SelectLabel>
-                    {getInstrumentsByCategory(category).map((instrument) => (
-                      <SelectItem key={instrument.program} value={String(instrument.program)}>
-                        <span className="text-xs text-muted-foreground mr-2">{instrument.program}</span>
-                        {instrument.name}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                ))}
+                {INSTRUMENT_CATEGORIES.map((category) => {
+                  const categoryInstruments = getFilteredInstrumentsByCategory(category);
+                  if (categoryInstruments.length === 0) return null;
+                  return (
+                    <SelectGroup key={category}>
+                      <SelectLabel className="text-xs font-semibold bg-muted/50">
+                        {category}
+                      </SelectLabel>
+                      {categoryInstruments.map((instrument) => (
+                        <SelectItem key={instrument.program} value={String(instrument.program)}>
+                          <span className="text-xs text-muted-foreground mr-2">{instrument.program}</span>
+                          {instrument.name}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  );
+                })}
               </SelectContent>
             </Select>
 

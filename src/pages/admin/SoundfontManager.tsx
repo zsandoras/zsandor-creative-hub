@@ -92,9 +92,25 @@ const SoundfontManager = () => {
 
       if (uploadError) throw uploadError;
 
+      // Parse the soundfont to get available instruments
+      toast({
+        title: "Scanning soundfont...",
+        description: "Detecting available instruments",
+      });
+
+      const { data: parseData, error: parseError } = await supabase.functions.invoke('parse-soundfont', {
+        body: { fileName }
+      });
+
+      if (parseError) {
+        console.error('Parse error:', parseError);
+      }
+
+      const availableInstruments = parseData?.availableInstruments || null;
+
       toast({
         title: "Success",
-        description: "Soundfont uploaded successfully",
+        description: parseData?.message || "Soundfont uploaded successfully",
       });
 
       loadSoundfonts();
@@ -116,12 +132,29 @@ const SoundfontManager = () => {
         .from('soundfonts')
         .getPublicUrl(fileName);
 
+      // Parse the soundfont to get available instruments
+      toast({
+        title: "Scanning soundfont...",
+        description: "Detecting available instruments",
+      });
+
+      const { data: parseData, error: parseError } = await supabase.functions.invoke('parse-soundfont', {
+        body: { fileName }
+      });
+
+      if (parseError) {
+        console.error('Parse error:', parseError);
+      }
+
+      const availableInstruments = parseData?.availableInstruments || null;
+
       const { error } = await supabase
         .from('app_settings')
         .upsert({
           key: 'soundfont_url',
           value: publicUrl,
           updated_by: user?.id,
+          metadata: { available_instruments: availableInstruments }
         });
 
       if (error) throw error;
@@ -129,7 +162,7 @@ const SoundfontManager = () => {
       setCurrentSoundfont(publicUrl);
       toast({
         title: "Success",
-        description: "Active soundfont updated. Refresh the Guitar Pro page to apply changes.",
+        description: parseData?.message || "Active soundfont updated. Refresh the Guitar Pro page to apply changes.",
       });
     } catch (error: any) {
       toast({
@@ -144,12 +177,21 @@ const SoundfontManager = () => {
     try {
       const defaultUrl = "https://cdn.jsdelivr.net/npm/@coderline/alphatab@latest/dist/soundfont/sonivox.sf2";
       
+      // Known working instruments in sonivox.sf2 (incomplete GM set)
+      const sonivoxInstruments = [
+        0, 1, 4, 5, 6, 7, 8, 16, 24, 25, 26, 27, 28, 29, 30, 32, 33, 34, 35, 36, 37, 38, 39, 40,
+        42, 44, 45, 46, 48, 49, 50, 51, 52, 53, 56, 57, 58, 60, 61, 62, 64, 65, 66, 68, 69, 70,
+        71, 72, 73, 74, 76, 80, 81, 84, 88, 89, 91, 92, 93, 94, 95, 96, 104, 114, 115, 116, 117,
+        118, 119, 120, 121, 122, 123, 124, 125, 126, 127
+      ];
+      
       const { error } = await supabase
         .from('app_settings')
         .upsert({
           key: 'soundfont_url',
           value: defaultUrl,
           updated_by: user?.id,
+          metadata: { available_instruments: sonivoxInstruments }
         });
 
       if (error) throw error;

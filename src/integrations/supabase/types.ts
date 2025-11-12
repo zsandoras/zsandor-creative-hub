@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           id: string
           key: string
+          metadata: Json | null
           updated_at: string | null
           updated_by: string | null
           value: Json
@@ -25,6 +26,7 @@ export type Database = {
         Insert: {
           id?: string
           key: string
+          metadata?: Json | null
           updated_at?: string | null
           updated_by?: string | null
           value: Json
@@ -32,6 +34,7 @@ export type Database = {
         Update: {
           id?: string
           key?: string
+          metadata?: Json | null
           updated_at?: string | null
           updated_by?: string | null
           value?: Json
