@@ -77,7 +77,7 @@ const AlphaTabControls = ({
   const [autoScroll, setAutoScroll] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [availableInstruments, setAvailableInstruments] = useState<number[] | null>(null);
-  const [backingTrackPlaying, setBackingTrackPlaying] = useState(false);
+  const [backingTrackPlaying, setBackingTrackPlaying] = useState(true);
   const backingTrackAudioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
@@ -472,7 +472,12 @@ const AlphaTabControls = ({
           const audio = new Audio();
           // The audio might be embedded as base64 or URL
           audio.src = audioTrack.playbackInfo.audio;
+          audio.loop = true;
           backingTrackAudioRef.current = audio;
+          // Auto-play on load since default is true
+          if (backingTrackPlaying) {
+            audio.play().catch(err => console.log('Autoplay prevented:', err));
+          }
         }
       }
     }
@@ -487,6 +492,13 @@ const AlphaTabControls = ({
       }
     }
   };
+
+  // Auto-initialize backing track when score loads
+  useEffect(() => {
+    if (api?.score && backingTrackPlaying && !backingTrackAudioRef.current) {
+      toggleBackingTrack();
+    }
+  }, [api?.score]);
 
   const toggleAutoScroll = () => {
     const newAutoScroll = !autoScroll;
@@ -979,6 +991,15 @@ const AlphaTabControls = ({
             </Button>
             <Button onClick={handleExportPDF} variant="ghost" size={buttonSize} title="Export PDF">
               <FileDown className={iconSize} />
+            </Button>
+            <Button 
+              onClick={toggleBackingTrack} 
+              variant="ghost" 
+              size={buttonSize}
+              title="Toggle backing track"
+              className={backingTrackPlaying ? "bg-accent" : ""}
+            >
+              <Music className={iconSize} />
             </Button>
             {onToggleScale && (
               <Button
