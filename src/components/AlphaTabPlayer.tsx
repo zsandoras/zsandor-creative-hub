@@ -149,6 +149,9 @@ const AlphaTabPlayer = ({ fileUrl, file, title, onReset, defaultInstrument, onAp
             secondaryGlyphColor: 'rgb(0, 0, 0)', // Make voice 2 same weight as voice 1
           },
         },
+        notation: {
+          notationMode: window.alphaTab.NotationMode.GuitarPro, // Enable GuitarPro effects like brush strokes
+        },
         player: {
           enablePlayer: true,
           soundFont: soundFontUrl,
