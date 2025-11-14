@@ -20,6 +20,7 @@ import {
   CircleDot,
   Maximize2,
   Menu,
+  Music,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -76,6 +77,8 @@ const AlphaTabControls = ({
   const [autoScroll, setAutoScroll] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [availableInstruments, setAvailableInstruments] = useState<number[] | null>(null);
+  const [backingTrackPlaying, setBackingTrackPlaying] = useState(false);
+  const backingTrackAudioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     const loadAvailableInstruments = async () => {
@@ -459,6 +462,32 @@ const AlphaTabControls = ({
     }
   };
 
+  const toggleBackingTrack = () => {
+    if (!backingTrackAudioRef.current) {
+      // Try to initialize backing track audio from the GPX file
+      if (api?.score?.tracks) {
+        // Check if there's audio track data in the score
+        const audioTrack = api.score.tracks.find((track: any) => track.playbackInfo?.primaryChannel === -1);
+        if (audioTrack?.playbackInfo?.audio) {
+          const audio = new Audio();
+          // The audio might be embedded as base64 or URL
+          audio.src = audioTrack.playbackInfo.audio;
+          backingTrackAudioRef.current = audio;
+        }
+      }
+    }
+
+    if (backingTrackAudioRef.current) {
+      if (backingTrackPlaying) {
+        backingTrackAudioRef.current.pause();
+        setBackingTrackPlaying(false);
+      } else {
+        backingTrackAudioRef.current.play();
+        setBackingTrackPlaying(true);
+      }
+    }
+  };
+
   const toggleAutoScroll = () => {
     const newAutoScroll = !autoScroll;
     setAutoScroll(newAutoScroll);
@@ -673,6 +702,15 @@ const AlphaTabControls = ({
               <Button onClick={handleExportPDF} variant="ghost" size="sm">
                 <FileDown className="h-4 w-4 mr-1" />
                 <span className="text-xs">PDF</span>
+              </Button>
+              <Button 
+                onClick={toggleBackingTrack} 
+                variant="ghost" 
+                size="sm"
+                className={backingTrackPlaying ? "bg-accent" : ""}
+              >
+                <Music className="h-4 w-4 mr-1" />
+                <span className="text-xs">Track</span>
               </Button>
               {onToggleScale && (
                 <Button
