@@ -463,39 +463,90 @@ const AlphaTabControls = ({
   };
 
   const toggleBackingTrack = () => {
+    console.log('[Track Button] Toggle clicked, current state:', backingTrackPlaying);
+    console.log('[Track Button] Audio ref exists:', !!backingTrackAudioRef.current);
+    console.log('[Track Button] API score exists:', !!api?.score);
+    
     if (!backingTrackAudioRef.current) {
       // Try to initialize backing track audio from the GPX file
-      if (api?.score?.tracks) {
-        // Check if there's audio track data in the score
-        const audioTrack = api.score.tracks.find((track: any) => track.playbackInfo?.primaryChannel === -1);
-        if (audioTrack?.playbackInfo?.audio) {
+      console.log('[Track Button] Initializing audio from GPX...');
+      
+      if (api?.score) {
+        console.log('[Track Button] Score found, checking for audio...');
+        console.log('[Track Button] Score object:', api.score);
+        console.log('[Track Button] Number of tracks:', api.score.tracks?.length);
+        
+        // Check if score has audio property directly
+        if ((api.score as any).audio) {
+          console.log('[Track Button] Found audio in score.audio');
           const audio = new Audio();
-          // The audio might be embedded as base64 or URL
-          audio.src = audioTrack.playbackInfo.audio;
+          audio.src = (api.score as any).audio;
           audio.loop = true;
           backingTrackAudioRef.current = audio;
+        }
+        
+        // Also check tracks for audio data
+        if (api.score.tracks) {
+          api.score.tracks.forEach((track: any, idx: number) => {
+            console.log(`[Track Button] Track ${idx}:`, {
+              name: track.name,
+              hasPlaybackInfo: !!track.playbackInfo,
+              playbackInfo: track.playbackInfo
+            });
+          });
+          
+          const audioTrack = api.score.tracks.find((track: any) => 
+            track.playbackInfo?.primaryChannel === -1 || 
+            track.playbackInfo?.audio
+          );
+          
+          if (audioTrack?.playbackInfo?.audio) {
+            console.log('[Track Button] Found audio in track.playbackInfo.audio');
+            const audio = new Audio();
+            audio.src = audioTrack.playbackInfo.audio;
+            audio.loop = true;
+            backingTrackAudioRef.current = audio;
+          }
+        }
+        
+        if (!backingTrackAudioRef.current) {
+          console.log('[Track Button] No audio found in GPX file');
+        } else {
+          console.log('[Track Button] Audio initialized, attempting to play...');
           // Auto-play on load since default is true
           if (backingTrackPlaying) {
-            audio.play().catch(err => console.log('Autoplay prevented:', err));
+            backingTrackAudioRef.current.play()
+              .then(() => console.log('[Track Button] Autoplay successful'))
+              .catch(err => console.log('[Track Button] Autoplay prevented:', err));
           }
         }
       }
     }
 
     if (backingTrackAudioRef.current) {
+      console.log('[Track Button] Audio ref exists, toggling playback...');
       if (backingTrackPlaying) {
         backingTrackAudioRef.current.pause();
         setBackingTrackPlaying(false);
+        console.log('[Track Button] Paused');
       } else {
-        backingTrackAudioRef.current.play();
-        setBackingTrackPlaying(true);
+        backingTrackAudioRef.current.play()
+          .then(() => {
+            setBackingTrackPlaying(true);
+            console.log('[Track Button] Playing');
+          })
+          .catch(err => console.log('[Track Button] Play failed:', err));
       }
+    } else {
+      console.log('[Track Button] No audio ref available, cannot toggle');
     }
   };
 
   // Auto-initialize backing track when score loads
   useEffect(() => {
+    console.log('[Track Button] Score load effect triggered');
     if (api?.score && backingTrackPlaying && !backingTrackAudioRef.current) {
+      console.log('[Track Button] Auto-initializing backing track...');
       toggleBackingTrack();
     }
   }, [api?.score]);
